@@ -1,0 +1,10 @@
+{
+  "app_name" : "mux",
+  "default_roku_user" : "rokudev",
+  "default_roku_target" : "192.168.5.119",
+  "default_roku_pass" : "rokudev",
+  "app_name" : "mux",
+  "development" : false,
+  "build_dir_name" : "build",
+  "out_dir_name" : "out"
+}

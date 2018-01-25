@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--********** Copyright 2017 Roku Corp.  All Rights Reserved. **********--> 
+<!-- main node which handles home screen children -->
+<component name="VideoScene" extends="Scene">
+
+<!-- main handler -->
+<script type="text/brightscript" uri="pkg:/components/VideoScene.brs"/>
+<!-- <script type="text/brightscript" uri="pkg:/libs/mux-sdk.brs"/> -->
+
+<children>
+    <!-- <MuxAnalytics id="mux" video="mainVideo" /> -->
+    <Video id="mainVideo" visible="false"/>
+    <LabelList id="MenuList" translation="[100,60]" itemSize="[720, 100]" />
+
+    <Rectangle id="LoadingScreen"
+	  color="0x000000FF" 
+	  width="1280" 
+	  height="720" 
+	  translation="[0,0]" 
+	  visible="false">
+
+	  <Label 
+		  id="LoadingScreenText"			  	
+		  width="720"
+		  height="20"
+		  font="font:MediumBoldSystemFont"
+		  text=""
+		  horizAlign="center"
+		  vertAlign="center"
+		  translation="[280, 350]" 
+      />
+
+	</Rectangle>
+</children>
+
+</component>

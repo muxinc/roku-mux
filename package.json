@@ -1,0 +1,31 @@
+{
+  "name": "mux-bs-sdk",
+  "version": "1.0.0",
+  "description": "Mux SDK",
+  "main": "none",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@bitbucket.org/loungelogic/mux-bs-sdk.git"
+  },
+  "keywords": [
+    "mux",
+    "analytics",
+    "reporting",
+    "brightscript"
+  ],
+  "author": "Alex Urquhart",
+  "license": "ISC",
+  "homepage": "https://bitbucket.org/loungelogic/mux-bs-sdk#readme",
+  "dependencies": {
+    "del": "^3.0.0",
+    "gulp": "^3.9.1",
+    "gulp-clean": "^0.4.0",
+    "gulp-zip": "^3.2.0"
+  }
+}

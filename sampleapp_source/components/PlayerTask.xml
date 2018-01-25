@@ -1,0 +1,13 @@
+<?rokuml verion="1.0" enoding="utf-8" ?>
+<component name="PlayerTask" extends="Task">
+
+<interface>
+    <field id="contentInfo" type="assocarray" />
+    <field id="playWithRAF" type="string" />
+    <field id="facade"      type="node" />
+    <field id="video"       type="node" />
+</interface>
+<script type="text/brightscript" uri="pkg:/libs/mux-sdk.brs"/>
+<script type="text/brightscript" uri="./PlayerTask.brs" />
+</component>
+

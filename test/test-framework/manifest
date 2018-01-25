@@ -1,0 +1,6 @@
+title=Test Mux SDK
+subtitle=DAZN Tests app
+major_version=1
+minor_version=0
+build_version=0
+bs_const=propogateErrors=false

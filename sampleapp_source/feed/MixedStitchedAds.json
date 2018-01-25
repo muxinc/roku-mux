@@ -1,0 +1,449 @@
+[
+  {
+    "ads": [
+      {
+        "duration": 30,
+        "streamformat": "iroll",
+        "streams": [
+          {
+            "mimetype": "application/json",
+            "url": "http://video.innovid.com/tags/custom/roku/expand/media-gallery-sms-7f7np.json?cb=3"
+          }
+        ],
+        "tracking": [
+          {
+            "event": "Impression",
+            "time": 0,
+            "triggered": false,
+            "url": "http://example.com/?Innovid_1_Impression"
+          },
+          {
+            "event": "Close",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_1_Close"
+          },
+          {
+            "event": "AcceptInvitation",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_1_AcceptInvitation"
+          },
+          {
+            "event": "Midpoint",
+            "time": 15,
+            "triggered": false,
+            "url": "http://example.com/?Innovid_1_Midpoint"
+          },
+          {
+            "event": "Complete",
+            "time": 30,
+            "triggered": false,
+            "url": "http://example.com/?Innovid_1_Complete"
+          },
+          {
+            "event": "Pause",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_1_Pause"
+          },
+          {
+            "event": "Resume",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_1_Resume"
+          }
+        ]
+      },
+      {
+        "duration": 30,
+        "streamformat": "iroll",
+        "streams": [
+          {
+            "mimetype": "application/json",
+            "url": "http://research.innovid.com/tag/get.php?tag=q7d1o&device=roku"
+          }
+        ],
+        "tracking": [
+          {
+            "event": "Impression",
+            "time": 60,
+            "triggered": false,
+            "url": "http://example.com/?Innovid_3_Impression"
+          },
+          {
+            "event": "Close",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_3_Close"
+          },
+          {
+            "event": "AcceptInvitation",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_3_AcceptInvitation"
+          },
+          {
+            "event": "Midpoint",
+            "time": 75,
+            "triggered": false,
+            "url": "http://example.com/?Innovid_3_Midpoint"
+          },
+          {
+            "event": "Complete",
+            "time": 90,
+            "triggered": false,
+            "url": "http://example.com/?Innovid_3_Complete"
+          },
+          {
+            "event": "Pause",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_3_Pause"
+          },
+          {
+            "event": "Resume",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_3_Resume"
+          }
+        ]
+      }
+    ],
+    "duration": 90,
+    "rendersequence": "preroll",
+    "rendertime": 0,
+    "tracking": [],
+    "viewed": false
+  },
+  {
+    "ads": [
+      {
+        "companionads": [
+          {
+            "height": 720,
+            "mimetype": "application/json",
+            "tracking": [
+              {
+                "event": "Impression",
+                "time": 690,
+                "triggered": false,
+                "url": "http://a.brightline.tv/?track=companion_impression&ad_id=001"
+              },
+              {
+                "event": "AcceptInvitation",
+                "triggered": false,
+                "url": "http://a.brightline.tv/?track=companion_accept_invitation&ad_id=001"
+              }
+            ],
+            "url": "https://a.brightline.tv/?id=ROKU_RAF_1&ver=%%SDK_VER%%&cb=%%CACHEBUSTER%%&mblist=2450X,2500X",
+            "width": 1280
+          }
+        ],
+        "duration": 30,
+        "streamformat": "iroll",
+        "streams": [
+          {
+            "mimetype": "application/json",
+            "url": "http://video.innovid.com/tags/custom/roku/expand/media-gallery-sms-7f7np.json?cb=3"
+          }
+        ],
+        "tracking": [
+          {
+            "event": "Impression",
+            "time": 660,
+            "triggered": false,
+            "url": "http://example.com/?Innovid_2_Impression"
+          },
+          {
+            "event": "Close",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_2_Close"
+          },
+          {
+            "event": "AcceptInvitation",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_2_AcceptInvitation"
+          },
+          {
+            "event": "Midpoint",
+            "time": 675,
+            "triggered": false,
+            "url": "http://example.com/?Innovid_2_Midpoint"
+          },
+          {
+            "event": "Complete",
+            "time": 690,
+            "triggered": false,
+            "url": "http://example.com/?Innovid_2_Complete"
+          },
+          {
+            "event": "Pause",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_2_Pause"
+          },
+          {
+            "event": "Resume",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_2_Resume"
+          }
+        ]
+      },
+      {
+        "companionads": [
+          {
+            "height": 720,
+            "mimetype": "application/json",
+            "tracking": [
+              {
+                "event": "Impression",
+                "time": 690,
+                "triggered": false,
+                "url": "http://a.brightline.tv/?track=companion_impression&ad_id=001"
+              },
+              {
+                "event": "AcceptInvitation",
+                "triggered": false,
+                "url": "http://a.brightline.tv/?track=companion_accept_invitation&ad_id=001"
+              }
+            ],
+            "url": "https://a.brightline.tv/?id=ROKU_RAF_1&ver=%%SDK_VER%%&cb=%%CACHEBUSTER%%&mblist=2450X,2500X",
+            "width": 1280
+          }
+        ],
+        "duration": 30,
+        "streamformat": "brightline",
+        "streams": [
+          {
+            "mimetype": "application/json",
+            "url": "https://a.brightline.tv/?id=ROKU_RAF_1&ver=%%SDK_VER%%&cb=%%CACHEBUSTER%%&mblist=2450X,2500X"
+          }
+        ],
+        "tracking": [
+          {
+            "event": "Impression",
+            "time": 690,
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=impression&ad_id=VIDEO_001"
+          },
+          {
+            "event": "Impression",
+            "time": 690,
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=creativeView&ad_id=VIDEO_001"
+          },
+          {
+            "event": "FirstQuartile",
+            "time": 697,
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=firstQuartile&ad_id=VIDEO_001"
+          },
+          {
+            "event": "Midpoint",
+            "time": 705,
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=midpoint&ad_id=VIDEO_001"
+          },
+          {
+            "event": "ThirdQuartile",
+            "time": 712,
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=thirdQuartile&ad_id=VIDEO_001"
+          },
+          {
+            "event": "Complete",
+            "time": 720,
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=complete&ad_id=VIDEO_001"
+          },
+          {
+            "event": "Pause",
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=pause&ad_id=VIDEO_001"
+          },
+          {
+            "event": "Resume",
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=resume&ad_id=VIDEO_001"
+          },
+          {
+            "event": "AcceptInvitation",
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=acceptInvitation&ad_id=VIDEO_001"
+          },
+          {
+            "event": "Close",
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=close&ad_id=VIDEO_001"
+          }
+        ]
+      }
+    ],
+    "duration": 90,
+    "rendersequence": "midroll",
+    "rendertime": 510,
+    "tracking": [],
+    "viewed": false
+  },
+  {
+    "ads": [
+      {
+        "companionads": [
+          {
+            "height": 720,
+            "mimetype": "application/json",
+            "tracking": [
+              {
+                "event": "Impression",
+                "time": 1110,
+                "triggered": false,
+                "url": "http://a.brightline.tv/?track=companion_impression&ad_id=001"
+              },
+              {
+                "event": "AcceptInvitation",
+                "triggered": false,
+                "url": "http://a.brightline.tv/?track=companion_accept_invitation&ad_id=001"
+              }
+            ],
+            "url": "https://a.brightline.tv/?id=ROKU_RAF_1&ver=%%SDK_VER%%&cb=%%CACHEBUSTER%%&mblist=2450X,2500X",
+            "width": 1280
+          }
+        ],
+        "duration": 30,
+        "streamformat": "brightline",
+        "streams": [
+          {
+            "mimetype": "application/json",
+            "url": "https://a.brightline.tv/?id=ROKU_RAF_1&ver=%%SDK_VER%%&cb=%%CACHEBUSTER%%&mblist=2450X,2500X"
+          }
+        ],
+        "tracking": [
+          {
+            "event": "Impression",
+            "time": 1110,
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=impression&ad_id=VIDEO_001"
+          },
+          {
+            "event": "Impression",
+            "time": 1110,
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=creativeView&ad_id=VIDEO_001"
+          },
+          {
+            "event": "FirstQuartile",
+            "time": 1117,
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=firstQuartile&ad_id=VIDEO_001"
+          },
+          {
+            "event": "Midpoint",
+            "time": 1125,
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=midpoint&ad_id=VIDEO_001"
+          },
+          {
+            "event": "ThirdQuartile",
+            "time": 1132,
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=thirdQuartile&ad_id=VIDEO_001"
+          },
+          {
+            "event": "Complete",
+            "time": 1140,
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=complete&ad_id=VIDEO_001"
+          },
+          {
+            "event": "Pause",
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=pause&ad_id=VIDEO_001"
+          },
+          {
+            "event": "Resume",
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=resume&ad_id=VIDEO_001"
+          },
+          {
+            "event": "AcceptInvitation",
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=acceptInvitation&ad_id=VIDEO_001"
+          },
+          {
+            "event": "Close",
+            "triggered": false,
+            "url": "http://a.brightline.tv/?track=close&ad_id=VIDEO_001"
+          }
+        ]
+      },
+      {
+        "companionads": [
+          {
+            "height": 720,
+            "mimetype": "application/json",
+            "tracking": [
+              {
+                "event": "Impression",
+                "time": 1110,
+                "triggered": false,
+                "url": "http://a.brightline.tv/?track=companion_impression&ad_id=001"
+              },
+              {
+                "event": "AcceptInvitation",
+                "triggered": false,
+                "url": "http://a.brightline.tv/?track=companion_accept_invitation&ad_id=001"
+              }
+            ],
+            "url": "https://a.brightline.tv/?id=ROKU_RAF_1&ver=%%SDK_VER%%&cb=%%CACHEBUSTER%%&mblist=2450X,2500X",
+            "width": 1280
+          }
+        ],
+        "duration": 30,
+        "streamformat": "iroll",
+        "streams": [
+          {
+            "mimetype": "application/json",
+            "url": "http://video.innovid.com/tags/custom/roku/expand/media-gallery-sms-7f7np.json?cb=3"
+          }
+        ],
+        "tracking": [
+          {
+            "event": "Impression",
+            "time": 1170,
+            "triggered": false,
+            "url": "http://example.com/?Innovid_3_Impression"
+          },
+          {
+            "event": "Close",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_3_Close"
+          },
+          {
+            "event": "AcceptInvitation",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_3_AcceptInvitation"
+          },
+          {
+            "event": "Midpoint",
+            "time": 1185,
+            "triggered": false,
+            "url": "http://example.com/?Innovid_3_Midpoint"
+          },
+          {
+            "event": "Complete",
+            "time": 1200,
+            "triggered": false,
+            "url": "http://example.com/?Innovid_3_Complete"
+          },
+          {
+            "event": "Pause",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_3_Pause"
+          },
+          {
+            "event": "Resume",
+            "triggered": false,
+            "url": "http://example.com/?Innovid_3_Resume"
+          }
+        ]
+      }
+    ],
+    "duration": 90,
+    "rendersequence": "postroll",
+    "rendertime": 930,
+    "tracking": [],
+    "viewed": false
+  }
+]

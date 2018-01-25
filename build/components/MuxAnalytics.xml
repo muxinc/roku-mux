@@ -1,0 +1,10 @@
+<component name="MuxAnalytics" extends="Task">
+  <interface>
+    <field id="video" type="node" />
+    <function name="rafHandler" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/MuxAnalytics.brs"/>
+  <children>
+    <Timer id="heartbeatTimer" repeat="true" duration="1" />
+  </children>
+</component>
