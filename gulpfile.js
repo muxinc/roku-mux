@@ -22,14 +22,8 @@ var lookupIpAddress;
 info.date = now.getFullYear().toString() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + (now.getDate().toString())).slice(-2);
 
 
-gulp.task('mux', function () {
-  console.log('My first task for Mux SDK '+env_roku_ip)
-  exec(`make install`) 
-})
-
-gulp.task('test', ['closeApp', 'cleanup', 'build','build_test', 'package', 'deploy'], function () {
-  console.log('test')
-})
+gulp.task('install', ['closeApp', 'cleanup', 'build','build', 'package', 'deploy'], function () {})
+gulp.task('test', ['closeApp', 'cleanup', 'build','build_test', 'package_test', 'deploy_test'], function () {})
 
 gulp.task('deploy', ['closeApp', 'cleanup', 'build', 'package'], function () {
   var roku_ip = (env_roku_ip == undefined) ? buildConfig.default_roku_target : env_roku_ip
@@ -44,16 +38,34 @@ gulp.task('deploy', ['closeApp', 'cleanup', 'build', 'package'], function () {
   var response = exec(curlCommand)
 })
 
+gulp.task('deploy_test', ['closeApp', 'cleanup', 'build', 'package'], function () {
+  var roku_ip = (env_roku_ip == undefined) ? buildConfig.default_roku_target : env_roku_ip
+  var roku_user = (env_roku_user == undefined) ? buildConfig.default_roku_user : env_roku_user
+  var roku_pass = (env_roku_pass == undefined) ? buildConfig.default_roku_pass : env_roku_pass
+  console.debug("Deploying to device IP: " + roku_ip + " (" + roku_user + " | " + roku_pass + ")")
+
+  var curlCommand = "curl --user " + roku_user + ":" + roku_pass 
+                    + " --digest --show-error -F 'mysubmit=Install' -F 'archive=@" + buildConfig.out_dir_name + "/" + buildConfig.app_name + "-tests" 
+                    + ".zip' --output /tmp/dev_server_out --write-out '%{http_code}' http://" + roku_ip + "/plugin_install"
+  // console.log("curlCommand:"+curlCommand)
+  var response = exec(curlCommand)
+})
+
 gulp.task('build',['cleanup'], function () {
-  return gulp.src(['source/**', 'components/**', 'manifest'], { "base" : "." }).pipe(gulp.dest(buildConfig.build_dir_name));
+  return gulp.src(['source/**', 'components/**','images/**', 'manifest'], { "base" : "." }).pipe(gulp.dest(buildConfig.build_dir_name));
 })
 
 gulp.task('build_test',['build', 'cleanup'], function () {
-  return gulp.src(['test/tests/**', 'test/test-framework/Main.brs', 'test/test-framework/manifest*', 'test/test-framework/brstest.brs']).pipe(gulp.dest(buildConfig.build_dir_name))
+  return gulp.src(['test/tests/**', 'test/test-framework/**', 'test/test-framework/manifest*']).pipe(gulp.dest(buildConfig.build_dir_name))
+})
+
+gulp.task('package_test', ['build', 'build_test', 'cleanup'], function () {
+  return gulp.src('build/**')
+    .pipe(zip(buildConfig.app_name + "-tests" + ".zip"))
+    .pipe(gulp.dest('out/'));
 })
 
 gulp.task('package', ['build', 'cleanup'], function () {
-  console.log("PACKAGE: "+buildConfig.app_name)
   return gulp.src('build/**')
     .pipe(zip(buildConfig.app_name + ".zip"))
     .pipe(gulp.dest('out/'));
