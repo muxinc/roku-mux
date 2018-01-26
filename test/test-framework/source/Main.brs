@@ -6,17 +6,7 @@ function Main()
 
     ' Debug().initialise(Debug().FILTER_NONE)
 
-    screen = createObject("roSGScreen")
-    port = createObject("roMessagePort")
-    screen.setMessagePort(port)
-    screen.show()
-
-    scene = screen.CreateScene("MuxAnalytics")
-    while true
-        msg = wait(0, port)
-        if type(msg) = "roSGScreenEvent"
-        end if
-    end while
+    BrsTestMain()
 
     print "########################"
     print "        Test suite complete         "
