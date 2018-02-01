@@ -5,6 +5,7 @@
   </interface>
   <script type="text/brightscript" uri="pkg:/components/MuxAnalytics.brs"/>
   <children>
+    <Timer id="beaconTimer" repeat="true" duration="1" />
     <Timer id="heartbeatTimer" repeat="true" duration="1" />
   </children>
 </component>

@@ -1,12 +1,15 @@
 function init()
   Print "[MuxAnalytics] init"
-  m.top.observeField("video", "videoAddedHandler")
-  m.connection = CreateObject("roUrlTransfer")
   m.MAX_BEACON_SIZE = 300 'controls size of a single beacon (in events)
   m.MAX_QUEUE_LENGTH = 3600 '1 minute to clean a full queue
   m.BASE_TIME_BETWEEN_BEACONS = 5000
   m.DEFAULT_BEACON_URL = "https://img.litix.io"
+
+  m.connection = CreateObject("roUrlTransfer")
   m._eventQueue = []
+  
+  m.top.observeField("video", "videoAddedHandler")
+
 end function
 
 ' EVENTS TO SEND.
@@ -21,20 +24,27 @@ end function
   'aderror', 'adplaying', 'adrequest', 'adresponse', 'adbreakstart',
   'adbreakend', 'rebufferstart', 'rebufferend', 'seeked', 'error', 'hb'
 
+
+
 function videoAddedHandler(videoAddedEvent)
   Print "[MuxAnalytics] videoAddedHandler"
   m.top.unobserveField("video")
   beaconTimer = m.top.findNode("beaconTimer")
   beaconTimer.control = "start"
+  beaconTimer.duration = m.BASE_TIME_BETWEEN_BEACONS / 1000
   beaconTimer.ObserveField("fire", "beaconIntervalHandler")
-  m.top.video.observeField("state", "videoStateChangeHandler")
+  m.top.video.ObserveField("state", "videoStateChangeHandler")
+  m.top.video.ObserveField("control", "videoControlChangeHandler")
+  m.top.video.ObserveField("content", "videoContentChangeHandler")
+  _createEvent("playerready")
+  ' m._addEventToQueue
   m.myVariableINeedForLater = 5
   m.myHeartbeatCount = 0
 end function
 
 function beaconIntervalHandler(heartbeatEvent)
   data = heartbeatEvent.getData()
-  ' Print "[MuxAnalytics] beaconIntervalHandler: ", m.myHeartbeatCount, m.myVariableINeedForLater
+  Print "[MuxAnalytics] beaconIntervalHandler: ", m.myHeartbeatCount, m.myVariableINeedForLater
   myMod = m.myHeartbeatCount MOD m.myVariableINeedForLater
   if myMod = 0
 
@@ -43,7 +53,7 @@ function beaconIntervalHandler(heartbeatEvent)
 end function
 
 function rafHandler(params as Object)
-  Print "[Mux] rafHandler:", params
+  Print "[Mux] rafHandler:", params.eventType
   ' Print "obj:",obj
   ' Print "ctx:",ctx
   ' Print "evtType:",eventType
@@ -52,6 +62,18 @@ function rafHandler(params as Object)
   '   Print ctx.ad
   '   Print "============"
   ' end if
+end function
+
+function videoContentChangeHandler(videoContentChangeEvent)
+  data = videoContentChangeEvent.getData()
+  Print "[videoContentChangeHandler]"
+  print data
+end function
+
+function videoControlChangeHandler(videoControlChangeEvent)
+  data = videoControlChangeEvent.getData()
+  Print "[videoControlChangeHandler]"
+  print data
 end function
 
 function videoStateChangeHandler(videoStateChangeEvent)
@@ -66,8 +88,17 @@ function videoStateChangeHandler(videoStateChangeEvent)
   end if
 end function
 
-function _createEvent() as Object
+function testMe(input as String) as String
+  output = "STOP"
+  if input = "yes"
+    output = "GO"
+  end if
+  return output
+end function
+
+function _createEvent(eventType as String) as Object
   newEvent = {}
+  newEvent.e = eventType
 end function
 
 function _createBeacon() as Object

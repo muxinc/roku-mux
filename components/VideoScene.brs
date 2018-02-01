@@ -58,7 +58,9 @@ function setupContent()
     '
     contentVideoNode = CreateObject("roSGNode", "ContentNode")
     contentVideoNode.URL= videoURL
+    Print "[VideoScene] setupContent >"
     m.video.content = contentVideoNode
+    Print "[VideoScene] setupContent <"
     m.video.observeField("state", "stateChanged")
     'main facade creation.
     m.loading = m.top.FindNode("LoadingScreen")
@@ -99,6 +101,7 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     ' pressing the Back button during play will "bubble up" for us to handle here
+    Print "[VideoScene] onKeyEvent key|press:",key,press, 
     if press and key = "back"
         'handle Back button, by exiting play
         if m.PlayerTask <> invalid

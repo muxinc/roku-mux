@@ -63,14 +63,14 @@ function PlayContentWithFullRAFIntegration(contentInfo as Object)
     ' setupLogObject(adIface)
     
 
-    'RAF PART'
-    ' mux = GetMux()
-    ' mux.callbackFunc()
+    'SCRIPT VERSION'
+    ' mux = getMux()
+
+    'NODE VERSION'
     mux = m.top.CreateChild("MuxAnalytics")
     mux.id = "mux"
     mux.setField("video", m.top.video)
     setLog = adIface.SetTrackingCallback(adTrackingCallback, {alex:"zander"})
-    ' mux.setField("raf", adIface)
     
 
 
@@ -96,8 +96,10 @@ function PlayContentWithFullRAFIntegration(contentInfo as Object)
 end function
 
 function adTrackingCallback(obj = Invalid as Dynamic, eventType = Invalid as Dynamic, ctx = Invalid as Dynamic)
-  Print "[PlayerTask] adTrackingCallback"
+  ' Print "[PlayerTask] adTrackingCallback"
   ' mux = GetGlobalAA().top.mux
+  
+  'NODE'
   mux = GetGlobalAA().top.findNode("mux")
   mux.callFunc("rafHandler", {obj:obj, eventType:eventType, ctx:ctx})
 end function
@@ -160,6 +162,7 @@ Print "[Video] curState ",curState
                         print "PlayerTask: mid-roll finished, seek to "; stri(curPos)
                         video.visible = true
                         video.seek = curPos
+                    Print "Play>>>>"
                         video.control = "play"
                         video.setFocus(true) 'important: take the focus back (RAF took it above)
                     end if
