@@ -4,6 +4,7 @@ function init()
     m.top.functionName = "playContent"
     m.top.id = "PlayerTask"
     Print "PlayerTask"
+
 end function
 
 function playContent()
@@ -67,12 +68,17 @@ function PlayContentWithFullRAFIntegration(contentInfo as Object)
     ' mux = getMux()
 
     'NODE VERSION'
-    mux = m.top.CreateChild("MuxAnalytics")
+    ' mux = m.top.CreateChild("MuxAnalytics")
+    ' mux.id = "mux"
+    ' mux.setField("video", m.top.video)
+    ' setLog = adIface.SetTrackingCallback(adTrackingCallback, {alex:"zander"})
+
+   '  'STANDALONE TASK VERSION'
+    mux = m.top.CreateChild("MuxStandaloneTask")
     mux.id = "mux"
     mux.setField("video", m.top.video)
+    mux.control = "RUN"
     setLog = adIface.SetTrackingCallback(adTrackingCallback, {alex:"zander"})
-    
-
 
     'Ad measurement content params
     adIface.enableAdMeasurements(true)
@@ -97,11 +103,19 @@ end function
 
 function adTrackingCallback(obj = Invalid as Dynamic, eventType = Invalid as Dynamic, ctx = Invalid as Dynamic)
   ' Print "[PlayerTask] adTrackingCallback"
+  ' SCRIPT
   ' mux = GetGlobalAA().top.mux
   
   'NODE'
+  ' mux = GetGlobalAA().top.findNode("mux")
+  ' mux.callFunc("rafHandler", {obj:obj, eventType:eventType, ctx:ctx})
+  
+  'STANDALONE TASK
   mux = GetGlobalAA().top.findNode("mux")
-  mux.callFunc("rafHandler", {obj:obj, eventType:eventType, ctx:ctx})
+  mux.setField("rafEvent", {obj:obj, eventType:eventType, ctx:ctx})
+
+   'STANDALONE INLINE VERSION'
+  ' m.top.rafEvent = {obj:obj, eventType:eventType, ctx:ctx}
 end function
 
 function playVideoWithAds(adPods as object, adIface as object) as void
@@ -147,7 +161,7 @@ function playVideoWithAds(adPods as object, adIface as object) as void
                 end if
             else if msg.GetField() = "state" then
                 curState = msg.getData()
-Print "[Video] curState ",curState
+' Print "[Video] curState ",curState
                 if curState = "stopped" then
                     if adPods = invalid or adPods.count() = 0 then
                         exit while
@@ -168,9 +182,9 @@ Print "[Video] curState ",curState
                     end if
 
                 else if curState = "buffering" then
-                  Print "[PlayerTask] buffering:", video.position
+                  ' Print "[PlayerTask] buffering:", video.position
                 else if curState = "playing" then
-                  Print "[PlayerTask] playing:", video.position
+                  ' Print "[PlayerTask] playing:", video.position
                 else if curState = "finished" then
                     print "PlayerTask: main content finished"
                     'render post-roll ads

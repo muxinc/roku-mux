@@ -1,4 +1,4 @@
-<component name="MuxAnalytics" extends="Task">
+<component name="MuxAnalytics" extends="Node">
   <interface>
     <field id="video" type="node" />
     <function name="rafHandler" />
@@ -7,5 +7,6 @@
   <children>
     <Timer id="beaconTimer" repeat="true" duration="1" />
     <Timer id="heartbeatTimer" repeat="true" duration="1" />
+    <MuxTask id="muxTask" />
   </children>
 </component>

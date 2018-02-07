@@ -4,7 +4,13 @@ function init()
 	m.top.backgroundURI = ""
 	m.top.backgroundColor="0x000000FF"
   m.video = m.top.FindNode("MainVideo")
-	m.list = m.top.FindNode("MenuList")
+
+  'STANDALONE INLINE VERSION'
+  ' mux = m.top.findNode("mux")
+  ' mux.setField("video", m.video)
+  ' mux.control = "RUN"
+	
+  m.list = m.top.FindNode("MenuList")
   setupContent()
   m.list.observeField("itemSelected", "onItemSelected")
 	m.list.setFocus(true) 
@@ -14,7 +20,7 @@ end function
 function setupContent()
     'AA for base video, ad and measurement configuration.
     'For additional information please see official RAF documentation.
-    videoURL = "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
+    videoURL = "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4/yaddayadda/jakjasd"
 
     m.videoContent = { 
         'Provider ad url, can be configurable with URL Parameter Macros.
@@ -58,9 +64,9 @@ function setupContent()
     '
     contentVideoNode = CreateObject("roSGNode", "ContentNode")
     contentVideoNode.URL= videoURL
-    Print "[VideoScene] setupContent >"
+    Print "[VideoScene] setupContent >>>>"
     m.video.content = contentVideoNode
-    Print "[VideoScene] setupContent <"
+    Print "[VideoScene] setupContent <<<<"
     m.video.observeField("state", "stateChanged")
     'main facade creation.
     m.loading = m.top.FindNode("LoadingScreen")
@@ -101,13 +107,20 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     ' pressing the Back button during play will "bubble up" for us to handle here
-    Print "[VideoScene] onKeyEvent key|press:",key,press, 
-    if press and key = "back"
+    ' Print "[VideoScene] onKeyEvent key|press:",key,press
+    if press
+      if key = "back"
         'handle Back button, by exiting play
         if m.PlayerTask <> invalid
             m.PlayerTask.control = "stop"
             return true
         end if
+      else if key = "up"
+        PRint "<up>"
+        ' contentVideoNode = CreateObject("roSGNode", "ContentNode")
+        ' contentVideoNode.URL= "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
+        ' m.video.content = contentVideoNode
+      end if
     end if
     return false
 end function

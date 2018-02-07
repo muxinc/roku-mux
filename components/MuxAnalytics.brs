@@ -3,12 +3,21 @@ function init()
   m.MAX_BEACON_SIZE = 300 'controls size of a single beacon (in events)
   m.MAX_QUEUE_LENGTH = 3600 '1 minute to clean a full queue
   m.BASE_TIME_BETWEEN_BEACONS = 5000
+  m.HEARTBEAT_INTERVAL = 10000
   m.DEFAULT_BEACON_URL = "https://img.litix.io"
 
-  m.connection = CreateObject("roUrlTransfer")
+  m.heartbeatTimer = m.top.findNode("heartbeatTimer")
+  m.heartbeatTimer.duration = m.HEARTBEAT_INTERVAL / 1000
+  m.heartbeatTimer.ObserveField("fire", "_heartbeatIntervalHandler")
+  m.muxTask = m.top.findNode("muxTask")
+  m.muxTask.control = "RUN"
   m._eventQueue = []
   
-  m.top.observeField("video", "videoAddedHandler")
+  ' flags
+  m._Flag_AtLeastOnePlayEventForContent = false
+  m._Flag_lastVideoState = false
+
+  m.top.observeField("video", "_videoAddedHandler")
 
 end function
 
@@ -26,34 +35,35 @@ end function
 
 
 
-function videoAddedHandler(videoAddedEvent)
+function _videoAddedHandler(videoAddedEvent)
   Print "[MuxAnalytics] videoAddedHandler"
   m.top.unobserveField("video")
   beaconTimer = m.top.findNode("beaconTimer")
-  beaconTimer.control = "start"
   beaconTimer.duration = m.BASE_TIME_BETWEEN_BEACONS / 1000
-  beaconTimer.ObserveField("fire", "beaconIntervalHandler")
-  m.top.video.ObserveField("state", "videoStateChangeHandler")
-  m.top.video.ObserveField("control", "videoControlChangeHandler")
-  m.top.video.ObserveField("content", "videoContentChangeHandler")
-  _createEvent("playerready")
-  ' m._addEventToQueue
-  m.myVariableINeedForLater = 5
-  m.myHeartbeatCount = 0
+  beaconTimer.control = "start"
+  beaconTimer.ObserveField("fire", "_beaconIntervalHandler")
+  m.top.video.ObserveField("state", "_videoStateChangeHandler")
+  m.top.video.ObserveField("control", "_videoControlChangeHandler")
+  m.top.video.ObserveField("content", "_videoContentChangeHandler")
+  _addEventToQueue(_createEvent("playerready"))
+  m.heartbeatTimer.control = "start"
 end function
 
-function beaconIntervalHandler(heartbeatEvent)
-  data = heartbeatEvent.getData()
-  Print "[MuxAnalytics] beaconIntervalHandler: ", m.myHeartbeatCount, m.myVariableINeedForLater
-  myMod = m.myHeartbeatCount MOD m.myVariableINeedForLater
-  if myMod = 0
+function _beaconIntervalHandler(beaconIntervalEvent)
+  data = beaconIntervalEvent.getData()
+  Print "[MuxAnalytics] beaconIntervalHandler"
+  _LIGHT_THE_BEACONS()
+end function
 
-  end if
-  m.myHeartbeatCount++
+function _heartbeatIntervalHandler(heartbeatIntervalEvent)
+  data = heartbeatIntervalEvent.getData()
+  Print "[MuxAnalytics] _heartbeatIntervalHandler"
+  _addEventToQueue(_createEvent("hb"))
+
 end function
 
 function rafHandler(params as Object)
-  Print "[Mux] rafHandler:", params.eventType
+  Print "[MuxAnalytics] rafHandler:", params.eventType
   ' Print "obj:",obj
   ' Print "ctx:",ctx
   ' Print "evtType:",eventType
@@ -64,41 +74,49 @@ function rafHandler(params as Object)
   ' end if
 end function
 
-function videoContentChangeHandler(videoContentChangeEvent)
+function _videoContentChangeHandler(videoContentChangeEvent)
   data = videoContentChangeEvent.getData()
-  Print "[videoContentChangeHandler]"
-  print data
+  Print "[MuxAnalytics] videoContentChangeHandler"
+  _addEventToQueue(_createEvent("videochange"))
+  m._Flag_AtLeastOnePlayEventForContent = false
 end function
 
-function videoControlChangeHandler(videoControlChangeEvent)
+function _videoControlChangeHandler(videoControlChangeEvent)
   data = videoControlChangeEvent.getData()
-  Print "[videoControlChangeHandler]"
+  Print "[MuxAnalytics] videoControlChangeHandler"
   print data
 end function
 
-function videoStateChangeHandler(videoStateChangeEvent)
+function _videoStateChangeHandler(videoStateChangeEvent)
   data = videoStateChangeEvent.getData()
-  Print "[MuxAnalytics] videoStateChangeHandler: ",data
-  if data = "buffering"
-    Print "contentIsPlaylist:", m.top.video.contentIsPlaylist
-    Print "         position:", m.top.video.position
-    if m.top.video.streamInfo <> Invalid
-      Print "       isUnderrun:", m.top.video.streamInfo.isUnderrun
-    end if
-  end if
-end function
+  Print "[MuxAnalytics] _videoStateChangeHandler:",data
+  
+  m._Flag_lastVideoState = data
 
-function testMe(input as String) as String
-  output = "STOP"
-  if input = "yes"
-    output = "GO"
+  if data = "buffering"
+    ' Print "       isUnderrun:", m.top.video.streamInfo.isUnderrun
+    if m._Flag_AtLeastOnePlayEventForContent = true
+      _addEventToQueue(_createEvent("rebufferStart"))
+    end if
+  else if data = "paused"
+    _addEventToQueue(_createEvent("pause"))
+  else if data = "playing"
+    if m._Flag_lastVideoState = "buffering"
+      _addEventToQueue(_createEvent("rebufferEnd"))
+    end if
+    _addEventToQueue(_createEvent("play"))
+    m._Flag_AtLeastOnePlayEventForContent = true
+  else if data = "stopped"
+    _addEventToQueue(_createEvent("ended"))
+  else if data = "finished"
+    _addEventToQueue(_createEvent("ended"))
   end if
-  return output
 end function
 
 function _createEvent(eventType as String) as Object
   newEvent = {}
   newEvent.e = eventType
+  return newEvent
 end function
 
 function _createBeacon() as Object
@@ -115,15 +133,34 @@ function _createBeacon() as Object
 
 end function
 
-function _addEventToQueue() as Object
+function _addEventToQueue(_event as Object) as Object
+  m.heartbeatTimer.control = "stop"
+  m.heartbeatTimer.control = "start"
+  m._eventQueue.push(_event)
 end function
 
 function _LIGHT_THE_BEACONS() as Object
-    ' connection.SetMessagePort(m.messagePort)
-  m.connection.RetainBodyOnError(true)
-  m.connection.SetUrl("http://api.tvmaze.com/shows/82/episodes")
-  requestId = m.connection.GetIdentity()
-  ' Print "SEND REQUEST: ",requestId
+  queueSize = m._eventQueue.count()
+  if queueSize >= m.MAX_BEACON_SIZE 
+    beacon = []
+    for i = 0 To m.MAX_BEACON_SIZE - 1  Step 1
+      beacon.push(m._eventQueue.shift())
+    end for
+  else
+    beacon = []
+    beacon.Append(m._eventQueue)
+    m._eventQueue.Clear()
+  end if
+  m.muxTask.beacon = beacon
+end function
+
+function _logArray(eventArray as Object, title = "QUEUE" as String) as Object
+  tot = title + " (" + eventArray.count().toStr() + ")[ "
+  for each evt in eventArray
+    tot = tot + " " +evt.e
+  end for
+  tot = tot + " ]"
+  Print tot
 end function
 
 function _createConnection() as Object

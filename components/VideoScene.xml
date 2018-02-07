@@ -10,6 +10,7 @@
 <children>
     <!-- <MuxAnalytics id="mux" video="mainVideo" /> -->
     <Video id="mainVideo" visible="false"/>
+    <!-- <MuxStandaloneTask id="mux" /> -->
     <LabelList id="MenuList" translation="[100,60]" itemSize="[720, 100]" />
 
     <Rectangle id="LoadingScreen"

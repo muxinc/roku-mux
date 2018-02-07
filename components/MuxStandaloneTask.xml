@@ -1,0 +1,13 @@
+<component name="MuxStandaloneTask" extends="Task">
+  <interface>
+    <field id="config" type="array" alwaysNotify="true"/>
+    <field id="video" type="node" alwaysNotify="true"/>
+    <field id="rafEvent" type="assocarray" alwaysNotify="true"/>
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/MuxStandaloneTask.brs"/>
+  <children>
+    <Timer id="positionPoller" />
+    <Timer id="beaconTimer" />
+    <Timer id="heartbeatTimer" />
+  </children>
+</component>
