@@ -29,11 +29,7 @@ function Utils_ContentList2Node(contentList as Object) as Object
     
     for each itemAA in contentList
         item = createObject("roSGNode", "ContentNode")
-        for each field in itemAA
-            if item.hasField(field)
-                item[field] = itemAA[field]
-            end if
-        end for
+        item = Utils_AAToContentNode(itemAA)
         result.appendChild(item)
     end for
     
@@ -70,6 +66,35 @@ Function Utils_CopyNodeContent(node as Object, nodeType = "ContentNode" as Strin
             existingFields[field] = node[field]
         else
             newFields[field] = node[field]
+        end if
+    end for
+    
+    item.setFields(existingFields)
+    item.addFields(newFields)
+    
+    return item
+End Function
+
+'converts AA to ContentNode
+Function Utils_AAToContentNode(inputAA = {} as Object, nodeType = "ContentNode" as String)
+    item = createObject("roSGNode", nodeType)
+    
+    existingFields = {}
+    newFields = {}
+    
+      'AA of node read-only fields for filtering'
+    fieldsFilterAA = {
+        focusedChild    :   "focusedChild"
+        change          :   "change"
+        metadata        :   "metadata"
+        nextPanelName   :   "nextPanelName"
+    }
+
+    for each field in inputAA
+        if item.hasField(field)
+            if NOT fieldsFilterAA.doesExist(field) then existingFields[field] = inputAA[field]
+        else
+            newFields[field] = inputAA[field]
         end if
     end for
     

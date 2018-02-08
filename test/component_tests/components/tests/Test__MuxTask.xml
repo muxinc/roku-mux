@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?> 
+<!--********** Copyright 2016 Roku Corp.  All Rights Reserved. **********-->
+<component name="Test__MuxTask" extends="MuxTask" xsi:noNamespaceSchemaLocation="https://devtools.web.roku.com/schema/RokuSceneGraph.xsd">
+  
+  <interface>
+    <function name="TestFramework__RunNodeTests"/>
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/tests/Test__MuxTask_Stream_Detection.brs"/>
+  <script type="text/brightscript" uri="pkg:/source/testFramework/UnitTestFramework.brs"/>
+</component>

@@ -21,7 +21,6 @@ sub RunUserInterface(args)
 
 
     if args.RunTests = "true" and type(TestRunner) = "Function" then
-    Print "[Main]2"
         Runner = TestRunner()
         Runner.logger.SetVerbosity(2)
         Runner.logger.SetEcho(true)

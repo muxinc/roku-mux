@@ -56,7 +56,7 @@ gulp.task('deploy_test', ['closeApp', 'cleanup', 'build', 'package_test'], funct
 })
 
 gulp.task('build_test',['build', 'cleanup'], function () {
-  return gulp.src(['test/component_tests/**', 'test/source_tests/**']).pipe(gulp.dest(buildConfig.build_dir_name))
+  return gulp.src(['test/component_tests/**']).pipe(gulp.dest(buildConfig.build_dir_name))
 })
 
 gulp.task('add_test_framework',['cleanup', 'build', 'build_test'], function () {
