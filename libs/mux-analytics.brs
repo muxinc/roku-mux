@@ -1,26 +1,562 @@
-function getMux() as Object
-    Print "getMux"
-    if GetGlobalAA().muxInstance = Invalid
-      muxInstance = createInstance
-      GetGlobalAA().muxInstance = muxInstance
-    end if
-    return GetGlobalAA().muxInstance
-end function
+function init()
+  m.top.id = "mux"
+  m.top.functionName = "runBeaconLoop"
+  m.messagePort = _createPort()
+  m.connection = _createConnection()
 
+  m.DRY_RUN = true
+  m.DEBUG_EVENTS = true
+  m.DEBUG_BEACONS = false
 
-
-
-function createInstance()
-  Print "[MuxAnalytics] init"
+  m.SDK_NAME = "roku-mux"
+  m.SDK_VERSION = "0.0.1"
   m.MAX_BEACON_SIZE = 300 'controls size of a single beacon (in events)
   m.MAX_QUEUE_LENGTH = 3600 '1 minute to clean a full queue
   m.BASE_TIME_BETWEEN_BEACONS = 5000
+  m.HEARTBEAT_INTERVAL = 10000
+  m.POSITION_TIMER_INTERVAL = 1000 '250
+  m.SEEK_THRESHOLD = 1250 'ms jump in position before a seek is considered'
   m.DEFAULT_BEACON_URL = "https://img.litix.io"
-
-  m.connection = CreateObject("roUrlTransfer")
-  m._eventQueue = []
   
-  ' m.top.observeField("video", "videoAddedHandler")
+  m.positionPoller = m.top.findNode("positionPoller")
+  m.positionPoller.repeat = true
+  m.positionPoller.duration = m.POSITION_TIMER_INTERVAL / 1000
 
+  m.beaconTimer = m.top.findNode("beaconTimer")
+  m.beaconTimer.repeat = true
+  m.beaconTimer.duration = m.BASE_TIME_BETWEEN_BEACONS / 1000
+  m.beaconTimer.control = "start"
+
+  m.heartbeatTimer = m.top.findNode("heartbeatTimer")
+  m.heartbeatTimer.repeat = true
+  m.heartbeatTimer.duration = m.HEARTBEAT_INTERVAL / 1000
+
+  m.mxa = muxAnalytics()
+  config = {SDK_NAME: m.SDK_NAME,
+              SDK_VERSION: m.SDK_VERSION,
+              MAX_BEACON_SIZE: m.MAX_BEACON_SIZE,
+              MAX_QUEUE_LENGTH: m.MAX_QUEUE_LENGTH,
+              BASE_TIME_BETWEEN_BEACONS: m.BASE_TIME_BETWEEN_BEACONS,
+              HEARTBEAT_INTERVAL: m.HEARTBEAT_INTERVAL,
+              POSITION_TIMER_INTERVAL: m.POSITION_TIMER_INTERVAL,
+              SEEK_THRESHOLD: m.SEEK_THRESHOLD,
+              DEFAULT_BEACON_URL: m.DEFAULT_BEACON_URL
+              DRY_RUN: m.DRY_RUN
+              DEBUG_EVENTS: m.DEBUG_EVENTS
+              DEBUG_BEACONS: m.DEBUG_BEACONS
+            }
+  m.mxa.init(m.connection, m.messagePort, config, m.heartbeatTimer, m.positionPoller)
 end function
 
+function runBeaconLoop()
+  Print "[MuxTask] running task loop"
+  m.top.ObserveField("rafEvent", m.messagePort)
+  
+  if m.top.video = Invalid
+    m.top.ObserveField("video", m.messagePort)
+  else
+    m.mxa.videoAddedHandler(m.top.video)
+    m.top.video.ObserveField("state", m.messagePort)
+    m.top.video.ObserveField("content", m.messagePort)
+  end if
+  
+  if m.top.config = Invalid
+    m.top.ObserveField("config", m.messagePort)
+  else
+    m.mxa.videoConfigChangeHandler(m.top.config)
+  end if
+
+  if m.top.error = Invalid
+    m.top.ObserveField("error", m.messagePort)
+  else
+    m.mxa.videoErrorHandler(m.top.error)
+  end if
+
+  m.positionPoller.ObserveField("fire", m.messagePort)
+  m.beaconTimer.ObserveField("fire", m.messagePort)
+  m.heartbeatTimer.ObserveField("fire", m.messagePort)
+  running = true
+  while(running)
+    msg = wait(50, m.messagePort)
+    if m.top.exit = true
+      running = false
+    end if
+    if msg <> Invalid
+      msgType = type(msg)
+      if msgType = "roSGNodeEvent"
+        field = msg.getField()
+        if field = "video"
+          m.top.UnobserveField("video")
+          data = msg.getData()
+          m.mxa.videoAddedHandler(data)
+          m.top.video.ObserveField("state", m.messagePort)
+          m.top.video.ObserveField("content", m.messagePort)
+        else if field = "config"
+          data = msg.getData()
+          m.mxa.videoConfigChangeHandler(data)
+          m.top.UnobserveField("config")
+        else if field = "error"
+          data = msg.getData()
+          m.mxa.videoErrorHandler(data)
+          m.top.UnobserveField("error")
+        else if field = "content"
+          m.mxa.videoContentChangeHandler(msg)
+        else if field = "state"
+          m.mxa.videoStateChangeHandler(msg)
+        else if field = "rafEvent"
+          m.mxa.rafEventHandler(msg)
+        else if field = "position"
+          m.mxa._videoPositionChangeHandler(msg)
+        else if field = "fire"
+          node = msg.getNode()
+          if node= "positionPoller"
+            m.mxa.positionIntervalHandler(msg)
+          else if node = "beaconTimer"
+            m.mxa.beaconIntervalHandler(msg)
+          else if node = "heartbeatTimer"
+            m.mxa.heartbeatIntervalHandler(msg)
+          end if
+        end if
+      else if msgType = "roUrlEvent"
+        ' handleResponse(msg)
+      end if
+    end if
+  end while
+  m.beaconTimer.control = "stop"
+  m.heartbeatTimer.control = "stop"
+  m.positionPoller.control = "stop"
+
+  m.top.UnobserveField("video")
+  m.top.UnobserveField("config")
+  Print "[MuxTask] end running task loop"
+  return true
+end function
+
+function _createConnection() as Object
+  return CreateObject("roUrlTransfer")
+end function
+
+function _createDeviceInfo() as Object
+  return CreateObject("roDeviceInfo")
+end function
+
+function _createPort() as Object
+  return CreateObject("roMessagePort")
+end function
+
+
+function muxAnalytics() as Object
+
+  prototype = {}
+
+  prototype.init = function(connection as Object, port as Object, config as Object, hbt as Object, pp as Object)
+    m.connection = connection
+    m.port = port
+    m.heartbeatTimer = hbt
+    m.positionPoller = pp
+
+    m.SDK_NAME = config.SDK_NAME
+    m.SDK_VERSION = config.SDK_VERSION
+    m.MAX_BEACON_SIZE = config.MAX_BEACON_SIZE
+    m.MAX_QUEUE_LENGTH = config.MAX_QUEUE_LENGTH
+    m.BASE_TIME_BETWEEN_BEACONS = config.BASE_TIME_BETWEEN_BEACONS
+    m.HEARTBEAT_INTERVAL = config.HEARTBEAT_INTERVAL
+    m.POSITION_TIMER_INTERVAL = config.POSITION_TIMER_INTERVAL
+    m.SEEK_THRESHOLD = config.SEEK_THRESHOLD
+    m.defaultBeaconUrl = config.DEFAULT_BEACON_URL
+    m.dryRun = config.DRY_RUN
+    m.debugEvents = config.DEBUG_EVENTS
+    m.debugBeacons = config.DEBUG_BEACONS
+
+    m._eventQueue = []
+    m._seekThreshold = m.SEEK_THRESHOLD / 1000
+
+    ' flags
+    m._Flag_atLeastOnePlayEventForContent = false
+    m._Flag_seekSentPlayingNotYetStarted = false
+    m._Flag_lastVideoState = "none"
+    m._Flag_lastReportedPosition = 0
+    m._Flag_FailedAdsErrorSet = false
+  end function
+
+  prototype.beaconIntervalHandler = function(beaconIntervalEvent)
+    data = beaconIntervalEvent.getData()
+    m._LIGHT_THE_BEACONS()
+  end function
+
+  prototype.heartbeatIntervalHandler = function(heartbeatIntervalEvent)
+    data = heartbeatIntervalEvent.getData()
+    m._addEventToQueue(m._createEvent("hb"))
+  end function
+
+  prototype.videoAddedHandler = function(video as Object)
+    m._logEvent("videoAddedHandler")
+
+    m._sessionProperties = m._getSessionProperites()
+    m._videoProperties = m._getVideoProperties(video)
+    m._videoContentProperties = m._getVideoContentProperties(video.content)
+    m.video = video
+    if video <> Invalid
+      ' seek threshold must be more than native notificationInterval + m.POSITION_TIMER_INTERVAL
+      maximimumPossiblePositionChange = ((video.notificationInterval * 1000) + m.POSITION_TIMER_INTERVAL) / 1000
+      if m._seekThreshold < maximimumPossiblePositionChange
+        m._seekThreshold = maximimumPossiblePositionChange
+      end if
+    end if
+
+    m._addEventToQueue(m._createEvent("playerready"))
+    
+    m.heartbeatTimer.control = "start"
+    m.positionPoller.control = "start"
+  end function
+
+  prototype.videoStateChangeHandler = function(videoStateChangeEvent)
+    data = videoStateChangeEvent.getData()
+    m._logEvent("videoStateChangeHandler", data)
+    if m._Flag_lastVideoState = "none"
+      m._addEventToQueue(m._createEvent("viewstart"))
+    end if
+    m._Flag_lastVideoState = data
+    if data = "buffering"
+      if m._Flag_seekSentPlayingNotYetStarted = true
+        m._addEventToQueue(m._createEvent("seekend"))
+        m._Flag_seekSentPlayingNotYetStarted = false
+      end if
+      if m._Flag_atLeastOnePlayEventForContent = true
+        m._addEventToQueue(m._createEvent("rebufferstart"))
+      end if
+    else if data = "paused"
+      m._addEventToQueue(m._createEvent("pause"))
+    else if data = "playing"
+      if m._Flag_lastVideoState = "buffering"
+        m._addEventToQueue(m._createEvent("rebufferend"))
+      end if
+      m._addEventToQueue(m._createEvent("play"))
+      m._Flag_seekSentPlayingNotYetStarted = false
+      m._Flag_atLeastOnePlayEventForContent = true
+    else if data = "stopped"
+      m._addEventToQueue(m._createEvent("viewend"))
+      m.positionPoller.control = "stop"
+    else if data = "finished"
+      m._addEventToQueue(m._createEvent("ended"))
+      m.positionPoller.control = "stop"
+    else if data = "error"
+      errorCode = ""
+      errorMessage = ""
+      if m.video <> Invalid
+        if m.video.errorCode <> Invalid
+          errorCode = m.video.errorCode
+        end if
+        if m.video.errorMsg <> Invalid
+          errorMessage = m.video.errorMsg
+        end if
+      end if
+      m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage}))
+    end if
+  end function
+
+  prototype.videoContentChangeHandler = function(videoContentChangeEvent)
+    m._logEvent("videoContentChangeHandler")
+    m._videoContentProperties = m._getVideoContentProperties(data)
+  end function
+
+  prototype.videoConfigChangeHandler = function(config as Object)
+    m._logEvent("videoConfigChangeHandler")
+  end function
+
+  prototype.videoErrorHandler = function(error as Object)
+    m._logEvent("videoErrorHandler")
+    errorCode = "0"
+    errorMessage = "Unknown"
+    if error <> Invalid
+      if error.errorCode <> Invalid
+        errorCode = error.errorCode
+      end if
+      if error.errorMsg <> Invalid
+        errorMessage = error.errorMsg
+      end if
+      if error.errorMessage <> Invalid
+        errorMessage = error.errorMessage
+      end if
+    end if
+    m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage}))
+  end function
+
+  prototype.rafEventHandler = function(rafEvent) as Void
+    data = rafEvent.getData()
+    eventType = data.eventType
+    if eventType <> Invalid
+    m._logEvent("rafEventHandler", eventType)
+    end if
+    ' adProperties = {}
+    ' adProperties.view_preroll_ad_tag_hostname
+    ' adProperties.view_preroll_ad_tag_domain
+    ' adProperties.view_preroll_ad_asset_hostname
+    ' adProperties.view_preroll_ad_asset_domain
+    if eventType = "PodStart"
+      m._addEventToQueue(m._createEvent("adbreakstart"))
+    else if eventType = "PodComplete"
+      m._addEventToQueue(m._createEvent("adbreakend"))
+      m._Flag_FailedAdsErrorSet = false
+    else if eventType = "NoAdsError"
+      if m._Flag_FailedAdsErrorSet <> true
+        errorCode = ""
+        errorMessage = ""
+        if data.ctx <> Invalid
+          if data.ctx.errcode <> Invalid
+            errorCode = data.ctx.errcode
+          end if
+          if data.ctx.errmsg <> Invalid
+            errorMessage = data.ctx.errmsg
+          end if
+        end if
+        m._addEventToQueue(m._createEvent("aderror", {player_error_code: errorCode, player_error_message: errorMessage}))
+        m._Flag_FailedAdsErrorSet = true
+      end if
+    end if 
+  end function
+
+  prototype.positionIntervalHandler = function(positionIntervalEvent)
+    if m.video <> Invalid
+      m._logEvent("positionIntervalHandler")
+      if NOT m.video.position = m._Flag_lastReportedPosition
+        if m.video.position < m._Flag_lastReportedPosition
+          m._addEventToQueue(m._createEvent("seeking"))
+        else if m.video.position > (m._Flag_lastReportedPosition + m._seekThreshold)
+          m._addEventToQueue(m._createEvent("seeking"))
+        else
+          ' only report last position in playing state
+          if m.video.state = "playing"
+            ' m._addEventToQueue(m._createEvent("timeUpdate", {view_content_playback_time: m.top.video.position.toStr()}))
+          end if
+        end if
+        m._Flag_lastReportedPosition = m.video.position
+      end if
+    end if
+  end function
+
+  ' ' //////////////////////////////////////////////////////////////
+  ' ' INTERNAL METHODS
+  ' ' //////////////////////////////////////////////////////////////
+
+  prototype._createEvent = function(eventType as String, eventProperties = {} as Object) as Object
+    newEvent = {}
+    if m._sessionProperties <> Invalid
+      newEvent.Append(m._sessionProperties)
+    end if
+    if m._videoProperties <> Invalid
+      newEvent.Append(m._videoProperties)
+    end if
+    if m._videoContentProperties <> Invalid
+      newEvent.Append(m._videoContentProperties)
+    end if
+    newEvent.Append(eventProperties)
+    newEvent.e = eventType
+    return newEvent
+  end function
+
+  prototype._initialiseVideo = function(video as Object) as Void
+
+  end function
+
+  prototype._addEventToQueue = function(_event as Object) as Object
+    m.heartbeatTimer.control = "stop"
+    m.heartbeatTimer.control = "start"
+    m._eventQueue.push(_event)
+  end function
+
+  prototype._LIGHT_THE_BEACONS = function() as Object
+    queueSize = m._eventQueue.count()
+    if queueSize >= m.MAX_BEACON_SIZE 
+      beacon = []
+      for i = 0 To m.MAX_BEACON_SIZE - 1  Step 1
+        beacon.push(m._eventQueue.shift())
+      end for
+    else
+      beacon = []
+      beacon.Append(m._eventQueue)
+      m._eventQueue.Clear()
+    end if
+    m._makeRequest(beacon)
+  end function
+
+  prototype._makeRequest = function(beacon as Object)
+    if m.dryRun = true
+      m._logBeacon(beacon, "DRY-BEACON", true)
+    else
+      if beacon.count() > 0
+        m._logBeacon(beacon, "BEACON", false)
+        m.connection.RetainBodyOnError(true)
+        m.connection.SetUrl(m.defaultBeaconUrl)
+        m.connection.AddHeader("Content-Type", "application/json")
+        m.requestId = m.connection.GetIdentity()
+        requestBody = {}
+        requestBody.events = beacon
+        fBody = FormatJson(requestBody)
+        m.connection.AsyncCancel()
+        success = m.connection.AsyncPostFromString(fBody)
+        ' Print "[MuxTask] makeRequest success:", success, m.requestId
+      end if
+    end if
+  end function
+
+  ' Set once per application session'
+  prototype._getSessionProperites = function() as Object
+    props = {}
+    deviceInfo = _createDeviceInfo()
+    
+    ' HARDCODED
+    props.player_software_name = "RokuSG"
+    props.player_software_version = deviceInfo.GetVersion()
+    props.player_model_number = deviceInfo.GetModel()
+    props.player_mux_plugin_name = m.SDK_NAME
+    props.player_mux_plugin_version = m.SDK_VERSION
+    props.player_language_code = deviceInfo.GetCountryCode()
+    props.player_width = deviceInfo.GetDisplaySize().w
+    props.player_height = deviceInfo.GetDisplaySize().h
+    props.player_is_fullscreen = "true"
+    props.player_is_paused = (m._Flag_lastVideoState = "paused").toStr()
+    
+    ' DEVICE INFO 
+    if deviceInfo.IsAdIdTrackingDisabled() = true
+      props.viewer_user_id = deviceInfo.GetClientTrackingId()
+    else
+      props.viewer_user_id = deviceInfo.GetAdvertisingId()
+    end if
+    return props
+  end function  
+
+  ' Set once per video'
+  prototype._getVideoProperties = function(video as Object) as Object
+    props = {}
+    if video <> Invalid
+      if video.duration <> Invalid
+        props.video_source_duration = video.duration.toStr() 
+      end if
+    end if
+
+    return props
+  end function
+  
+  ' Set once per video content'
+  prototype._getVideoContentProperties = function(content as Object) as Object
+    props = {}
+
+    if content <> Invalid
+      if content.title <> Invalid
+        props.video_title = content.title
+      end if
+      if content.TitleSeason <> Invalid
+        props.video_series = content.TitleSeason
+      end if
+      if content.Director <> Invalid
+        props.video_producer = content.Director
+      end if
+      if content.ContentType <> Invalid
+        if content.ContentType = 1
+          props.video_content_type = "movie"
+        else if content.ContentType = 2
+          props.video_content_type = "series"
+        else if content.ContentType = 3
+          props.video_content_type = "season"
+        else if content.ContentType = 4
+          props.video_content_type = "episode"
+        else if content.ContentType = 5
+          props.video_content_type = "audio"
+        end if
+      end if
+      props.video_source_url = content.URL
+      props.video_source_host_name = m._getHostname(content.URL)
+      
+      if content.StreamFormat <> Invalid AND content.StreamFormat <> "(null)"
+        props.video_source_format = content.StreamFormat
+      else
+        props.video_source_format = m._getStreamFormat(content.URL)
+      end if
+
+      if content.Live <> Invalid
+        if content.Live = true
+          props.video_source_is_live = "true"
+        else
+          props.video_source_is_live = "false"
+        end if
+      end if
+      if content.Length <> Invalid
+        props.video_source_duration = content.Length
+      end if
+    end if
+
+    return props
+  end function
+
+  prototype._getDomain = function(url as String) as String
+    domain = ""
+    domainRegex = CreateObject("roRegex", "[^\.]+\.[^\.]+$\/", "i")
+    matchResults = domainRegex.Match(url)
+    if matchResults.count() > 0
+      domain = matchResults[0]
+    end if
+    return domain
+  end function
+
+  prototype._getHostname = function(url as String) as String
+    host = ""
+    ismRegex = CreateObject("roRegex", "/[^\.]+\.[^\.]+$/", "i")
+    matchResults = ismRegex.Match(url)
+    if matchResults.count() > 0
+      host = matchResults[0]
+    end if
+    return host
+  end function
+
+  prototype._getStreamFormat = function(url as String) as String
+    ismRegex = CreateObject("roRegex", "\.isml?\/manifest", "i")
+    if ismRegex.IsMatch(url)
+      return "ism"
+    end if
+
+    hlsRegex = CreateObject("roRegex", "\.m3u8", "i")
+    if hlsRegex.IsMatch(url)
+      return "hls"
+    end if
+
+    dashRegex = CreateObject("roRegex", "\.mpd", "i")
+    if dashRegex.IsMatch(url)
+      return "dash"
+    end if
+
+    formatRegex = CreateObject("roRegex", "(\/[a-zA-Z0-9\-_]+)((\.\w{2,255})|(\.[0-9])|(\.\w+-[0-9]+)){1,100}$", "i") 
+    if dashRegex.IsMatch(url)
+      return dashRegex.Match[0]
+    end if
+
+    return "unknown"
+  end function
+
+  prototype._logBeacon = function(eventArray as Object, title = "BEACON" as String, fullEvent = false as Boolean) as Void
+    if m.debugBeacons <> true then return
+    tot = title + " (" + eventArray.count().toStr() + ") [ "
+    for each evt in eventArray
+      if fullEvent = false
+        tot = tot + " " + evt.e
+      else
+        tot = tot + "{"
+        for each prop in evt
+          tot = tot + prop + ":" + evt[prop].toStr() + ", "
+        end for
+        tot = Left(tot, len(tot) - 2)
+        tot = tot + "} "
+      end if
+    end for
+    tot = tot + " ]"
+    Print tot
+  end function
+
+  prototype._logEvent = function(etype = "" as String, subtype = "" as String, title = "EVENT" as String) as Void
+    if m.debugEvents <> true then return
+    tot = title + " " + etype + " " + subtype
+    Print tot
+  end function
+
+  return prototype
+end function

@@ -3,7 +3,7 @@
 
 <interface>
     <field id="contentInfo" type="assocarray" />
-    <field id="playWithRAF" type="string" />
+    <field id="selectionId" type="string" />
     <field id="facade"      type="node" />
     <field id="video"       type="node" />
     <field id="rafEvent"       type="assocarray" />

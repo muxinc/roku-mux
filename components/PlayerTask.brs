@@ -3,83 +3,126 @@ Library  "Roku_Ads.brs"
 function init()
     m.top.functionName = "playContent"
     m.top.id = "PlayerTask"
-    Print "PlayerTask"
-
+    Print "[PlayerTask] init"
 end function
 
 function playContent()
-    playWithRAF = m.top.playWithRAF
-    contentInfo = m.top.contentInfo
-    if playWithRAF = "standard"
+    selectionId = m.top.selectionId
+    
+    contentVideoNode = CreateObject("roSGNode", "ContentNode")
+    contentVideoNode.URL= "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
+    m.top.video.content = contentVideoNode
+    
+    contentInfo = { 
+        adUrl: "http://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/8264/vaw-can/ott/cbs_roku_app&ciu_szs=300x60,300x250&impl=s&gdfp_req=1&env=vp&output=xml_vmap1&unviewed_position_start=1&url=&description_url=&correlator=1448463345&scor=1448463345&cmsid=2289&vid=_g5o4bi39s_IRXu396UJFWPvRpGYdAYT&ppid=f47f1050c15b918eaa0db29c25aa0fd6&cust_params=sb%3D1%26ge%3D1%26gr%3D2%26ppid%3Df47f1050c15b918eaa0db29c25aa0fd6",
+        contentId: "TED Talks", 'String value representing content to allow potential ad targeting.
+        genre: "General Variety", 'Comma-delimited string or array of genre tag strings.
+        length: "1200", 'Integer value representing total length of content (in seconds).
+        nonStandardAdsFilePath: "pkg:/feed/ads_nonstandard.json",
+        stitchedAdsFilePath: "pkg:/feed/MixedStitchedAds.json"
+    }
+
+    if selectionId = "none"
+        PlayContentOnlyNoAds(contentInfo)
+    else if selectionId = "standard"
         PlayContentWithFullRAFIntegration(contentInfo)
-    else if playWithRAF = "nonstandard"
+    else if selectionId = "nonstandard"
         PlayContentWithNonStandardRAFIntegration(contentInfo)
-    else if playWithRAF = "stitched"
+    else if selectionId = "stitched"
         PlayStitchedContentWithAds(contentInfo) 
+    else if selectionId = "preplaybackerror"
+        ErrorBeforePlayback(contentInfo) 
+    else if selectionId = "playbackerror"
+        ErrorBeforePlayback(contentInfo) 
+    else if selectionId = "dashnoads"
+        PlayDashContent() 
     end if
 end function
 
-function setupLogObject(adIface as object)
-    ' Create a log object to track events
-    logObj = {
-        Log: function(evtType = invalid as Dynamic, ctx = invalid as Dynamic)
-            if GetInterface(evtType, "ifString") <> invalid
-                ? "*** tracking event " + evtType + " fired."
-                if ctx.errMsg <> invalid then ? "*****   Error message: " + ctx.errMsg
-                if ctx.adIndex <> invalid then ? "*****  Ad Index: " + ctx.adIndex.ToStr()
-                if ctx.ad <> invalid and ctx.ad.adTitle <> invalid then ? "*****  Ad Title: " + ctx.ad.adTitle
-            else if ctx <> invalid and ctx.time <> invalid
-                ? "*** checking tracking events for ad progress: " + ctx.time.ToStr()
-            end if
-        end function
-    }
-    ' Create a log function to track events
-    logFunc = function(obj = Invalid as Dynamic, evtType = invalid as Dynamic, ctx = invalid as Dynamic)
-        Print "addTrackingCallback"
-        Print "obj:",obj
-        Print "evtType:",evtType
-        Print "ctx:",ctx
 
-        obj.log(evtType, ctx)
-    end function
-    ' Setup tracking events callback
-    setLog = adIface.SetTrackingCallback(logFunc, logObj)
+function PlayContentOnlyNoAds(contentInfo as Object)
+    mux = m.top.CreateChild("MuxTask")
+    mux.control = "RUN"
+    mux.setField("video", m.top.video)
+    mux.setField("config", {flintstonesCharacter:"bam bam"})
+    
+    m.top.facade.visible = false
+    video = m.top.video
+    view = video.getParent()
+    video.visible = true
+    video.control = "play"
+    video.setFocus(true)
+    keepPlaying = true
+    port = createObject("roMessagePort")
+    video.observeField("position", port)
+    video.observeField("state", port)
+    while keepPlaying
+        msg = wait(0, port)
+        msgType = type(msg)
+        if msgType = "roSGNodeEvent"
+            if msg.GetField() = "position" then
+                curPos = msg.getData()
+            else if msg.GetField() = "state" then
+                curState = msg.getData()
+                if curState = "stopped" then
+                else if curState = "buffering" then
+                else if curState = "playing" then
+                else if curState = "finished" then
+                    video.control = "stop"
+                end if
+            end if
+        end if
+    end while
 end function
-' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-' "standard"
-'  A full RAF integration Example:
-'
-' - Include RAF.
-' - setAdURL to set the ad URL.
-' - Examples of RAF MACROS being passed in the ad call.
-' - getAds() for VAST parsing.
-' - showAds for rendering.
-' - Enable ad measurement.
-' - Pass all parameters to measurement beacons with examples of genre, program id and content.
-'@paracontentInfo [AA] object that has valid data for playing video with roVideoScreen.
+
+function PlayDashContent()
+Print "PlayDashContent"
+    contentnode = createObject("roSGNode","ContentNode")
+    contentnode.URL = "http://vm2.dashif.org/livesim-dev/periods_60/xlink_30/insertad_1/testpic_2s/Manifest.mpd"
+    
+    mux = m.top.CreateChild("MuxTask")
+    mux.control = "RUN"
+    mux.setField("video", m.top.video)
+    mux.setField("config", {flintstonesCharacter:"bam bam"})
+    
+    m.top.facade.visible = false
+    video = m.top.video
+    view = video.getParent()
+    video.visible = true
+    video.control = "play"
+    video.setFocus(true)
+    keepPlaying = true
+    port = createObject("roMessagePort")
+    video.observeField("position", port)
+    video.observeField("state", port)
+    while keepPlaying
+        msg = wait(0, port)
+        msgType = type(msg)
+        if msgType = "roSGNodeEvent"
+            if msg.GetField() = "position" then
+                curPos = msg.getData()
+            else if msg.GetField() = "state" then
+                curState = msg.getData()
+                if curState = "stopped" then
+                else if curState = "buffering" then
+                else if curState = "playing" then
+                else if curState = "finished" then
+                    video.control = "stop"
+                end if
+            end if
+        end if
+    end while
+end function
+
 function PlayContentWithFullRAFIntegration(contentInfo as Object)
     adIface = Roku_Ads() 'RAF initialize
-    'adIface.setDebugOutput(true) 'for debug logging
-
-    ' setupLogObject(adIface)
-    
-
-    'SCRIPT VERSION'
-    ' mux = getMux()
-
-    'NODE VERSION'
-    ' mux = m.top.CreateChild("MuxAnalytics")
-    ' mux.id = "mux"
-    ' mux.setField("video", m.top.video)
-    ' setLog = adIface.SetTrackingCallback(adTrackingCallback, {alex:"zander"})
-
-   '  'STANDALONE TASK VERSION'
     mux = m.top.CreateChild("MuxTask")
-    mux.id = "mux"
-    mux.setField("video", m.top.video)
     mux.control = "RUN"
+
+    mux.setField("video", m.top.video)
     mux.setField("config", {flintstonesCharacter:"bam bam"})
     setLog = adIface.SetTrackingCallback(adTrackingCallback, adIface)
+    ' mux.exit = true
 
     'Ad measurement content params
     adIface.enableAdMeasurements(true)
@@ -103,39 +146,19 @@ function PlayContentWithFullRAFIntegration(contentInfo as Object)
 end function
 
 function adTrackingCallback(obj = Invalid as Dynamic, eventType = Invalid as Dynamic, ctx = Invalid as Dynamic)
-  ' Print "[PlayerTask] adTrackingCallback"
-  ' SCRIPT
-  ' mux = GetGlobalAA().top.mux
-  
-  'NODE'
-  ' mux = GetGlobalAA().top.findNode("mux")
-  ' mux.callFunc("rafHandler", {obj:obj, eventType:eventType, ctx:ctx})
-  
-  'STANDALONE TASK
   mux = GetGlobalAA().top.findNode("mux")
   mux.setField("rafEvent", {obj:obj, eventType:eventType, ctx:ctx})
-
-   'STANDALONE INLINE VERSION'
-  ' m.top.rafEvent = {obj:obj, eventType:eventType, ctx:ctx}
 end function
 
 function playVideoWithAds(adPods as object, adIface as object) as void
     m.top.facade.visible = false
     keepPlaying = true
-    '
-    ' render pre-roll ads
-    '
     video = m.top.video
-    Print "[PlayerTask] playVideoWithAds"
-
-    ' `view` is the node under which RAF should display its UI (passed as 3rd argument of showAds())
     view = video.getParent()
     if adPods <> invalid and adPods.count() > 0 then
-        ' pre-roll ads
         keepPlaying = adIface.showAds(adPods, invalid, view)
     end if
     if not keepPlaying then return
-
     port = createObject("roMessagePort")
     video.observeField("position", port)
     video.observeField("state", port)
@@ -151,53 +174,36 @@ function playVideoWithAds(adPods as object, adIface as object) as void
         msgType = type(msg)
         if msgType = "roSGNodeEvent"
             if msg.GetField() = "position" then
-                'render mid-roll ads
                 curPos = msg.getData()
-' Print "[Video] position ",curPos
                 adPods = adIface.getAds(msg)
                 if adPods <> invalid and adPods.count() > 0
-                    ' ask the video to stop
-                    Print "[PlayerTask] stopVideo"
                     video.control = "stop"
-                    ' then the rest is handled by "stopped" branch below
                 end if
             else if msg.GetField() = "state" then
                 curState = msg.getData()
-' Print "[Video] curState ",curState
                 if curState = "stopped" then
                     if adPods = invalid or adPods.count() = 0 then
                         exit while
                     end if
-                    print "PlayerTask: playing midroll/postroll ads"
                     keepPlaying = adIface.showAds(adPods, invalid, view)
                     adPods = invalid
                     if isPlayingPostroll then
                         exit while
                     end if
                     if keepPlaying then
-                        print "PlayerTask: mid-roll finished, seek to "; stri(curPos)
                         video.visible = true
                         video.seek = curPos
-                    Print "Play>>>>"
                         video.control = "play"
                         video.setFocus(true) 'important: take the focus back (RAF took it above)
                     end if
-
                 else if curState = "buffering" then
-                  ' Print "[PlayerTask] buffering:", video.position
                 else if curState = "playing" then
-                  ' Print "[PlayerTask] playing:", video.position
                 else if curState = "finished" then
-                    print "PlayerTask: main content finished"
-                    'render post-roll ads
                     adPods = adIface.getAds(msg)
                     if adPods = invalid or adPods.count() = 0 then
                         exit while
                     end if
-                    print "PlayerTask: has postroll ads"
                     isPlayingPostroll = true
-                    ' stop the video, the post-roll would show when the state changes to  "stopped" (above)
-                   Print "[PlayerTask] stopVideo"
                     video.control = "stop"
                 end if
             end if
@@ -233,9 +239,12 @@ function PlayContentWithNonStandardRAFIntegration(contentInfo as Object)
     playVideoWithAds(adPods, raf)
 end function
 
-' Gets and parses ad pods array from non-standard JSON feed stored in file
-' @param filePath [String] path to the file containing JSON ads feed
-' @return [Object] ad pods as roArray to import into RAF
+function ErrorBeforePlayback(contentInfo as Object)
+    mux = m.top.CreateChild("MuxTask")
+    mux.control = "RUN"
+    mux.error = {errorCode: 1, errorMessage: "Video Metadata Error"}
+end function
+
 function GetNonStandardAds(filePath as String) as Object
     feed = ReadAsciiFile(filePath)
     result = ParseJson(feed)
@@ -356,4 +365,31 @@ function GetAdPods(feedFile as String) as Object
     end if
 
     return result
+end function
+
+function setupLogObject(adIface as object)
+    ' Create a log object to track events
+    logObj = {
+        Log: function(evtType = invalid as Dynamic, ctx = invalid as Dynamic)
+            if GetInterface(evtType, "ifString") <> invalid
+                ? "*** tracking event " + evtType + " fired."
+                if ctx.errMsg <> invalid then ? "*****   Error message: " + ctx.errMsg
+                if ctx.adIndex <> invalid then ? "*****  Ad Index: " + ctx.adIndex.ToStr()
+                if ctx.ad <> invalid and ctx.ad.adTitle <> invalid then ? "*****  Ad Title: " + ctx.ad.adTitle
+            else if ctx <> invalid and ctx.time <> invalid
+                ? "*** checking tracking events for ad progress: " + ctx.time.ToStr()
+            end if
+        end function
+    }
+    ' Create a log function to track events
+    logFunc = function(obj = Invalid as Dynamic, evtType = invalid as Dynamic, ctx = invalid as Dynamic)
+        Print "addTrackingCallback"
+        Print "obj:",obj
+        Print "evtType:",evtType
+        Print "ctx:",ctx
+
+        obj.log(evtType, ctx)
+    end function
+    ' Setup tracking events callback
+    setLog = adIface.SetTrackingCallback(logFunc, logObj)
 end function

@@ -39,7 +39,7 @@ gulp.task('deploy', ['closeApp', 'cleanup', 'build', 'package'], function () {
 })
 
 gulp.task('build',['cleanup'], function () {
-  return gulp.src(['source/**', 'components/**','images/**', 'manifest'], { "base" : "." }).pipe(gulp.dest(buildConfig.build_dir_name));
+  return gulp.src(['source/**', 'components/**','images/**', 'libs/**', 'manifest'], { "base" : "." }).pipe(gulp.dest(buildConfig.build_dir_name));
 })
 
 gulp.task('deploy_test', ['closeApp', 'cleanup', 'build', 'package_test'], function () {
