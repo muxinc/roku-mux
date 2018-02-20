@@ -1,7 +1,7 @@
 <component name="MuxTask" extends="Task">
   <interface>
-    <field id="config" type="array" alwaysNotify="true"/>
     <field id="video" type="node" alwaysNotify="true"/>
+    <field id="config" type="assocarray" alwaysNotify="true"/>
     <field id="rafEvent" type="assocarray" alwaysNotify="true"/>
   </interface>
   <script type="text/brightscript" uri="pkg:/components/MuxTask.brs"/>

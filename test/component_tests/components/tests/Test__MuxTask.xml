@@ -6,5 +6,7 @@
     <function name="TestFramework__RunNodeTests"/>
   </interface>
   <script type="text/brightscript" uri="pkg:/components/tests/Test__MuxTask_Stream_Detection.brs"/>
+  <script type="text/brightscript" uri="pkg:/components/tests/Test__MuxTask_Event_Creation.brs"/>
+  <script type="text/brightscript" uri="pkg:/components/tests/Test__MuxTask_Url_Utils.brs"/>
   <script type="text/brightscript" uri="pkg:/source/testFramework/UnitTestFramework.brs"/>
 </component>

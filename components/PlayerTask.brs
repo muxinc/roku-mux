@@ -1,4 +1,4 @@
-' ********** Copyright 2017 Roku Corp.  All Rights Reserved. ********** 
+' ********** Copyrig 2017 Roku Corp.  All Rights Reserved. ********** 
 Library  "Roku_Ads.brs"
 function init()
     m.top.functionName = "playContent"
@@ -74,11 +74,12 @@ function PlayContentWithFullRAFIntegration(contentInfo as Object)
     ' setLog = adIface.SetTrackingCallback(adTrackingCallback, {alex:"zander"})
 
    '  'STANDALONE TASK VERSION'
-    mux = m.top.CreateChild("MuxStandaloneTask")
+    mux = m.top.CreateChild("MuxTask")
     mux.id = "mux"
     mux.setField("video", m.top.video)
     mux.control = "RUN"
-    setLog = adIface.SetTrackingCallback(adTrackingCallback, {alex:"zander"})
+    mux.setField("config", {flintstonesCharacter:"bam bam"})
+    setLog = adIface.SetTrackingCallback(adTrackingCallback, adIface)
 
     'Ad measurement content params
     adIface.enableAdMeasurements(true)
@@ -156,6 +157,7 @@ function playVideoWithAds(adPods as object, adIface as object) as void
                 adPods = adIface.getAds(msg)
                 if adPods <> invalid and adPods.count() > 0
                     ' ask the video to stop
+                    Print "[PlayerTask] stopVideo"
                     video.control = "stop"
                     ' then the rest is handled by "stopped" branch below
                 end if
@@ -195,6 +197,7 @@ function playVideoWithAds(adPods as object, adIface as object) as void
                     print "PlayerTask: has postroll ads"
                     isPlayingPostroll = true
                     ' stop the video, the post-roll would show when the state changes to  "stopped" (above)
+                   Print "[PlayerTask] stopVideo"
                     video.control = "stop"
                 end if
             end if

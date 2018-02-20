@@ -20,7 +20,7 @@ end function
 function setupContent()
     'AA for base video, ad and measurement configuration.
     'For additional information please see official RAF documentation.
-    videoURL = "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4/yaddayadda/jakjasd"
+    videoURL = "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
 
     m.videoContent = { 
         'Provider ad url, can be configurable with URL Parameter Macros.
