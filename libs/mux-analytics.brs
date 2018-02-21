@@ -5,8 +5,8 @@ function init()
   m.connection = _createConnection()
 
   m.DRY_RUN = true
-  m.DEBUG_EVENTS = true
-  m.DEBUG_BEACONS = false
+  m.DEBUG_EVENTS = false
+  m.DEBUG_BEACONS = "full" 'full','partial','none'
 
   m.SDK_NAME = "roku-mux"
   m.SDK_VERSION = "0.0.1"
@@ -86,15 +86,19 @@ function runBeaconLoop()
       if msgType = "roSGNodeEvent"
         field = msg.getField()
         if field = "video"
-          m.top.UnobserveField("video")
-          data = msg.getData()
-          m.mxa.videoAddedHandler(data)
-          m.top.video.ObserveField("state", m.messagePort)
-          m.top.video.ObserveField("content", m.messagePort)
+            if m.top.video = Invalid
+            m.top.UnobserveField("video")
+            data = msg.getData()
+            m.mxa.videoAddedHandler(data)
+            m.top.video.ObserveField("state", m.messagePort)
+            m.top.video.ObserveField("content", m.messagePort)
+          end if
         else if field = "config"
-          data = msg.getData()
-          m.mxa.videoConfigChangeHandler(data)
-          m.top.UnobserveField("config")
+          if m.top.config = Invalid
+            data = msg.getData()
+            m.mxa.videoConfigChangeHandler(data)
+            m.top.UnobserveField("config")
+          end if
         else if field = "error"
           data = msg.getData()
           m.mxa.videoErrorHandler(data)
@@ -144,6 +148,13 @@ function _createPort() as Object
   return CreateObject("roMessagePort")
 end function
 
+function _createByteArray() as Object
+  return CreateObject("roByteArray")
+end function
+
+function _createRegistry() as Object
+  return CreateObject("roRegistrySection", "mux")
+end function
 
 function muxAnalytics() as Object
 
@@ -170,6 +181,13 @@ function muxAnalytics() as Object
 
     m._eventQueue = []
     m._seekThreshold = m.SEEK_THRESHOLD / 1000
+
+    ' variables
+    m._beaconCount = 0
+    m._playerInitialisationTime = 0
+    m._viewTotalContentTime = 0
+    m._viewRebufferCount = 0
+    m._viewRebufferDuration = 0
 
     ' flags
     m._Flag_atLeastOnePlayEventForContent = false
@@ -257,6 +275,7 @@ function muxAnalytics() as Object
 
   prototype.videoContentChangeHandler = function(videoContentChangeEvent)
     m._logEvent("videoContentChangeHandler")
+    data = videoContentChangeEvent.getData()
     m._videoContentProperties = m._getVideoContentProperties(data)
   end function
 
@@ -288,12 +307,8 @@ function muxAnalytics() as Object
     if eventType <> Invalid
     m._logEvent("rafEventHandler", eventType)
     end if
-    ' adProperties = {}
-    ' adProperties.view_preroll_ad_tag_hostname
-    ' adProperties.view_preroll_ad_tag_domain
-    ' adProperties.view_preroll_ad_asset_hostname
-    ' adProperties.view_preroll_ad_asset_domain
     if eventType = "PodStart"
+      m._advertProperties = m._getAdvertProperites(data.obj)
       m._addEventToQueue(m._createEvent("adbreakstart"))
     else if eventType = "PodComplete"
       m._addEventToQueue(m._createEvent("adbreakend"))
@@ -318,7 +333,7 @@ function muxAnalytics() as Object
 
   prototype.positionIntervalHandler = function(positionIntervalEvent)
     if m.video <> Invalid
-      m._logEvent("positionIntervalHandler")
+      ' m._logEvent("positionIntervalHandler")
       if NOT m.video.position = m._Flag_lastReportedPosition
         if m.video.position < m._Flag_lastReportedPosition
           m._addEventToQueue(m._createEvent("seeking"))
@@ -338,26 +353,6 @@ function muxAnalytics() as Object
   ' ' //////////////////////////////////////////////////////////////
   ' ' INTERNAL METHODS
   ' ' //////////////////////////////////////////////////////////////
-
-  prototype._createEvent = function(eventType as String, eventProperties = {} as Object) as Object
-    newEvent = {}
-    if m._sessionProperties <> Invalid
-      newEvent.Append(m._sessionProperties)
-    end if
-    if m._videoProperties <> Invalid
-      newEvent.Append(m._videoProperties)
-    end if
-    if m._videoContentProperties <> Invalid
-      newEvent.Append(m._videoContentProperties)
-    end if
-    newEvent.Append(eventProperties)
-    newEvent.e = eventType
-    return newEvent
-  end function
-
-  prototype._initialiseVideo = function(video as Object) as Void
-
-  end function
 
   prototype._addEventToQueue = function(_event as Object) as Object
     m.heartbeatTimer.control = "stop"
@@ -381,11 +376,12 @@ function muxAnalytics() as Object
   end function
 
   prototype._makeRequest = function(beacon as Object)
+    m._beaconCount++
     if m.dryRun = true
-      m._logBeacon(beacon, "DRY-BEACON", true)
+      m._logBeacon(beacon, "DRY-BEACON")
     else
       if beacon.count() > 0
-        m._logBeacon(beacon, "BEACON", false)
+        m._logBeacon(beacon, "BEACON")
         m.connection.RetainBodyOnError(true)
         m.connection.SetUrl(m.defaultBeaconUrl)
         m.connection.AddHeader("Content-Type", "application/json")
@@ -400,12 +396,41 @@ function muxAnalytics() as Object
     end if
   end function
 
+  prototype._createEvent = function(eventType as String, eventProperties = {} as Object) as Object
+    newEvent = {}
+    if m._sessionProperties <> Invalid
+      newEvent.Append(m._sessionProperties)
+    end if
+    if m._videoProperties <> Invalid
+      newEvent.Append(m._videoProperties)
+    end if
+    if m._videoContentProperties <> Invalid
+      newEvent.Append(m._videoContentProperties)
+    end if
+    if m._advertProperties <> Invalid
+      newEvent.Append(m._advertProperties)
+    end if
+    dynamicProperties = m._getDynamicProperties()
+    newEvent.Append(dynamicProperties)
+    newEvent.Append(eventProperties)
+    newEvent.e = eventType
+    return newEvent
+  end function
+ 
   ' Set once per application session'
   prototype._getSessionProperites = function() as Object
     props = {}
     deviceInfo = _createDeviceInfo()
     
     ' HARDCODED
+    ' props.session_id
+    ' props.session_start
+    ' props.session_expires
+    ' props.mux_sample_rate
+    ' props.player_init_time
+    ' props.player_instance_id
+    props.player_sequence_number = 1
+    ' props.player_startup_time
     props.player_software_name = "RokuSG"
     props.player_software_version = deviceInfo.GetVersion()
     props.player_model_number = deviceInfo.GetModel()
@@ -415,8 +440,7 @@ function muxAnalytics() as Object
     props.player_width = deviceInfo.GetDisplaySize().w
     props.player_height = deviceInfo.GetDisplaySize().h
     props.player_is_fullscreen = "true"
-    props.player_is_paused = (m._Flag_lastVideoState = "paused").toStr()
-    
+
     ' DEVICE INFO 
     if deviceInfo.IsAdIdTrackingDisabled() = true
       props.viewer_user_id = deviceInfo.GetClientTrackingId()
@@ -443,30 +467,40 @@ function muxAnalytics() as Object
     props = {}
 
     if content <> Invalid
-      if content.title <> Invalid
+      if content.title <> Invalid AND content.title <> ""
         props.video_title = content.title
       end if
-      if content.TitleSeason <> Invalid
+      if content.TitleSeason <> Invalid AND content.TitleSeason <> ""
         props.video_series = content.TitleSeason
       end if
-      if content.Director <> Invalid
+      if content.Director <> Invalid AND content.Director <> ""
         props.video_producer = content.Director
       end if
+      if content.video_id <> Invalid AND content.video_id <> ""
+        props.video_id = content.video_id
+      else
+        props.video_id = m._generateVideoId(content.URL)
+      end if
       if content.ContentType <> Invalid
-        if content.ContentType = 1
-          props.video_content_type = "movie"
-        else if content.ContentType = 2
-          props.video_content_type = "series"
-        else if content.ContentType = 3
-          props.video_content_type = "season"
-        else if content.ContentType = 4
-          props.video_content_type = "episode"
-        else if content.ContentType = 5
-          props.video_content_type = "audio"
+        if type(content.ContentType) = "roInt"
+          if content.ContentType = 1
+            props.video_content_type = "movie"
+          else if content.ContentType = 2
+            props.video_content_type = "series"
+          else if content.ContentType = 3
+            props.video_content_type = "season"
+          else if content.ContentType = 4
+            props.video_content_type = "episode"
+          else if content.ContentType = 5
+            props.video_content_type = "audio"
+          end if
+        else
+          props.video_content_type = content.ContentType
         end if
       end if
       props.video_source_url = content.URL
-      props.video_source_host_name = m._getHostname(content.URL)
+      props.video_source_hostname = m._getHostname(content.URL)
+      props.video_source_domain = m._getDomain(content.URL)
       
       if content.StreamFormat <> Invalid AND content.StreamFormat <> "(null)"
         props.video_source_format = content.StreamFormat
@@ -488,6 +522,35 @@ function muxAnalytics() as Object
 
     return props
   end function
+
+  ' Set once per advert session'
+  prototype._getAdvertProperites = function(adData as Object) as Object
+    props = {}
+    if adData <> Invalid
+      if adData.adurl <> Invalid
+    Print adData.adurl
+        props.view_preroll_ad_tag_hostname = m._getHostname(adData.adurl)
+        props.view_preroll_ad_tag_domain = m._getDomain(adData.adurl)
+      ' adProperties.view_preroll_ad_asset_hostname
+      ' adProperties.view_preroll_ad_asset_domain
+      end if
+    end if
+    return props
+  end function
+
+  ' Set once per event
+  prototype._getDynamicProperties = function() as Object
+    props = {}
+
+    props.player_is_paused = (m._Flag_lastVideoState = "paused").toStr()
+    if m.video <> Invalid
+      if m.video.timeToStartStreaming <> Invalid AND m.video.timeToStartStreaming <> 0
+        props.view_time_to_first_frame = m.video.timeToStartStreaming
+      end if
+    end if
+
+    return props
+  end function  
 
   prototype._getDomain = function(url as String) as String
     domain = ""
@@ -533,8 +596,38 @@ function muxAnalytics() as Object
     return "unknown"
   end function
 
-  prototype._logBeacon = function(eventArray as Object, title = "BEACON" as String, fullEvent = false as Boolean) as Void
-    if m.debugBeacons <> true then return
+  prototype._setCookieData = function(data as Object) as Void
+    cookie = _createRegistry()
+    cookie.Write("UserRegistrationToken", data)
+    cookie.Flush()
+  end function
+  
+  prototype._getCookieData = function() as Dynamic
+    cookie = _createRegistry()
+    if cookie.Exists("UserRegistrationToken")
+      return cookie.Read("UserRegistrationToken")
+    endif
+    return invalid
+  end function
+
+  prototype._generateVideoId= function(src as String) as String
+    byteArray = _createByteArray()
+    byteArray.FromAsciiString(src)
+    return byteArray.ToBase64String()
+  end function
+' export default function videoIdFromSrc (src) {
+'   var parser = document.createElement('a');
+
+'   parser.href = src;
+
+'   // Hack to get around breaking Fluent parsing. We never actually decode this,
+'   // so this shouldn't be an issue.
+'   return base64.encode(parser.host + pathMinusExtension).split('=')[0];
+' };
+
+  prototype._logBeacon = function(eventArray as Object, title = "BEACON" as String) as Void
+    if m.debugBeacons <> "full" AND m.debugBeacons <> "partial" then return
+    fullEvent = (m.debugBeacons = "full")
     tot = title + " (" + eventArray.count().toStr() + ") [ "
     for each evt in eventArray
       if fullEvent = false
@@ -560,3 +653,9 @@ function muxAnalytics() as Object
 
   return prototype
 end function
+
+
+' UNSET PROPERTIES 
+' video_source_width
+' video_source_height
+

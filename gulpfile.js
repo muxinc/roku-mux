@@ -6,6 +6,7 @@ const fs = require('fs');
 const gulp = require('gulp');
 const exec = require('child_process').exec;
 const clean = require('gulp-clean')
+const replace = require('gulp-replace');
 const zip = require('gulp-zip');
 const path = require('path');
 const info = require('./package.json');
@@ -22,7 +23,7 @@ var lookupIpAddress;
 info.date = now.getFullYear().toString() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + (now.getDate().toString())).slice(-2);
 
 
-gulp.task('install', ['closeApp', 'cleanup', 'build', 'package', 'deploy'], function () {})
+gulp.task('install', ['closeApp', 'cleanup', 'build', 'replace', 'package', 'deploy'], function () {})
 gulp.task('test', ['closeApp', 'cleanup', 'build', 'package_test', 'deploy_test'], function () {})
 
 gulp.task('deploy', ['closeApp', 'cleanup', 'build', 'package'], function () {
@@ -83,8 +84,170 @@ gulp.task('closeApp', function () {
   var response = exec(closeCommand)
 })
 
+gulp.task('replace', ['build', 'cleanup'], function () {
+  gulp.src(['build/libs/mux-analytics.brs'])
+    .pipe(replace('player_software_name', 'pswnm'))
+    .pipe(replace('player_software_version', 'pswve'))
+    .pipe(replace('player_model_number', 'pmono'))
+    .pipe(replace('player_mux_plugin_name', 'pmxpinm'))
+    .pipe(replace('player_mux_plugin_version', 'pmxpive'))
+    .pipe(replace('player_language_code', 'placd'))
+    .pipe(replace('player_width', 'pwd'))
+    .pipe(replace('player_height', 'pht'))
+    .pipe(replace('player_error_code', 'percd'))
+    .pipe(replace('player_error_message', 'perme'))
+    .pipe(replace('player_is_fullscreen', 'pisfs'))
+    .pipe(replace('player_is_paused', 'pispa'))
+    .pipe(replace('video_source_url', 'vsour'))
+    .pipe(replace('video_source_hostname', 'vsohn'))
+    .pipe(replace('video_source_domain', 'vsodm'))
+    .pipe(replace('video_source_format', 'vsoft'))
+    .pipe(replace('video_source_duration', 'vsodu'))
+    .pipe(replace('video_source_is_live', 'vsoisli'))
+    .pipe(replace('video_source_width', 'vsowd'))
+    .pipe(replace('video_source_height', 'vsoht'))
+    .pipe(replace('video_title', 'vtt'))
+    .pipe(replace('video_series', 'vsr'))
+    .pipe(replace('video_producer', 'vpd'))
+    .pipe(replace('video_content_type', 'vctty'))
+    .pipe(replace('video_id', 'vid'))
+    .pipe(replace('viewer_user_id', 'uusid'))
+    .pipe(replace('view_time_to_first_frame', 'xtitofifr'))
+    .pipe(gulp.dest('build/libs/'));
+});
+
+gulp.task('templates', function(){
+
+});
+
 gulp.task('cleanup', function () {
   return gulp.src('build')
     .pipe(clean());
 })
+
+const firstWordsByMin = {
+  'a': 'property', // account
+  'b': 'beacon',
+  'd': 'ad',
+  'e': 'event',
+  'f': 'experiment', // nothing better to use...
+  'm': 'mux',
+  'p': 'player',
+  'r': 'retry', // placeholder for beacons adding retry counts
+  's': 'session',
+  't': 'timestamp',
+  'u': 'viewer', // user
+  'v': 'video',
+  'w': 'page', // web page
+  'x': 'view',
+  'y': 'sub' // cause nowhere else to fit it
+};
+
+const expectedWordsByMin = {
+  'ad': 'ad',
+  'ag': 'aggregate',
+  'ap': 'api',
+  'al': 'application',
+  'ar': 'architecture',
+  'as': 'asset',
+  'au': 'autoplay',
+  'br': 'break',
+  'cd': 'code',
+  'cg': 'category',
+  'cn': 'config',
+  'co': 'count',
+  'cp': 'complete',
+  'ct': 'content',
+  'cu': 'current',
+  'dg': 'downscaling',
+  'dm': 'domain',
+  'dn': 'cdn',
+  'do': 'downscale',
+  'du': 'duration',
+  'dv': 'device',
+  'ec': 'encoding',
+  'en': 'end',
+  'eg': 'engine',
+  'em': 'embed',
+  'er': 'error',
+  'ev': 'events',
+  'ex': 'expires',
+  'fi': 'first',
+  'fm': 'family',
+  'ft': 'format',
+  'fq': 'frequency',
+  'fr': 'frame',
+  'fs': 'fullscreen',
+  'ho': 'host',
+  'hn': 'hostname',
+  'ht': 'height',
+  'id': 'id',
+  'ii': 'init',
+  'in': 'instance',
+  'ip': 'ip',
+  'is': 'is',
+  'ke': 'key',
+  'la': 'language',
+  'li': 'live',
+  'lo': 'load',
+  'ma': 'max',
+  'me': 'message',
+  'mi': 'mime',
+  'ml': 'midroll',
+  'mn': 'manufacturer',
+  'mo': 'model',
+  'mx': 'mux',
+  'nm': 'name',
+  'no': 'number',
+  'on': 'on',
+  'os': 'os',
+  'pa': 'paused',
+  'pb': 'playback',
+  'pd': 'producer',
+  'pe': 'percentage',
+  'pf': 'played',
+  'ph': 'playhead',
+  'pi': 'plugin',
+  'pl': 'preroll',
+  'po': 'poster',
+  'pr': 'preload',
+  'py': 'property',
+  'ra': 'rate',
+  'rd': 'requested',
+  're': 'rebuffer',
+  'ro': 'ratio',
+  'rq': 'request',
+  'rs': 'requests',
+  'sa': 'sample',
+  'se': 'session',
+  'sk': 'seek',
+  'sm': 'stream',
+  'so': 'source',
+  'sq': 'sequence',
+  'sr': 'series',
+  'st': 'start',
+  'su': 'startup',
+  'sv': 'server',
+  'sw': 'software',
+  'ta': 'tag',
+  'tc': 'tech',
+  'ti': 'time',
+  'tl': 'total',
+  'to': 'to',
+  'tt': 'title',
+  'ty': 'type',
+  'ug': 'upscaling',
+  'up': 'upscale',
+  'ur': 'url',
+  'us': 'user',
+  'va': 'variant',
+  'vd': 'viewed',
+  'vi': 'video',
+  've': 'version',
+  'vw': 'view',
+  'vr': 'viewer',
+  'wd': 'width',
+  'wa': 'watch',
+  'wt': 'waiting'
+};
 

@@ -2,42 +2,54 @@ function init()
 	m.top.backgroundURI = ""
 	m.top.backgroundColor="0x111111FF"
   m.video = m.top.FindNode("MainVideo")
+  m.mux = m.top.FindNode("mux")
+  m.mux.setField("video", m.video)
+  m.mux.setField("config", {flintstonesCharacter:"bum bum"})
+  m.mux.control = "RUN"
   m.list = m.top.FindNode("MenuList")
   m.list.wrapDividerBitmapUri = ""
   setupContent()
   m.list.observeField("itemSelected", "onItemSelected")
-	m.list.setFocus(true) 
+  m.list.setFocus(true) 
 end function
 
 function setupContent()
     m.contentList = [
         {
-            title: "Content Only, No Ads",
-            selectionID: "none"
+          title: "Content Only, No Ads",
+          selectionID: "none"
         },
         {
-            title: "Full RAF Integration",
-            selectionID: "standard"
+          title: "Full RAF Integration",
+          selectionID: "standard"
         },
         {
-            title: "Custom Ad Parsing",
-            selectionID: "nonstandard"
+          title: "Custom Ad Parsing",
+          selectionID: "nonstandard"
         },
         {
-            title: "Stitched Ad: Mixed",
-            selectionID: "stitched" 
+          title: "Stitched Ad: Mixed",
+          selectionID: "stitched" 
         },
         {
-            title: "Error before playback",
-            selectionID: "preplaybackerror" 
+          title: "Error before playback",
+          selectionID: "preplaybackerror" 
         },
         {
-            title: "Error during playback",
-            selectionID: "playbackerror" 
+          title: "Error during playback",
+          selectionID: "playbackerror" 
         },
         {
-            title: "DASH stream no ads",
-            selectionID: "dashnoads" 
+          title: "HLS stream no ads",
+          selectionID: "hlsnoads" 
+        },
+        {
+          title: "DASH stream no ads",
+          selectionID: "dashnoads" 
+        },
+        {
+          title: "LIVE stream ",
+          selectionID: "live" 
         },
     ]
     listContent = createObject("roSGNode","ContentNode")
@@ -91,6 +103,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
       else if key = "up"
         PRint "<up>"
+        stop
       end if
     end if
     return false

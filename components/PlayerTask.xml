@@ -2,7 +2,6 @@
 <component name="PlayerTask" extends="Task">
 
 <interface>
-    <field id="contentInfo" type="assocarray" />
     <field id="selectionId" type="string" />
     <field id="facade"      type="node" />
     <field id="video"       type="node" />
