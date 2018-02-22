@@ -13,9 +13,10 @@ npm install
 ### To Run Sample App ###
 
 set ip of box as env variable.
-export ROKU_DEV_TARGET=<your ip>
 
-gulp install
+`export ROKU_DEV_TARGET=<your ip>`
+
+`gulp install`
 
 ### Configuration ###
 
