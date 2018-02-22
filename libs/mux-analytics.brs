@@ -1,12 +1,23 @@
 function init()
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
+end function
+
+function runBeaconLoop()
+  
   m.messagePort = _createPort()
   m.connection = _createConnection()
 
-  m.DRY_RUN = true
-  m.DEBUG_EVENTS = false
-  m.DEBUG_BEACONS = "full" 'full','partial','none'
+  m.DEFAULT_DRY_RUN = false
+  m.DEFAULT_DEBUG_EVENTS = "none"
+  m.DEFAULT_DEBUG_BEACONS = "none" 'full','partial','none'
+  m.DEFAULT_BEACON_URL = "https://img.litix.io"
+
+  appInfo = _createAppInfo()
+  manifestDryRun = appInfo.GetValue("mux_dry_run")
+  manifestBaseUrl = appInfo.GetValue("mux_base_url")
+  manifestDebugEvents = appInfo.GetValue("mux_debug_events")
+  manifestDebugBeacons = appInfo.GetValue("mux_debug_beacons")
 
   m.SDK_NAME = "roku-mux"
   m.SDK_VERSION = "0.0.1"
@@ -16,40 +27,73 @@ function init()
   m.HEARTBEAT_INTERVAL = 10000
   m.POSITION_TIMER_INTERVAL = 1000 '250
   m.SEEK_THRESHOLD = 1250 'ms jump in position before a seek is considered'
-  m.DEFAULT_BEACON_URL = "https://img.litix.io"
   
-  m.positionPoller = m.top.findNode("positionPoller")
+  m.positionPoller = CreateObject("roSGNode", "Timer")
+  m.positionPoller.id = "positionPoller"
   m.positionPoller.repeat = true
   m.positionPoller.duration = m.POSITION_TIMER_INTERVAL / 1000
 
-  m.beaconTimer = m.top.findNode("beaconTimer")
+  ' m.heartbeatTimer = m.top.findNode("heartbeatTimer")
+  m.heartbeatTimer = CreateObject("roSGNode", "Timer")
+  m.heartbeatTimer.id = "heartbeatTimer"
+  m.heartbeatTimer.repeat = true
+  m.heartbeatTimer.duration = m.HEARTBEAT_INTERVAL / 1000
+
+  m.beaconTimer = CreateObject("roSGNode", "Timer")
+  m.beaconTimer.id = "beaconTimer"
   m.beaconTimer.repeat = true
   m.beaconTimer.duration = m.BASE_TIME_BETWEEN_BEACONS / 1000
   m.beaconTimer.control = "start"
 
-  m.heartbeatTimer = m.top.findNode("heartbeatTimer")
-  m.heartbeatTimer.repeat = true
-  m.heartbeatTimer.duration = m.HEARTBEAT_INTERVAL / 1000
-
   m.mxa = muxAnalytics()
-  config = {SDK_NAME: m.SDK_NAME,
-              SDK_VERSION: m.SDK_VERSION,
-              MAX_BEACON_SIZE: m.MAX_BEACON_SIZE,
-              MAX_QUEUE_LENGTH: m.MAX_QUEUE_LENGTH,
-              BASE_TIME_BETWEEN_BEACONS: m.BASE_TIME_BETWEEN_BEACONS,
-              HEARTBEAT_INTERVAL: m.HEARTBEAT_INTERVAL,
-              POSITION_TIMER_INTERVAL: m.POSITION_TIMER_INTERVAL,
-              SEEK_THRESHOLD: m.SEEK_THRESHOLD,
-              DEFAULT_BEACON_URL: m.DEFAULT_BEACON_URL
-              DRY_RUN: m.DRY_RUN
-              DEBUG_EVENTS: m.DEBUG_EVENTS
-              DEBUG_BEACONS: m.DEBUG_BEACONS
-            }
-  m.mxa.init(m.connection, m.messagePort, config, m.heartbeatTimer, m.positionPoller)
-end function
 
-function runBeaconLoop()
-  Print "[MuxTask] running task loop"
+  if manifestDebugEvents <> ""
+    debugEvents = manifestDebugEvents
+  else
+    debugEvents = m.DEFAULT_DEBUG_EVENTS
+  end if
+
+  if manifestDebugBeacons <> ""
+    debugBeacons = manifestDebugBeacons
+  else
+    debugBeacons = m.DEFAULT_DEBUG_BEACONS
+  end if
+
+  if manifestDryRun <> ""
+    if manifestDryRun = "true"
+      dryRun = true
+    else
+      dryRun = false
+    end if
+  else
+    dryRun = m.DEFAULT_DRY_RUN
+  end if
+
+  if manifestBaseUrl <> ""
+    baseUrl = manifestBaseUrl
+  else
+    baseUrl = m.DEFAULT_BEACON_URL
+  end if
+  
+  if debugEvents <> "none" OR debugBeacons <> "none"
+    Print "[mux-analytics] running task loop baseUrl:", baseUrl, " dryRun: ", dryRun
+  end if
+  
+  config = {SDK_NAME: m.SDK_NAME,
+            SDK_VERSION: m.SDK_VERSION,
+            MAX_BEACON_SIZE: m.MAX_BEACON_SIZE,
+            MAX_QUEUE_LENGTH: m.MAX_QUEUE_LENGTH,
+            BASE_TIME_BETWEEN_BEACONS: m.BASE_TIME_BETWEEN_BEACONS,
+            HEARTBEAT_INTERVAL: m.HEARTBEAT_INTERVAL,
+            POSITION_TIMER_INTERVAL: m.POSITION_TIMER_INTERVAL,
+            SEEK_THRESHOLD: m.SEEK_THRESHOLD,
+            DEFAULT_BEACON_URL: baseUrl,
+            DRY_RUN: dryRun,
+            DEBUG_EVENTS: debugEvents,
+            DEBUG_BEACONS: debugBeacons
+          }
+  m.mxa.init(m.connection, m.messagePort, config, m.heartbeatTimer, m.positionPoller)
+
   m.top.ObserveField("rafEvent", m.messagePort)
   
   if m.top.video = Invalid
@@ -132,7 +176,10 @@ function runBeaconLoop()
 
   m.top.UnobserveField("video")
   m.top.UnobserveField("config")
-  Print "[MuxTask] end running task loop"
+  
+  if debugEvents <> "none" OR debugBeacons <> "none"
+    Print "[mux-analytics] end running task loop"
+  end if
   return true
 end function
 
@@ -150,6 +197,10 @@ end function
 
 function _createByteArray() as Object
   return CreateObject("roByteArray")
+end function
+
+function _createAppInfo() as Object
+  return CreateObject("roAppInfo")
 end function
 
 function _createRegistry() as Object
@@ -333,7 +384,7 @@ function muxAnalytics() as Object
 
   prototype.positionIntervalHandler = function(positionIntervalEvent)
     if m.video <> Invalid
-      ' m._logEvent("positionIntervalHandler")
+      m._logEvent("positionIntervalHandler")
       if NOT m.video.position = m._Flag_lastReportedPosition
         if m.video.position < m._Flag_lastReportedPosition
           m._addEventToQueue(m._createEvent("seeking"))
@@ -391,7 +442,6 @@ function muxAnalytics() as Object
         fBody = FormatJson(requestBody)
         m.connection.AsyncCancel()
         success = m.connection.AsyncPostFromString(fBody)
-        ' Print "[MuxTask] makeRequest success:", success, m.requestId
       end if
     end if
   end function
@@ -528,7 +578,6 @@ function muxAnalytics() as Object
     props = {}
     if adData <> Invalid
       if adData.adurl <> Invalid
-    Print adData.adurl
         props.view_preroll_ad_tag_hostname = m._getHostname(adData.adurl)
         props.view_preroll_ad_tag_domain = m._getDomain(adData.adurl)
       ' adProperties.view_preroll_ad_asset_hostname
@@ -646,7 +695,8 @@ function muxAnalytics() as Object
   end function
 
   prototype._logEvent = function(etype = "" as String, subtype = "" as String, title = "EVENT" as String) as Void
-    if m.debugEvents <> true then return
+    if m.debugEvents = "none" then return
+    if m.debugEvents = "partial" AND etype = "positionIntervalHandler" then return
     tot = title + " " + etype + " " + subtype
     Print tot
   end function

@@ -7,9 +7,4 @@
     <field id="exit" type="Boolean" alwaysNotify="true"/>
   </interface>
   <script type="text/brightscript" uri="pkg:/libs/mux-analytics.brs"/>
-  <children>
-    <Timer id="positionPoller" />
-    <Timer id="beaconTimer" />
-    <Timer id="heartbeatTimer" />
-  </children>
 </component>
