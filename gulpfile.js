@@ -23,7 +23,7 @@ var lookupIpAddress;
 info.date = now.getFullYear().toString() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + (now.getDate().toString())).slice(-2);
 
 
-gulp.task('install', ['closeApp', 'cleanup', 'build', 'replace', 'package', 'deploy'], function () {})
+gulp.task('install', ['closeApp', 'cleanup', 'build', 'package', 'deploy'], function () {})
 gulp.task('test', ['closeApp', 'cleanup', 'build', 'package_test', 'deploy_test'], function () {})
 
 gulp.task('deploy', ['closeApp', 'cleanup', 'build', 'package'], function () {
