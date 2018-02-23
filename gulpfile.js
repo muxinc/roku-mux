@@ -24,7 +24,7 @@ info.date = now.getFullYear().toString() + ("0" + (now.getMonth() + 1)).slice(-2
 
 
 gulp.task('install', ['closeApp', 'cleanup', 'build', 'package', 'deploy'], function () {})
-gulp.task('test', ['closeApp', 'cleanup', 'build', 'package_test', 'deploy_test'], function () {})
+gulp.task('test', ['closeApp', 'cleanup', 'build_test_source', 'add_test_framework', 'add_mux_library_to_test','package_test', 'deploy_test'], function () {})
 
 gulp.task('deploy', ['closeApp', 'cleanup', 'build', 'package'], function () {
   var roku_ip = (env_roku_ip == undefined) ? buildConfig.default_roku_target : env_roku_ip
@@ -38,6 +38,14 @@ gulp.task('deploy', ['closeApp', 'cleanup', 'build', 'package'], function () {
   console.log("curlCommand:"+curlCommand)
   var response = exec(curlCommand)
 })
+
+// gulp.task('run_test', ['closeApp', 'cleanup', 'build', 'package_test', 'deploy_test'], function () {
+//   var roku_ip = (env_roku_ip == undefined) ? buildConfig.default_roku_target : env_roku_ip
+//   sleep(1000)
+//   var curlCommand = "curl -d '' 'http://" + roku_ip + ":8060/launch/dev?RunTests=true'"
+//   console.log("curlCommand:"+curlCommand)
+//   var response = exec(curlCommand)
+// })
 
 gulp.task('build',['cleanup'], function () {
   return gulp.src(['source/**', 'components/**','images/**', 'libs/**', 'manifest'], { "base" : "." }).pipe(gulp.dest(buildConfig.build_dir_name));
@@ -56,15 +64,23 @@ gulp.task('deploy_test', ['closeApp', 'cleanup', 'build', 'package_test'], funct
   var response = exec(curlCommand)
 })
 
-gulp.task('build_test',['build', 'cleanup'], function () {
+gulp.task('build_test_source',['build', 'cleanup'], function () {
+  return gulp.src(['test/source_tests/**']).pipe(gulp.dest(buildConfig.build_dir_name))
+})
+
+gulp.task('build_test_components',['build', 'cleanup'], function () {
   return gulp.src(['test/component_tests/**']).pipe(gulp.dest(buildConfig.build_dir_name))
 })
 
-gulp.task('add_test_framework',['cleanup', 'build', 'build_test'], function () {
+gulp.task('add_test_framework',['cleanup', 'build', 'build_test_source'], function () {
   return gulp.src(['test/testFramework/*'], { "base" : "test" }).pipe(gulp.dest(buildConfig.build_dir_name + "/source"))
 })
 
-gulp.task('package_test', ['build', 'build_test', 'add_test_framework'], function () {
+gulp.task('add_mux_library_to_test',['cleanup', 'build', 'build_test_source'], function () {
+  return gulp.src(['libs/mux-analytics.brs']).pipe(gulp.dest(buildConfig.build_dir_name + "/source"))
+})
+
+gulp.task('package_test', ['build', 'build_test_source', 'add_test_framework','add_mux_library_to_test'], function () {
   return gulp.src('build/**')
     .pipe(zip(buildConfig.app_name + "-tests" + ".zip"))
     .pipe(gulp.dest('out/'));
@@ -124,6 +140,13 @@ gulp.task('cleanup', function () {
   return gulp.src('build')
     .pipe(clean());
 })
+
+function sleep(delay) {
+  console.log("Start sleep")
+  var start = new Date().getTime();
+  while (new Date().getTime() < start + delay);
+  console.log("end sleep")
+}
 
 const firstWordsByMin = {
   'a': 'property', // account

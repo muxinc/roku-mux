@@ -7,17 +7,7 @@ function runBeaconLoop()
   
   m.messagePort = _createPort()
   m.connection = _createConnection()
-
-  m.DEFAULT_DRY_RUN = false
-  m.DEFAULT_DEBUG_EVENTS = "none"
-  m.DEFAULT_DEBUG_BEACONS = "none" 'full','partial','none'
-  m.DEFAULT_BEACON_URL = "https://img.litix.io"
-
   appInfo = _createAppInfo()
-  manifestDryRun = appInfo.GetValue("mux_dry_run")
-  manifestBaseUrl = appInfo.GetValue("mux_base_url")
-  manifestDebugEvents = appInfo.GetValue("mux_debug_events")
-  manifestDebugBeacons = appInfo.GetValue("mux_debug_beacons")
 
   m.SDK_NAME = "roku-mux"
   m.SDK_VERSION = "0.0.1"
@@ -46,38 +36,8 @@ function runBeaconLoop()
   m.beaconTimer.control = "start"
 
   m.mxa = muxAnalytics()
-
-  if manifestDebugEvents <> ""
-    debugEvents = manifestDebugEvents
-  else
-    debugEvents = m.DEFAULT_DEBUG_EVENTS
-  end if
-
-  if manifestDebugBeacons <> ""
-    debugBeacons = manifestDebugBeacons
-  else
-    debugBeacons = m.DEFAULT_DEBUG_BEACONS
-  end if
-
-  if manifestDryRun <> ""
-    if manifestDryRun = "true"
-      dryRun = true
-    else
-      dryRun = false
-    end if
-  else
-    dryRun = m.DEFAULT_DRY_RUN
-  end if
-
-  if manifestBaseUrl <> ""
-    baseUrl = manifestBaseUrl
-  else
-    baseUrl = m.DEFAULT_BEACON_URL
-  end if
   
-  if debugEvents <> "none" OR debugBeacons <> "none"
-    Print "[mux-analytics] running task loop baseUrl:", baseUrl, " dryRun: ", dryRun
-  end if
+  Print "[mux-analytics] running task loop"
   
   config = {SDK_NAME: m.SDK_NAME,
             SDK_VERSION: m.SDK_VERSION,
@@ -92,7 +52,7 @@ function runBeaconLoop()
             DEBUG_EVENTS: debugEvents,
             DEBUG_BEACONS: debugBeacons
           }
-  m.mxa.init(m.connection, m.messagePort, config, m.heartbeatTimer, m.positionPoller)
+  m.mxa.init(m.connection, m.messagePort, appInfo, config, m.heartbeatTimer, m.positionPoller)
 
   m.top.ObserveField("rafEvent", m.messagePort)
   
@@ -177,9 +137,7 @@ function runBeaconLoop()
   m.top.UnobserveField("video")
   m.top.UnobserveField("config")
   
-  if debugEvents <> "none" OR debugBeacons <> "none"
-    Print "[mux-analytics] end running task loop"
-  end if
+  Print "[mux-analytics] end running task loop"
   return true
 end function
 
@@ -208,14 +166,52 @@ function _createRegistry() as Object
 end function
 
 function muxAnalytics() as Object
-
   prototype = {}
 
-  prototype.init = function(connection as Object, port as Object, config as Object, hbt as Object, pp as Object)
+  prototype.init = function(connection as Object, port as Object, appInfo as Object, config as Object, hbt as Object, pp as Object)
     m.connection = connection
     m.port = port
     m.heartbeatTimer = hbt
     m.positionPoller = pp
+
+    m.DEFAULT_DRY_RUN = false
+    m.DEFAULT_DEBUG_EVENTS = "none"
+    m.DEFAULT_DEBUG_BEACONS = "none" 'full','partial','none'
+    m.DEFAULT_BEACON_URL = "https://img.litix.io"
+
+    manifestDryRun = appInfo.GetValue("mux_dry_run")
+    manifestBaseUrl = appInfo.GetValue("mux_base_url")
+    manifestDebugEvents = appInfo.GetValue("mux_debug_events")
+    manifestDebugBeacons = appInfo.GetValue("mux_debug_beacons")
+
+    m.debugEvents = m.DEFAULT_DEBUG_EVENTS
+    if manifestDebugEvents <> ""
+      if manifestDebugEvents = "full" OR manifestDebugEvents = "partial" OR manifestDebugEvents = "none"
+        m.debugEvents = manifestDebugEvents
+      end if
+    end if
+
+    m.debugBeacons = m.DEFAULT_DEBUG_BEACONS
+    if manifestDebugBeacons <> ""
+      if manifestDebugBeacons = "full" OR manifestDebugBeacons = "partial" OR manifestDebugBeacons = "none"
+        m.debugBeacons = manifestDebugBeacons
+      end if
+    end if
+
+    m.dryRun = m.DEFAULT_DRY_RUN
+    if manifestDryRun <> ""
+      if manifestDryRun = "true"
+        m.dryRun = true
+      else
+        m.dryRun = false
+      end if
+    end if
+
+    m.baseUrl = m.DEFAULT_BEACON_URL
+    if manifestBaseUrl <> ""
+      m.baseUrl = manifestBaseUrl
+    end if
+
 
     m.SDK_NAME = config.SDK_NAME
     m.SDK_VERSION = config.SDK_VERSION
@@ -225,10 +221,6 @@ function muxAnalytics() as Object
     m.HEARTBEAT_INTERVAL = config.HEARTBEAT_INTERVAL
     m.POSITION_TIMER_INTERVAL = config.POSITION_TIMER_INTERVAL
     m.SEEK_THRESHOLD = config.SEEK_THRESHOLD
-    m.defaultBeaconUrl = config.DEFAULT_BEACON_URL
-    m.dryRun = config.DRY_RUN
-    m.debugEvents = config.DEBUG_EVENTS
-    m.debugBeacons = config.DEBUG_BEACONS
 
     m._eventQueue = []
     m._seekThreshold = m.SEEK_THRESHOLD / 1000
@@ -281,46 +273,48 @@ function muxAnalytics() as Object
 
   prototype.videoStateChangeHandler = function(videoStateChangeEvent)
     data = videoStateChangeEvent.getData()
-    m._logEvent("videoStateChangeHandler", data)
-    if m._Flag_lastVideoState = "none"
-      m._addEventToQueue(m._createEvent("viewstart"))
-    end if
-    m._Flag_lastVideoState = data
-    if data = "buffering"
-      if m._Flag_seekSentPlayingNotYetStarted = true
-        m._addEventToQueue(m._createEvent("seekend"))
+    if data <> Invalid AND type(data) = "roString"
+      m._logEvent("videoStateChangeHandler", data)
+      if m._Flag_lastVideoState = "none"
+        m._addEventToQueue(m._createEvent("viewstart"))
+      end if
+      m._Flag_lastVideoState = data
+      if data = "buffering"
+        if m._Flag_seekSentPlayingNotYetStarted = true
+          m._addEventToQueue(m._createEvent("seekend"))
+          m._Flag_seekSentPlayingNotYetStarted = false
+        end if
+        if m._Flag_atLeastOnePlayEventForContent = true
+          m._addEventToQueue(m._createEvent("rebufferstart"))
+        end if
+      else if data = "paused"
+        m._addEventToQueue(m._createEvent("pause"))
+      else if data = "playing"
+        if m._Flag_lastVideoState = "buffering"
+          m._addEventToQueue(m._createEvent("rebufferend"))
+        end if
+        m._addEventToQueue(m._createEvent("play"))
         m._Flag_seekSentPlayingNotYetStarted = false
-      end if
-      if m._Flag_atLeastOnePlayEventForContent = true
-        m._addEventToQueue(m._createEvent("rebufferstart"))
-      end if
-    else if data = "paused"
-      m._addEventToQueue(m._createEvent("pause"))
-    else if data = "playing"
-      if m._Flag_lastVideoState = "buffering"
-        m._addEventToQueue(m._createEvent("rebufferend"))
-      end if
-      m._addEventToQueue(m._createEvent("play"))
-      m._Flag_seekSentPlayingNotYetStarted = false
-      m._Flag_atLeastOnePlayEventForContent = true
-    else if data = "stopped"
-      m._addEventToQueue(m._createEvent("viewend"))
-      m.positionPoller.control = "stop"
-    else if data = "finished"
-      m._addEventToQueue(m._createEvent("ended"))
-      m.positionPoller.control = "stop"
-    else if data = "error"
-      errorCode = ""
-      errorMessage = ""
-      if m.video <> Invalid
-        if m.video.errorCode <> Invalid
-          errorCode = m.video.errorCode
+        m._Flag_atLeastOnePlayEventForContent = true
+      else if data = "stopped"
+        m._addEventToQueue(m._createEvent("viewend"))
+        m.positionPoller.control = "stop"
+      else if data = "finished"
+        m._addEventToQueue(m._createEvent("ended"))
+        m.positionPoller.control = "stop"
+      else if data = "error"
+        errorCode = ""
+        errorMessage = ""
+        if m.video <> Invalid
+          if m.video.errorCode <> Invalid
+            errorCode = m.video.errorCode
+          end if
+          if m.video.errorMsg <> Invalid
+            errorMessage = m.video.errorMsg
+          end if
         end if
-        if m.video.errorMsg <> Invalid
-          errorMessage = m.video.errorMsg
-        end if
+        m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage}))
       end if
-      m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage}))
     end if
   end function
 
@@ -434,7 +428,7 @@ function muxAnalytics() as Object
       if beacon.count() > 0
         m._logBeacon(beacon, "BEACON")
         m.connection.RetainBodyOnError(true)
-        m.connection.SetUrl(m.defaultBeaconUrl)
+        m.connection.SetUrl(m.baseUrl)
         m.connection.AddHeader("Content-Type", "application/json")
         m.requestId = m.connection.GetIdentity()
         requestBody = {}
