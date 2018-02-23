@@ -130,7 +130,7 @@ function runBeaconLoop()
       if msgType = "roSGNodeEvent"
         field = msg.getField()
         if field = "video"
-            if m.top.video = Invalid
+          if m.top.video = Invalid
             m.top.UnobserveField("video")
             data = msg.getData()
             m.mxa.videoAddedHandler(data)
