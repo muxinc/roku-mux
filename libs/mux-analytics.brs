@@ -597,7 +597,22 @@ function muxAnalytics() as Object
 
   prototype._getDomain = function(url as String) as String
     domain = ""
-    domainRegex = CreateObject("roRegex", "[^\.]+\.[^\.]+$\/", "i")
+    strippedUrl = url.Split("//")
+    if strippedUrl.count() = 1
+      url = strippedUrl[0]
+    else if strippedUrl.count() > 1
+      if strippedUrl[0].len() > 7
+        url = strippedUrl[0]
+      else
+        url = strippedUrl[1]
+      end if
+    end if
+    splitRegex = CreateObject("roRegex", "[\/|\?|\#]", "") 
+    strippedUrl = splitRegex.Split(url)
+    if strippedUrl.count() > 0
+      url = strippedUrl[0]
+    end if
+    domainRegex = CreateObject("roRegex", "[^.\s]+\.[^.\s]+$", "i")
     matchResults = domainRegex.Match(url)
     if matchResults.count() > 0
       domain = matchResults[0]
@@ -607,8 +622,8 @@ function muxAnalytics() as Object
 
   prototype._getHostname = function(url as String) as String
     host = ""
-    ismRegex = CreateObject("roRegex", "/[^\.]+\.[^\.]+$/", "i")
-    matchResults = ismRegex.Match(url)
+    hostRegex = CreateObject("roRegex", "([a-z]{1,})(\.)([a-z.]{1,})", "i")
+    matchResults = hostRegex.Match(url)
     if matchResults.count() > 0
       host = matchResults[0]
     end if
@@ -630,10 +645,13 @@ function muxAnalytics() as Object
     if dashRegex.IsMatch(url)
       return "dash"
     end if
-
-    formatRegex = CreateObject("roRegex", "(\/[a-zA-Z0-9\-_]+)((\.\w{2,255})|(\.[0-9])|(\.\w+-[0-9]+)){1,100}$", "i") 
-    if dashRegex.IsMatch(url)
-      return dashRegex.Match[0]
+''
+    formatRegex = CreateObject("roRegex", "\*?\.([^\.]*?)(\?|\/$|$|#).*", "i") 
+    if formatRegex <> Invalid 
+      extension = formatRegex.Match(url)
+      if extension <> Invalid AND extension.count() > 1 
+        return extension[1]
+      end if
     end if
 
     return "unknown"
