@@ -1,0 +1,10 @@
+<component name="MuxTask" extends="Task">
+  <interface>
+    <field id="video" type="node" alwaysNotify="true"/>
+    <field id="config" type="assocarray" alwaysNotify="true"/>
+    <field id="rafEvent" type="assocarray" alwaysNotify="true"/>
+    <field id="error" type="assocarray" alwaysNotify="true"/>
+    <field id="exit" type="Boolean" alwaysNotify="true"/>
+  </interface>
+  <script type="text/brightscript" uri="pkg:/libs/mux-analytics.brs"/>
+</component>

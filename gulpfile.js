@@ -6,6 +6,7 @@ const fs = require('fs');
 const gulp = require('gulp');
 const exec = require('child_process').exec;
 const clean = require('gulp-clean')
+const rename = require("gulp-rename");
 const replace = require('gulp-replace');
 const zip = require('gulp-zip');
 const path = require('path');
@@ -23,10 +24,10 @@ var lookupIpAddress;
 info.date = now.getFullYear().toString() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + (now.getDate().toString())).slice(-2);
 
 
-gulp.task('install', ['closeApp', 'cleanup', 'build', 'package', 'deploy'], function () {})
+gulp.task('install', ['closeApp', 'cleanup', 'build_sample_app', 'build_components', 'package', 'deploy'], function () {})
 gulp.task('test', ['closeApp', 'cleanup', 'build_test_source', 'add_test_framework', 'add_mux_library_to_test','package_test', 'deploy_test'], function () {})
 
-gulp.task('deploy', ['closeApp', 'cleanup', 'build', 'package'], function () {
+gulp.task('deploy', ['closeApp', 'cleanup', 'build_sample_app','build_components', 'package'], function () {
   var roku_ip = (env_roku_ip == undefined) ? buildConfig.default_roku_target : env_roku_ip
   var roku_user = (env_roku_user == undefined) ? buildConfig.default_roku_user : env_roku_user
   var roku_pass = (env_roku_pass == undefined) ? buildConfig.default_roku_pass : env_roku_pass
@@ -39,19 +40,30 @@ gulp.task('deploy', ['closeApp', 'cleanup', 'build', 'package'], function () {
   var response = exec(curlCommand)
 })
 
-// gulp.task('run_test', ['closeApp', 'cleanup', 'build', 'package_test', 'deploy_test'], function () {
-//   var roku_ip = (env_roku_ip == undefined) ? buildConfig.default_roku_target : env_roku_ip
-//   sleep(1000)
-//   var curlCommand = "curl -d '' 'http://" + roku_ip + ":8060/launch/dev?RunTests=true'"
-//   console.log("curlCommand:"+curlCommand)
-//   var response = exec(curlCommand)
-// })
-
-gulp.task('build',['cleanup'], function () {
-  return gulp.src(['source/**', 'components/**','images/**', 'libs/**', 'manifest'], { "base" : "." }).pipe(gulp.dest(buildConfig.build_dir_name));
+gulp.task('build_sample_app',['cleanup'], function () {
+  return gulp.src(['sampleapp_source/source/**', 'sampleapp_source/components/**', 'sampleapp_source/libs/**','sampleapp_source/images/**', 'sampleapp_source/feed/**', 'sampleapp_source/manifest'], { "base" : "sampleapp_source" })
+  .pipe(gulp.dest(buildConfig.build_dir_name));
 })
 
-gulp.task('deploy_test', ['closeApp', 'cleanup', 'build', 'package_test'], function () {
+gulp.task('build_components',['cleanup', 'build_sample_app'], function () {
+  if (buildConfig.sample_app_type == "recycled_video")
+  {
+    return gulp.src(['sampleapp_source/components_recycled/**'], { "base" : "sampleapp_source/components_recycled" })
+      .pipe(gulp.dest(buildConfig.build_dir_name));
+  }
+  else
+  {
+    return gulp.src(['sampleapp_source/components_reset/**'], { "base" : "sampleapp_source/components_reset" })
+      .pipe(gulp.dest(buildConfig.build_dir_name));
+  }
+})
+
+gulp.task('build_src',['cleanup', 'build_sample_app', 'build_components'], function () {
+  return gulp.src(['src/**'], { "base" : "src" })
+    .pipe(gulp.dest(buildConfig.build_dir_name + "/libs"));
+})
+
+gulp.task('deploy_test', ['closeApp', 'cleanup', 'build_sample_app', 'package_test'], function () {
   var roku_ip = (env_roku_ip == undefined) ? buildConfig.default_roku_target : env_roku_ip
   var roku_user = (env_roku_user == undefined) ? buildConfig.default_roku_user : env_roku_user
   var roku_pass = (env_roku_pass == undefined) ? buildConfig.default_roku_pass : env_roku_pass
@@ -64,29 +76,29 @@ gulp.task('deploy_test', ['closeApp', 'cleanup', 'build', 'package_test'], funct
   var response = exec(curlCommand)
 })
 
-gulp.task('build_test_source',['build', 'cleanup'], function () {
+gulp.task('build_test_source',['build_sample_app', 'cleanup'], function () {
   return gulp.src(['test/source_tests/**']).pipe(gulp.dest(buildConfig.build_dir_name))
 })
 
-gulp.task('build_test_components',['build', 'cleanup'], function () {
+gulp.task('build_test_components',['build_sample_app', 'cleanup'], function () {
   return gulp.src(['test/component_tests/**']).pipe(gulp.dest(buildConfig.build_dir_name))
 })
 
-gulp.task('add_test_framework',['cleanup', 'build', 'build_test_source'], function () {
+gulp.task('add_test_framework',['cleanup', 'build_sample_app', 'build_test_source'], function () {
   return gulp.src(['test/testFramework/*'], { "base" : "test" }).pipe(gulp.dest(buildConfig.build_dir_name + "/source"))
 })
 
-gulp.task('add_mux_library_to_test',['cleanup', 'build', 'build_test_source'], function () {
-  return gulp.src(['libs/mux-analytics.brs']).pipe(gulp.dest(buildConfig.build_dir_name + "/source"))
+gulp.task('add_mux_library_to_test',['cleanup', 'build_sample_app', 'build_test_source'], function () {
+  return gulp.src(['src/mux-analytics.brs']).pipe(gulp.dest(buildConfig.build_dir_name + "/source"))
 })
 
-gulp.task('package_test', ['build', 'build_test_source', 'add_test_framework','add_mux_library_to_test'], function () {
+gulp.task('package_test', ['build_sample_app', 'build_test_source', 'add_test_framework','add_mux_library_to_test'], function () {
   return gulp.src('build/**')
     .pipe(zip(buildConfig.app_name + "-tests" + ".zip"))
     .pipe(gulp.dest('out/'));
 })
 
-gulp.task('package', ['build', 'cleanup'], function () {
+gulp.task('package', ['build_sample_app', 'build_components', 'build_src', 'cleanup'], function () {
   return gulp.src('build/**')
     .pipe(zip(buildConfig.app_name + ".zip"))
     .pipe(gulp.dest('out/'));
@@ -100,7 +112,7 @@ gulp.task('closeApp', function () {
   var response = exec(closeCommand)
 })
 
-gulp.task('replace', ['build', 'cleanup'], function () {
+gulp.task('replace', ['build_sample_app', 'cleanup'], function () {
   gulp.src(['build/libs/mux-analytics.brs'])
     .pipe(replace('player_software_name', 'pswnm'))
     .pipe(replace('player_software_version', 'pswve'))
