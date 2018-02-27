@@ -1,4 +1,4 @@
-title=Mux SDK
+title=roku-mux
 major_version=0
 minor_version=0
 build_version=1
@@ -18,4 +18,4 @@ ui_resolutions=hd
 mux_dry_run=true
 mux_base_url=http://img.litix.io
 mux_debug_events=partial
-mux_debug_beacons=none
+mux_debug_beacons=partial

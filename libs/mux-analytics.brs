@@ -9,8 +9,6 @@ function runBeaconLoop()
   m.connection = _createConnection()
   appInfo = _createAppInfo()
 
-  m.SDK_NAME = "roku-mux"
-  m.SDK_VERSION = "0.0.1"
   m.MAX_BEACON_SIZE = 300 'controls size of a single beacon (in events)
   m.MAX_QUEUE_LENGTH = 3600 '1 minute to clean a full queue
   m.BASE_TIME_BETWEEN_BEACONS = 5000
@@ -39,19 +37,14 @@ function runBeaconLoop()
   
   Print "[mux-analytics] running task loop"
   
-  config = {SDK_NAME: m.SDK_NAME,
-            SDK_VERSION: m.SDK_VERSION,
+  config = {
             MAX_BEACON_SIZE: m.MAX_BEACON_SIZE,
             MAX_QUEUE_LENGTH: m.MAX_QUEUE_LENGTH,
             BASE_TIME_BETWEEN_BEACONS: m.BASE_TIME_BETWEEN_BEACONS,
             HEARTBEAT_INTERVAL: m.HEARTBEAT_INTERVAL,
             POSITION_TIMER_INTERVAL: m.POSITION_TIMER_INTERVAL,
             SEEK_THRESHOLD: m.SEEK_THRESHOLD,
-            DEFAULT_BEACON_URL: baseUrl,
-            DRY_RUN: dryRun,
-            DEBUG_EVENTS: debugEvents,
-            DEBUG_BEACONS: debugBeacons
-          }
+           }
   m.mxa.init(m.connection, m.messagePort, appInfo, config, m.heartbeatTimer, m.positionPoller)
 
   m.top.ObserveField("rafEvent", m.messagePort)
@@ -213,8 +206,6 @@ function muxAnalytics() as Object
     end if
 
 
-    m.SDK_NAME = config.SDK_NAME
-    m.SDK_VERSION = config.SDK_VERSION
     m.MAX_BEACON_SIZE = config.MAX_BEACON_SIZE
     m.MAX_QUEUE_LENGTH = config.MAX_QUEUE_LENGTH
     m.BASE_TIME_BETWEEN_BEACONS = config.BASE_TIME_BETWEEN_BEACONS
@@ -226,6 +217,7 @@ function muxAnalytics() as Object
     m._seekThreshold = m.SEEK_THRESHOLD / 1000
 
     ' variables
+    m._viewSequence = 0
     m._beaconCount = 0
     m._playerInitialisationTime = 0
     m._viewTotalContentTime = 0
@@ -276,7 +268,11 @@ function muxAnalytics() as Object
     if data <> Invalid AND type(data) = "roString"
       m._logEvent("videoStateChangeHandler", data)
       if m._Flag_lastVideoState = "none"
+        if m._viewSequence > 0 
+          m._addEventToQueue(m._createEvent("videoContentChange"))
+        end if
         m._addEventToQueue(m._createEvent("viewstart"))
+        m._viewSequence++
       end if
       m._Flag_lastVideoState = data
       if data = "buffering"
@@ -464,22 +460,20 @@ function muxAnalytics() as Object
   ' Set once per application session'
   prototype._getSessionProperites = function() as Object
     props = {}
-    deviceInfo = _createDeviceInfo()
+    deviceInfo = m._getDeviceInfo()
+    appInfo = m._getAppInfo()
     
     ' HARDCODED
-    ' props.session_id
-    ' props.session_start
-    ' props.session_expires
     ' props.mux_sample_rate
     ' props.player_init_time
     ' props.player_instance_id
     props.player_sequence_number = 1
     ' props.player_startup_time
     props.player_software_name = "RokuSG"
-    props.player_software_version = deviceInfo.GetVersion()
+    props.player_software_version = Mid(deviceInfo.GetVersion(), 3, 4)
     props.player_model_number = deviceInfo.GetModel()
-    props.player_mux_plugin_name = m.SDK_NAME
-    props.player_mux_plugin_version = m.SDK_VERSION
+    props.player_mux_plugin_name = appInfo.GetTitle()
+    props.player_mux_plugin_version = appInfo.GetVersion()
     props.player_language_code = deviceInfo.GetCountryCode()
     props.player_width = deviceInfo.GetDisplaySize().w
     props.player_height = deviceInfo.GetDisplaySize().h
@@ -711,6 +705,15 @@ function muxAnalytics() as Object
     if m.debugEvents = "partial" AND etype = "positionIntervalHandler" then return
     tot = title + " " + etype + " " + subtype
     Print tot
+  end function
+
+  prototype._getDeviceInfo = function() as Object
+    return _createDeviceInfo()
+  end function
+
+  prototype._getAppInfo = function() as Object
+  Print "get app indo"
+    return _createAppInfo()
   end function
 
   return prototype
