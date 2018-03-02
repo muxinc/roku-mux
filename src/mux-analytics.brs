@@ -13,7 +13,7 @@ function runBeaconLoop()
   m.MAX_QUEUE_LENGTH = 3600 '1 minute to clean a full queue
   m.BASE_TIME_BETWEEN_BEACONS = 5000
   m.HEARTBEAT_INTERVAL = 10000
-  m.POSITION_TIMER_INTERVAL = 1000 '250
+  m.POSITION_TIMER_INTERVAL = 250 '250
   m.SEEK_THRESHOLD = 1250 'ms jump in position before a seek is considered'
   
   m.positionPoller = CreateObject("roSGNode", "Timer")
@@ -37,15 +37,15 @@ function runBeaconLoop()
   
   Print "[mux-analytics] running task loop"
   
-  config = {
-            MAX_BEACON_SIZE: m.MAX_BEACON_SIZE,
-            MAX_QUEUE_LENGTH: m.MAX_QUEUE_LENGTH,
-            BASE_TIME_BETWEEN_BEACONS: m.BASE_TIME_BETWEEN_BEACONS,
-            HEARTBEAT_INTERVAL: m.HEARTBEAT_INTERVAL,
-            POSITION_TIMER_INTERVAL: m.POSITION_TIMER_INTERVAL,
-            SEEK_THRESHOLD: m.SEEK_THRESHOLD,
-           }
-  m.mxa.init(m.connection, m.messagePort, appInfo, config, m.heartbeatTimer, m.positionPoller)
+  systemConfig = {
+                  MAX_BEACON_SIZE: m.MAX_BEACON_SIZE,
+                  MAX_QUEUE_LENGTH: m.MAX_QUEUE_LENGTH,
+                  BASE_TIME_BETWEEN_BEACONS: m.BASE_TIME_BETWEEN_BEACONS,
+                  HEARTBEAT_INTERVAL: m.HEARTBEAT_INTERVAL,
+                  POSITION_TIMER_INTERVAL: m.POSITION_TIMER_INTERVAL,
+                  SEEK_THRESHOLD: m.SEEK_THRESHOLD,
+                 }
+  m.mxa.init(m.connection, m.messagePort, appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.positionPoller)
 
   m.top.ObserveField("rafEvent", m.messagePort)
   
@@ -56,11 +56,17 @@ function runBeaconLoop()
     m.top.video.ObserveField("state", m.messagePort)
     m.top.video.ObserveField("content", m.messagePort)
   end if
-  
+
+  if m.top.view <> Invalid AND m.top.view <> ""
+    m.mxa.videoViewChangeHandler(m.top.view)
+  else
+    m.top.ObserveField("view", m.messagePort)
+  end if
+
   if m.top.config = Invalid
     m.top.ObserveField("config", m.messagePort)
   else
-    m.mxa.videoConfigChangeHandler(m.top.config)
+    m.mxa.configChangeHandler(m.top.config)
   end if
 
   if m.top.error = Invalid
@@ -93,7 +99,7 @@ function runBeaconLoop()
         else if field = "config"
           if m.top.config = Invalid
             data = msg.getData()
-            m.mxa.videoConfigChangeHandler(data)
+            m.mxa.configChangeHandler(data)
             m.top.UnobserveField("config")
           end if
         else if field = "error"
@@ -102,6 +108,8 @@ function runBeaconLoop()
           m.top.UnobserveField("error")
         else if field = "content"
           m.mxa.videoContentChangeHandler(msg)
+        else if field = "view"
+          m.mxa.videoViewChangeHandler(msg)
         else if field = "state"
           m.mxa.videoStateChangeHandler(msg)
         else if field = "rafEvent"
@@ -129,6 +137,8 @@ function runBeaconLoop()
 
   m.top.UnobserveField("video")
   m.top.UnobserveField("config")
+  m.top.UnobserveField("control")
+  m.top.UnobserveField("view")
   
   Print "[mux-analytics] end running task loop"
   return true
@@ -161,7 +171,10 @@ end function
 function muxAnalytics() as Object
   prototype = {}
 
-  prototype.init = function(connection as Object, port as Object, appInfo as Object, config as Object, hbt as Object, pp as Object)
+  prototype.PLAYER_SOFTWARE_NAME = "RokuSG"
+  prototype.PLAYER_IS_FULLSCREEN = "true"
+
+  prototype.init = function(connection as Object, port as Object, appInfo as Object, systemConfig as Object, customerConfig as Object, hbt as Object, pp as Object)
     m.connection = connection
     m.port = port
     m.heartbeatTimer = hbt
@@ -205,31 +218,48 @@ function muxAnalytics() as Object
       m.baseUrl = manifestBaseUrl
     end if
 
+    m.MAX_BEACON_SIZE = systemConfig.MAX_BEACON_SIZE
+    m.MAX_QUEUE_LENGTH = systemConfig.MAX_QUEUE_LENGTH
+    m.BASE_TIME_BETWEEN_BEACONS = systemConfig.BASE_TIME_BETWEEN_BEACONS
+    m.HEARTBEAT_INTERVAL = systemConfig.HEARTBEAT_INTERVAL
+    m.POSITION_TIMER_INTERVAL = systemConfig.POSITION_TIMER_INTERVAL
+    m.SEEK_THRESHOLD = systemConfig.SEEK_THRESHOLD
 
-    m.MAX_BEACON_SIZE = config.MAX_BEACON_SIZE
-    m.MAX_QUEUE_LENGTH = config.MAX_QUEUE_LENGTH
-    m.BASE_TIME_BETWEEN_BEACONS = config.BASE_TIME_BETWEEN_BEACONS
-    m.HEARTBEAT_INTERVAL = config.HEARTBEAT_INTERVAL
-    m.POSITION_TIMER_INTERVAL = config.POSITION_TIMER_INTERVAL
-    m.SEEK_THRESHOLD = config.SEEK_THRESHOLD
+    m._configProperties = customerConfig
 
     m._eventQueue = []
     m._seekThreshold = m.SEEK_THRESHOLD / 1000
 
     ' variables
-    m._viewSequence = 0
     m._beaconCount = 0
     m._playerInitialisationTime = 0
     m._viewTotalContentTime = 0
     m._viewRebufferCount = 0
     m._viewRebufferDuration = 0
+    m._playerSequence = 0
+    m._inView = false
+    m._viewStartTimestamp = Invalid
+    m._viewSequence = Invalid
+    m._viewTimeToFirstFrame = Invalid
+    m._contentPlaybackTime = Invalid
+    m._viewWatchTime = Invalid
+    m._viewRebufferCount = Invalid
+    m._viewRebufferDuration = Invalid
+    m._viewRebufferFrequency = Invalid
+    m._viewRebufferPercentage = Invalid
+    m._viewSeekCount = Invalid
+    m._viewSeekDuration = Invalid
 
     ' flags
     m._Flag_atLeastOnePlayEventForContent = false
-    m._Flag_seekSentPlayingNotYetStarted = false
+    m._Flag_RebufferingStarted = false
+    m._Flag_isSeeking = false
     m._Flag_lastVideoState = "none"
     m._Flag_lastReportedPosition = 0
     m._Flag_FailedAdsErrorSet = false
+
+    ' kick off analytics
+    m._addEventToQueue(m._createEvent("playerready"))
   end function
 
   prototype.beaconIntervalHandler = function(beaconIntervalEvent)
@@ -243,9 +273,8 @@ function muxAnalytics() as Object
   end function
 
   prototype.videoAddedHandler = function(video as Object)
-    m._logEvent("videoAddedHandler")
-
     m._sessionProperties = m._getSessionProperites()
+    
     m._videoProperties = m._getVideoProperties(video)
     m._videoContentProperties = m._getVideoContentProperties(video.content)
     m.video = video
@@ -256,8 +285,6 @@ function muxAnalytics() as Object
         m._seekThreshold = maximimumPossiblePositionChange
       end if
     end if
-
-    m._addEventToQueue(m._createEvent("playerready"))
     
     m.heartbeatTimer.control = "start"
     m.positionPoller.control = "start"
@@ -266,38 +293,48 @@ function muxAnalytics() as Object
   prototype.videoStateChangeHandler = function(videoStateChangeEvent)
     data = videoStateChangeEvent.getData()
     if data <> Invalid AND type(data) = "roString"
-      m._logEvent("videoStateChangeHandler", data)
-      if m._Flag_lastVideoState = "none"
-        if m._viewSequence > 0 
-          m._addEventToQueue(m._createEvent("videoContentChange"))
-        end if
-        m._addEventToQueue(m._createEvent("viewstart"))
-        m._viewSequence++
-      end if
-      m._Flag_lastVideoState = data
       if data = "buffering"
-        if m._Flag_seekSentPlayingNotYetStarted = true
+        m._checkForSeek("buffering")
+        if m._Flag_isSeeking = true
           m._addEventToQueue(m._createEvent("seekend"))
-          m._Flag_seekSentPlayingNotYetStarted = false
+          m._Flag_isSeeking = false
         end if
         if m._Flag_atLeastOnePlayEventForContent = true
           m._addEventToQueue(m._createEvent("rebufferstart"))
+          m._Flag_RebufferingStarted = true
+          if m._viewRebufferCount <> Invalid
+            m._viewRebufferCount++
+            if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
+              m._viewRebufferFrequency = m._viewRebufferCount / m._viewWatchTime
+            end if
+          end if
         end if
       else if data = "paused"
         m._addEventToQueue(m._createEvent("pause"))
       else if data = "playing"
-        if m._Flag_lastVideoState = "buffering"
-          m._addEventToQueue(m._createEvent("rebufferend"))
+        m._checkForSeek("playing")
+        if m._Flag_atLeastOnePlayEventForContent = false
+          if m._viewStartTimestamp <> Invalid AND m._viewStartTimestamp <> 0
+            date = CreateObject("roDateTime")
+            now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+            m._viewTimeToFirstFrame = now - m._viewStartTimestamp
+          end if
         end if
-        m._addEventToQueue(m._createEvent("play"))
-        m._Flag_seekSentPlayingNotYetStarted = false
+        if m._Flag_lastVideoState = "buffering"
+          if m._Flag_RebufferingStarted = true
+            m._addEventToQueue(m._createEvent("rebufferend"))
+            m._Flag_RebufferingStarted = false
+          end if
+        end if
+        m._addEventToQueue(m._createEvent("playing"))
+        m._Flag_isSeeking = false
         m._Flag_atLeastOnePlayEventForContent = true
       else if data = "stopped"
-        m._addEventToQueue(m._createEvent("viewend"))
         m.positionPoller.control = "stop"
       else if data = "finished"
         m._addEventToQueue(m._createEvent("ended"))
         m.positionPoller.control = "stop"
+        m._endView()
       else if data = "error"
         errorCode = ""
         errorMessage = ""
@@ -311,21 +348,33 @@ function muxAnalytics() as Object
         end if
         m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage}))
       end if
+      m._Flag_lastVideoState = data
+
+    end if
+  end function
+ 
+  prototype.videoViewChangeHandler = function(videoViewChangeEvent)
+    data = videoViewChangeEvent.getData()
+    if data = "end"
+      m._endView()
+    else if data = "start"
+      m._startView()
     end if
   end function
 
   prototype.videoContentChangeHandler = function(videoContentChangeEvent)
-    m._logEvent("videoContentChangeHandler")
     data = videoContentChangeEvent.getData()
     m._videoContentProperties = m._getVideoContentProperties(data)
+    if m.video <> Invalid
+      m._videoProperties = m._getVideoProperties(m.video)
+    end if
   end function
 
-  prototype.videoConfigChangeHandler = function(config as Object)
-    m._logEvent("videoConfigChangeHandler")
+  prototype.configChangeHandler = function(config as Object)
+    m._configProperties = config
   end function
 
   prototype.videoErrorHandler = function(error as Object)
-    m._logEvent("videoErrorHandler")
     errorCode = "0"
     errorMessage = "Unknown"
     if error <> Invalid
@@ -345,17 +394,26 @@ function muxAnalytics() as Object
   prototype.rafEventHandler = function(rafEvent) as Void
     data = rafEvent.getData()
     eventType = data.eventType
-    if eventType <> Invalid
-    m._logEvent("rafEventHandler", eventType)
-    end if
     if eventType = "PodStart"
       m._advertProperties = m._getAdvertProperites(data.obj)
       m._addEventToQueue(m._createEvent("adbreakstart"))
     else if eventType = "PodComplete"
       m._addEventToQueue(m._createEvent("adbreakend"))
       m._Flag_FailedAdsErrorSet = false
+      if m.video.state = "finished"
+        m._endView()
+      end if
+    else if eventType = "Impression"
+      m._addEventToQueue(m._createEvent("adimpresion"))
+    else if eventType = "Start"
+      m._advertProperties = m._getAdvertProperites(data.ctx)
+      m._addEventToQueue(m._createEvent("adplay"))
+      m._addEventToQueue(m._createEvent("adplaying"))
+    else if eventType = "Complete"
+      m._addEventToQueue(m._createEvent("adended"))
     else if eventType = "NoAdsError"
       if m._Flag_FailedAdsErrorSet <> true
+        m._startView()
         errorCode = ""
         errorMessage = ""
         if data.ctx <> Invalid
@@ -374,16 +432,39 @@ function muxAnalytics() as Object
 
   prototype.positionIntervalHandler = function(positionIntervalEvent)
     if m.video <> Invalid
-      m._logEvent("positionIntervalHandler")
+      ' set video properties
+      m._videoProperties = m._getVideoProperties(m.video)
+      
+      ' update total watched time. (ViewStart - now)
+      if m._viewWatchTime <> Invalid
+        if m._viewStartTimestamp <> Invalid
+          date = CreateObject("roDateTime")
+          now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+          m._viewWatchTime = now - m._viewStartTimestamp
+        end if
+      end if
+      
+      ' set buffering metrics
+      if m.video.state = "buffering"
+        if m._Flag_atLeastOnePlayEventForContent = true
+          if m._viewRebufferDuration <> Invalid
+            m._viewRebufferDuration = m._viewRebufferDuration + (m.positionPoller.duration * 1000)
+            if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
+              m._viewRebufferPercentage = m._viewRebufferDuration / m._viewWatchTime
+            end if
+          end if
+          if m._viewSeekDuration <> Invalid
+            m._viewSeekDuration = m._viewSeekDuration + (m.positionPoller.duration * 1000)
+          end if
+        end if
+      end if
       if NOT m.video.position = m._Flag_lastReportedPosition
-        if m.video.position < m._Flag_lastReportedPosition
-          m._addEventToQueue(m._createEvent("seeking"))
-        else if m.video.position > (m._Flag_lastReportedPosition + m._seekThreshold)
-          m._addEventToQueue(m._createEvent("seeking"))
-        else
-          ' only report last position in playing state
+        if m.video.position > m._Flag_lastReportedPosition
+          ' playposition has increased. This is a progress update
           if m.video.state = "playing"
-            ' m._addEventToQueue(m._createEvent("timeUpdate", {view_content_playback_time: m.top.video.position.toStr()}))
+            if m._contentPlaybackTime <> Invalid
+              m._contentPlaybackTime = m._contentPlaybackTime + ((m.video.position - m._Flag_lastReportedPosition) * 1000)
+            end if
           end if
         end if
         m._Flag_lastReportedPosition = m.video.position
@@ -396,6 +477,7 @@ function muxAnalytics() as Object
   ' ' //////////////////////////////////////////////////////////////
 
   prototype._addEventToQueue = function(_event as Object) as Object
+    m._logEvent(_event)
     m.heartbeatTimer.control = "stop"
     m.heartbeatTimer.control = "start"
     m._eventQueue.push(_event)
@@ -436,16 +518,80 @@ function muxAnalytics() as Object
     end if
   end function
 
+  prototype._startView = function() as Void
+    if (m._inView = false)
+      m._viewSequence = 0
+      m._viewWatchTime = 0
+      m._contentPlaybackTime = 0
+      m._viewRebufferCount = 0
+      m._viewRebufferDuration = 0
+      m._viewSeekCount = 0
+      m._viewSeekDuration = 0
+
+      m._Flag_atLeastOnePlayEventForContent = false
+      m._Flag_isSeeking = false
+      m._addEventToQueue(m._createEvent("viewstart"))
+      date = CreateObject("roDateTime")
+      m._viewStartTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
+      m._inView = true
+    end if
+  end function
+
+  prototype._endView = function() as Void
+    if (m._inView = true)
+      m._addEventToQueue(m._createEvent("viewend"))
+      m._inView = false
+      m._viewStartTimestamp = Invalid
+      m._viewSequence = Invalid
+      m._viewTimeToFirstFrame = Invalid
+      m._contentPlaybackTime = Invalid
+      m._viewWatchTime = Invalid
+      m._viewRebufferCount = Invalid
+      m._viewRebufferDuration = Invalid
+      m._viewRebufferFrequency = Invalid
+      m._viewRebufferPercentage = Invalid
+      m._viewSeekCount = Invalid
+      m._viewSeekDuration = Invalid
+    end if
+  end function
+
+  prototype._checkForSeek = function(state) as Void
+    if state = "buffering"
+      if m._Flag_isSeeking <> true
+        if m.video.position > (m._Flag_lastReportedPosition + m._seekThreshold) OR m.video.position < m._Flag_lastReportedPosition
+          m._addEventToQueue(m._createEvent("seeking"))
+          if m._viewSeekCount <> Invalid
+            m._viewSeekCount++
+            m._Flag_isSeeking = true
+          end if
+        end if
+      end if
+    else if state = "playing"
+      if m._Flag_isSeeking = true
+        m._addEventToQueue(m._createEvent("seekend"))
+        m._Flag_isSeeking = false
+      end if
+    end if
+  end function
+
   prototype._createEvent = function(eventType as String, eventProperties = {} as Object) as Object
     newEvent = {}
+
+    if m._playerSequence <> Invalid
+      m._playerSequence++
+    end if
+    if m._viewSequence <> Invalid
+      m._viewSequence++
+    end if
     if m._sessionProperties <> Invalid
       newEvent.Append(m._sessionProperties)
     end if
-    if m._videoProperties <> Invalid
-      newEvent.Append(m._videoProperties)
-    end if
     if m._videoContentProperties <> Invalid
       newEvent.Append(m._videoContentProperties)
+    end if
+    'actual video values overwrite content set values such as duration
+    if m._videoProperties <> Invalid
+      newEvent.Append(m._videoProperties)
     end if
     if m._advertProperties <> Invalid
       newEvent.Append(m._advertProperties)
@@ -453,11 +599,23 @@ function muxAnalytics() as Object
     dynamicProperties = m._getDynamicProperties()
     newEvent.Append(dynamicProperties)
     newEvent.Append(eventProperties)
+
+    'customer can overwrite ALL properties should they wish'
+    if m._configProperties <> Invalid
+      newEvent.Append(m._configProperties)
+    end if
+
+    if newEvent.property_key = Invalid OR newEvent.property_key = Invalid
+      if m._playerSequence <> Invalid AND m._playerSequence < 2
+        Print "[mux-analytics] warning property_key not set."
+      end if
+    end if
+
     newEvent.e = eventType
     return newEvent
   end function
- 
-  ' Set once per application session'
+
+  ' called once per application session'
   prototype._getSessionProperites = function() as Object
     props = {}
     deviceInfo = m._getDeviceInfo()
@@ -469,7 +627,7 @@ function muxAnalytics() as Object
     ' props.player_instance_id
     props.player_sequence_number = 1
     ' props.player_startup_time
-    props.player_software_name = "RokuSG"
+    props.player_software_name = m.PLAYER_SOFTWARE_NAME
     props.player_software_version = Mid(deviceInfo.GetVersion(), 3, 4)
     props.player_model_number = deviceInfo.GetModel()
     props.player_mux_plugin_name = appInfo.GetTitle()
@@ -477,7 +635,9 @@ function muxAnalytics() as Object
     props.player_language_code = deviceInfo.GetCountryCode()
     props.player_width = deviceInfo.GetDisplaySize().w
     props.player_height = deviceInfo.GetDisplaySize().h
-    props.player_is_fullscreen = "true"
+    props.player_is_fullscreen = m.PLAYER_IS_FULLSCREEN
+
+    props.player_instance_id = m._generateShortID()
 
     ' DEVICE INFO 
     if deviceInfo.IsAdIdTrackingDisabled() = true
@@ -488,19 +648,23 @@ function muxAnalytics() as Object
     return props
   end function  
 
-  ' Set once per video'
+  ' called once per video'
   prototype._getVideoProperties = function(video as Object) as Object
     props = {}
     if video <> Invalid
       if video.duration <> Invalid
         props.video_source_duration = video.duration.toStr() 
       end if
+
+      if video.videoFormat <> Invalid AND video.videoFormat <> ""
+        props.video_source_format = video.videoFormat
+      end if
     end if
 
     return props
   end function
   
-  ' Set once per video content'
+  ' Set called per video content'
   prototype._getVideoContentProperties = function(content as Object) as Object
     props = {}
 
@@ -541,10 +705,12 @@ function muxAnalytics() as Object
       props.video_source_domain = m._getDomain(content.URL)
       
       if content.StreamFormat <> Invalid AND content.StreamFormat <> "(null)"
-        props.video_source_format = content.StreamFormat
+        props.video_stream_format = content.StreamFormat
       else
-        props.video_source_format = m._getStreamFormat(content.URL)
+        props.video_stream_format = m._getStreamFormat(content.URL)
       end if
+
+      props.video_source_format = m._getVideoFormat(content.URL)
 
       if content.Live <> Invalid
         if content.Live = true
@@ -561,29 +727,79 @@ function muxAnalytics() as Object
     return props
   end function
 
-  ' Set once per advert session'
+  ' called once per advert session'
   prototype._getAdvertProperites = function(adData as Object) as Object
     props = {}
+    
     if adData <> Invalid
+      if adData.ad <> Invalid
+        if adData.adIndex <> Invalid and adData.adIndex = 1 'preroll only'
+          if adData.ad.streams <> Invalid
+            if adData.ad.streams.count() > 0
+              if adData.ad.streams[0].url <> Invalid
+                adUrl = adData.ad.streams[0].url
+                props.view_preroll_ad_asset_hostname = m._getHostname(adurl)
+                props.view_preroll_ad_asset_domain = m._getDomain(adurl)
+              end if 
+            end if 
+          end if 
+        end if 
+      end if 
       if adData.adurl <> Invalid
         props.view_preroll_ad_tag_hostname = m._getHostname(adData.adurl)
         props.view_preroll_ad_tag_domain = m._getDomain(adData.adurl)
-      ' adProperties.view_preroll_ad_asset_hostname
-      ' adProperties.view_preroll_ad_asset_domain
       end if
     end if
     return props
   end function
 
-  ' Set once per event
+  ' called once per event
   prototype._getDynamicProperties = function() as Object
     props = {}
 
     props.player_is_paused = (m._Flag_lastVideoState = "paused").toStr()
     if m.video <> Invalid
       if m.video.timeToStartStreaming <> Invalid AND m.video.timeToStartStreaming <> 0
-        props.view_time_to_first_frame = m.video.timeToStartStreaming
+        props.player_time_to_first_frame = (m.video.timeToStartStreaming * 1000).toStr()
       end if
+    end if
+    if m._playerSequence <> Invalid AND m._playerSequence <> 0
+      props.player_sequence_number = m._playerSequence.toStr()
+    end if
+    if m._viewSequence <> Invalid AND m._viewSequence <> 0
+      props.view_sequence_number = m._viewSequence.toStr()
+    end if
+    if m._viewStartTimestamp <> Invalid AND m._viewStartTimestamp <> 0
+      props.view_start = FormatJson(m._viewStartTimestamp)
+    end if
+    if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
+      props.view_time_to_first_frame = m._viewTimeToFirstFrame.toStr()
+      props.view_aggregate_startup_time = m._viewTimeToFirstFrame.toStr()
+    end if
+    if m._contentPlaybackTime <> Invalid AND m._contentPlaybackTime <> 0
+      props.view_content_playback_time = m._contentPlaybackTime.toStr()
+      props.view_total_content_playback_time = m._contentPlaybackTime.toStr()
+    end if
+    if m._viewWatchTime <> Invalid AND m._viewWatchTime <> 0
+      props.view_watch_time = m._viewWatchTime.toStr()
+    end if
+    if m._viewRebufferCount <> Invalid
+      props.view_rebuffer_count = m._viewRebufferCount.toStr()
+    end if
+    if m._viewRebufferDuration <> Invalid
+      props.view_rebuffer_duration = m._viewRebufferDuration.toStr()
+    end if
+    if m._viewRebufferPercentage <> Invalid
+      props.view_rebuffer_percentage = m._viewRebufferPercentage.toStr()
+    end if
+    if m._viewRebufferFrequency <> Invalid
+      props.view_rebuffer_frequency = m._viewRebufferFrequency.toStr()
+    end if
+    if m._viewSeekCount <> Invalid
+      props.view_seek_count = m._viewSeekCount.toStr()
+    end if
+    if m._viewSeekDuration <> Invalid
+      props.view_seek_duration = m._viewSeekDuration.toStr()
     end if
 
     return props
@@ -651,6 +867,18 @@ function muxAnalytics() as Object
     return "unknown"
   end function
 
+  prototype._getVideoFormat = function(url as String) as String
+    formatRegex = CreateObject("roRegex", "\*?\.([^\.]*?)(\?|\/$|$|#).*", "i") 
+    if formatRegex <> Invalid 
+      extension = formatRegex.Match(url)
+      if extension <> Invalid AND extension.count() > 1 
+        return extension[1]
+      end if
+    end if
+
+    return "unknown"
+  end function
+
   prototype._setCookieData = function(data as Object) as Void
     cookie = _createRegistry()
     cookie.Write("UserRegistrationToken", data)
@@ -680,6 +908,13 @@ function muxAnalytics() as Object
 '   return base64.encode(parser.host + pathMinusExtension).split('=')[0];
 ' };
 
+  prototype._generateShortID = function () as String
+    randomNumber = Rnd(0)*2176782336
+    randomNumber = randomNumber << 2
+    shortID = Right(StrI(randomNumber, 36), 6)
+    return shortID
+  end function
+
   prototype._logBeacon = function(eventArray as Object, title = "BEACON" as String) as Void
     if m.debugBeacons <> "full" AND m.debugBeacons <> "partial" then return
     fullEvent = (m.debugBeacons = "full")
@@ -700,10 +935,17 @@ function muxAnalytics() as Object
     Print tot
   end function
 
-  prototype._logEvent = function(etype = "" as String, subtype = "" as String, title = "EVENT" as String) as Void
+  prototype._logEvent = function(event = {} as Object, subtype = "" as String, title = "EVENT" as String) as Void
     if m.debugEvents = "none" then return
-    if m.debugEvents = "partial" AND etype = "positionIntervalHandler" then return
-    tot = title + " " + etype + " " + subtype
+    tot = title + " " + event.e
+    if m.debugEvents = "full"
+      tot = tot + "{"
+      for each prop in event
+        tot = tot + prop + ":" + event[prop].toStr() + ", "
+      end for
+      tot = Left(tot, len(tot) - 2)
+      tot = tot + "} "
+    end if
     Print tot
   end function
 
@@ -712,7 +954,6 @@ function muxAnalytics() as Object
   end function
 
   prototype._getAppInfo = function() as Object
-  Print "get app indo"
     return _createAppInfo()
   end function
 

@@ -14,6 +14,7 @@ Sub VideoStateHandling_SetUp()
   m.fakeSGNodeEvent = FakeRoSGNodeEvent()
   m.SUT = MuxAnalytics()
   m.SUT.heartbeatTimer = FakeTimer()
+  m.SUT.video = FakeVideo()
 End Sub
 
 Sub VideoStateHandling_TearDown()
@@ -22,6 +23,9 @@ End Sub
 Function TestCase__MuxAnalytics_VideoStateHandling() as String
   ' GIVEN
   m.SUT._eventQueue = []
+  m.SUT.video.position = 2
+  m.SUT._Flag_lastReportedPosition = 1
+  m.SUT._seekThreshold = 5
   m.SUT._Flag_seekSentPlayingNotYetStarted = false
   m.SUT._Flag_atLeastOnePlayEventForContent = true
   m.fakeSGNodeEvent._dataToReturn = "buffering"

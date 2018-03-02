@@ -1,9 +1,8 @@
 function init()
 	m.top.backgroundURI = ""
 	m.top.backgroundColor="0x111111FF"
-  m.video = m.top.FindNode("MainVideo")
   m.mux = m.top.FindNode("mux")
-  m.mux.setField("video", m.video)
+
   m.mux.setField("config", {flintstonesCharacter:"bum bum"})
   m.mux.control = "RUN"
   m.list = m.top.FindNode("MenuList")
@@ -71,12 +70,14 @@ function onItemSelected()
     m.loadingText.text = menuItemTitle
     m.loading.visible = true
     m.loading.setFocus(true)
- 
+    
     'Run task to playback with RAF
     m.PlayerTask = CreateObject("roSGNode", "PlayerTask")
     m.PlayerTask.observeField("state", "taskStateChanged")
     selectedId = m.contentList[m.list.itemSelected].selectionID
     Print "[VideoScene] onItemSelected:",selectedId
+    m.video = m.top.createNode("MainVideo")
+    m.mux.setField("video", m.video)
     m.PlayerTask.selectionID = selectedId
     m.PlayerTask.video = m.video
     m.PlayerTask.facade = m.loading

@@ -11,11 +11,13 @@ function playContent()
     
     contentNode = CreateObject("roSGNode", "ContentNode")
     adUrl = "http://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/8264/vaw-can/ott/cbs_roku_app&ciu_szs=300x60,300x250&impl=s&gdfp_req=1&env=vp&output=xml_vmap1&unviewed_position_start=1&url=&description_url=&correlator=1448463345&scor=1448463345&cmsid=2289&vid=_g5o4bi39s_IRXu396UJFWPvRpGYdAYT&ppid=f47f1050c15b918eaa0db29c25aa0fd6&cust_params=sb%3D1%26ge%3D1%26gr%3D2%26ppid%3Df47f1050c15b918eaa0db29c25aa0fd6"
+    ' adUrl = "https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/ad_rule_samples&ciu_szs=300x250&ad_rule=1&impl=s&gdfp_req=1&env=vp&output=vmap&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ar%3Dpremidpostlongpod&cmsid=496&vid=short_tencue&correlator="
     contentInfo = { 
         contentId: "TED Talks", 'String value representing content to allow potential ad targeting.
         length: "1200", 'Integer value representing total length of content (in seconds).
     }
-
+    mux = GetGlobalAA().global.findNode("mux")
+    mux.setField("view", "start")
     if selectionId = "none"
         contentNode.URL= "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
         contentInfo.contentId = "TED Talks"
@@ -138,6 +140,7 @@ function PlayContentWithFullRAFIntegration(contentInfo as Object)
     adIface.setContentId(contentInfo.contentId)
     adIface.setContentGenre(contentInfo.genre)
     adIface.setAdPrefs(true, 2)
+Print "contentInfo.adUrl:",contentInfo.adUrl
     adIface.setAdUrl(contentInfo.adUrl) 
     adPods = adIface.getAds()
     playVideoWithAds(adPods, adIface)
@@ -172,10 +175,8 @@ function PlayContentWithNonStandardRAFIntegration(contentInfo as Object)
 end function
 
 function ErrorBeforePlayback(contentInfo as Object)
-    mux = m.top.CreateChild("MuxTask")
-    mux.id = "mux"
-    mux.control = "RUN"
-    mux.error = {errorCode: 1, errorMessage: "Video Metadata Error"}
+  mux = GetGlobalAA().global.findNode("mux")
+  mux.error = {errorCode: 1, errorMessage: "Video Metadata Error"}
 end function
 
 ' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
