@@ -55,6 +55,7 @@ function runBeaconLoop()
     m.mxa.videoAddedHandler(m.top.video)
     m.top.video.ObserveField("state", m.messagePort)
     m.top.video.ObserveField("content", m.messagePort)
+    m.top.video.ObserveField("control", m.messagePort)
   end if
 
   if m.top.view <> Invalid AND m.top.view <> ""
@@ -95,6 +96,7 @@ function runBeaconLoop()
             m.mxa.videoAddedHandler(data)
             m.top.video.ObserveField("state", m.messagePort)
             m.top.video.ObserveField("content", m.messagePort)
+            m.top.video.ObserveField("control", m.messagePort)
           end if
         else if field = "config"
           if m.top.config = Invalid
@@ -106,6 +108,8 @@ function runBeaconLoop()
           data = msg.getData()
           m.mxa.videoErrorHandler(data)
           m.top.UnobserveField("error")
+        else if field = "control"
+          m.mxa.videoControlChangeHandler(msg)
         else if field = "content"
           m.mxa.videoContentChangeHandler(msg)
         else if field = "view"
@@ -183,12 +187,14 @@ function muxAnalytics() as Object
     m.DEFAULT_DRY_RUN = false
     m.DEFAULT_DEBUG_EVENTS = "none"
     m.DEFAULT_DEBUG_BEACONS = "none" 'full','partial','none'
+    m.DEFAULT_DEFAULT_MINIFY = true 'full','partial','none'
     m.DEFAULT_BEACON_URL = "https://img.litix.io"
 
     manifestDryRun = appInfo.GetValue("mux_dry_run")
     manifestBaseUrl = appInfo.GetValue("mux_base_url")
     manifestDebugEvents = appInfo.GetValue("mux_debug_events")
     manifestDebugBeacons = appInfo.GetValue("mux_debug_beacons")
+    manifestMinification = appInfo.GetValue("mux_minification")
 
     m.debugEvents = m.DEFAULT_DEBUG_EVENTS
     if manifestDebugEvents <> ""
@@ -213,6 +219,15 @@ function muxAnalytics() as Object
       end if
     end if
 
+    m.minification = m.DEFAULT_DEFAULT_MINIFY
+    if manifestMinification <> ""
+      if manifestMinification = "false"
+        m.minification = false
+      else
+        m.minification = true
+      end if
+    end if
+
     m.baseUrl = m.DEFAULT_BEACON_URL
     if manifestBaseUrl <> ""
       m.baseUrl = manifestBaseUrl
@@ -232,12 +247,9 @@ function muxAnalytics() as Object
 
     ' variables
     m._beaconCount = 0
-    m._playerInitialisationTime = 0
-    m._viewTotalContentTime = 0
-    m._viewRebufferCount = 0
-    m._viewRebufferDuration = 0
-    m._playerSequence = 0
     m._inView = false
+    m._playerSequence = 0
+    m._startTimestamp = Invalid
     m._viewStartTimestamp = Invalid
     m._viewSequence = Invalid
     m._viewTimeToFirstFrame = Invalid
@@ -249,6 +261,8 @@ function muxAnalytics() as Object
     m._viewRebufferPercentage = Invalid
     m._viewSeekCount = Invalid
     m._viewSeekDuration = Invalid
+    m._viewAdPlayedCount = Invalid
+    m._viewPrerollPlayedCount = Invalid
 
     ' flags
     m._Flag_atLeastOnePlayEventForContent = false
@@ -259,6 +273,9 @@ function muxAnalytics() as Object
     m._Flag_FailedAdsErrorSet = false
 
     ' kick off analytics
+    date = m._getDateTime()
+    m._startTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
+
     m._addEventToQueue(m._createEvent("playerready"))
   end function
 
@@ -315,7 +332,7 @@ function muxAnalytics() as Object
         m._checkForSeek("playing")
         if m._Flag_atLeastOnePlayEventForContent = false
           if m._viewStartTimestamp <> Invalid AND m._viewStartTimestamp <> 0
-            date = CreateObject("roDateTime")
+            date = m._getDateTime()
             now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
             m._viewTimeToFirstFrame = now - m._viewStartTimestamp
           end if
@@ -356,9 +373,19 @@ function muxAnalytics() as Object
   prototype.videoViewChangeHandler = function(videoViewChangeEvent)
     data = videoViewChangeEvent.getData()
     if data = "end"
-      m._endView()
+      m._endView(true)
     else if data = "start"
+      m._startView(true)
+    end if
+  end function
+
+  prototype.videoControlChangeHandler = function(videoControlChangeEvent)
+    data = videoControlChangeEvent.getData()
+Print "videoControlChangeHandler"
+    if data = "play"
       m._startView()
+    else if data = "stop"
+      m._endView()
     end if
   end function
 
@@ -400,9 +427,6 @@ function muxAnalytics() as Object
     else if eventType = "PodComplete"
       m._addEventToQueue(m._createEvent("adbreakend"))
       m._Flag_FailedAdsErrorSet = false
-      if m.video.state = "finished"
-        m._endView()
-      end if
     else if eventType = "Impression"
       m._addEventToQueue(m._createEvent("adimpresion"))
     else if eventType = "Start"
@@ -410,10 +434,16 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Complete"
+      if m._viewAdPlayedCount <> Invalid
+        m._viewAdPlayedCount++
+      end if
+      if m._viewPrerollPlayedCount <> Invalid
+        ' CHECK FOR PREROLL
+        m._viewPrerollPlayedCount++
+      end if
       m._addEventToQueue(m._createEvent("adended"))
     else if eventType = "NoAdsError"
       if m._Flag_FailedAdsErrorSet <> true
-        m._startView()
         errorCode = ""
         errorMessage = ""
         if data.ctx <> Invalid
@@ -438,7 +468,7 @@ function muxAnalytics() as Object
       ' update total watched time. (ViewStart - now)
       if m._viewWatchTime <> Invalid
         if m._viewStartTimestamp <> Invalid
-          date = CreateObject("roDateTime")
+          date = m._getDateTime()
           now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
           m._viewWatchTime = now - m._viewStartTimestamp
         end if
@@ -518,7 +548,11 @@ function muxAnalytics() as Object
     end if
   end function
 
-  prototype._startView = function() as Void
+  prototype._startView = function(setByClient = false as Boolean) as Void
+    if setByClient = true
+      m._clientOperatedStartAndEnd = true
+    end if
+    if (m._clientOperatedStartAndEnd = true and setByClient = false) then return
     if (m._inView = false)
       m._viewSequence = 0
       m._viewWatchTime = 0
@@ -527,17 +561,24 @@ function muxAnalytics() as Object
       m._viewRebufferDuration = 0
       m._viewSeekCount = 0
       m._viewSeekDuration = 0
+      m._viewAdPlayedCount = 0
+      m._viewPrerollPlayedCount = 0
 
+      m._Flag_lastReportedPosition = 0
       m._Flag_atLeastOnePlayEventForContent = false
       m._Flag_isSeeking = false
-      m._addEventToQueue(m._createEvent("viewstart"))
-      date = CreateObject("roDateTime")
+      date = m._getDateTime()
       m._viewStartTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
+
+      m._addEventToQueue(m._createEvent("viewstart"))
+      
       m._inView = true
     end if
   end function
 
-  prototype._endView = function() as Void
+  prototype._endView = function(setByClient = false as Boolean) as Void
+    if (m._clientOperatedStartAndEnd = true and setByClient = false) then return
+    if (m._clientOperatedStartAndEnd = false and setByClient = true) then return
     if (m._inView = true)
       m._addEventToQueue(m._createEvent("viewend"))
       m._inView = false
@@ -552,6 +593,8 @@ function muxAnalytics() as Object
       m._viewRebufferPercentage = Invalid
       m._viewSeekCount = Invalid
       m._viewSeekDuration = Invalid
+      m._viewAdPlayedCount = Invalid
+      m._viewPrerollPlayedCount = Invalid
     end if
   end function
 
@@ -610,6 +653,8 @@ function muxAnalytics() as Object
         Print "[mux-analytics] warning property_key not set."
       end if
     end if
+
+    newEvent = m._minify(newEvent)
 
     newEvent.e = eventType
     return newEvent
@@ -757,8 +802,8 @@ function muxAnalytics() as Object
   prototype._getDynamicProperties = function() as Object
     props = {}
 
-    props.player_is_paused = (m._Flag_lastVideoState = "paused").toStr()
     if m.video <> Invalid
+      props.player_is_paused = (m._Flag_lastVideoState = "paused").toStr()
       if m.video.timeToStartStreaming <> Invalid AND m.video.timeToStartStreaming <> 0
         props.player_time_to_first_frame = (m.video.timeToStartStreaming * 1000).toStr()
       end if
@@ -768,6 +813,9 @@ function muxAnalytics() as Object
     end if
     if m._viewSequence <> Invalid AND m._viewSequence <> 0
       props.view_sequence_number = m._viewSequence.toStr()
+    end if
+    if m._startTimestamp <> Invalid AND m._startTimestamp <> 0
+      props.player_start = FormatJson(m._startTimestamp)
     end if
     if m._viewStartTimestamp <> Invalid AND m._viewStartTimestamp <> 0
       props.view_start = FormatJson(m._viewStartTimestamp)
@@ -800,6 +848,17 @@ function muxAnalytics() as Object
     end if
     if m._viewSeekDuration <> Invalid
       props.view_seek_duration = m._viewSeekDuration.toStr()
+    end if
+    if m._viewAdPlayedCount <> Invalid
+      props.view_ad_played_count = m._viewAdPlayedCount.toStr()
+    end if
+    if m._viewPrerollPlayedCount <> Invalid
+      props.view_preroll_played = m._viewPrerollPlayedCount.toStr()
+    end if
+    if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
+      if m._configProperties.player_init_time > 0
+        props.player_startup_time = m._configProperties.player_init_time - m._startTimestamp
+      end if
     end if
 
     return props
@@ -898,15 +957,37 @@ function muxAnalytics() as Object
     byteArray.FromAsciiString(src)
     return byteArray.ToBase64String()
   end function
-' export default function videoIdFromSrc (src) {
-'   var parser = document.createElement('a');
 
-'   parser.href = src;
-
-'   // Hack to get around breaking Fluent parsing. We never actually decode this,
-'   // so this shouldn't be an issue.
-'   return base64.encode(parser.host + pathMinusExtension).split('=')[0];
-' };
+  prototype._minify = function(src as Object) as Object
+    result = {}
+    if m.minification = true
+      for each key in src
+        keyParts = key.split("_")
+        ' Print key, src[key], keyParts[0]
+        newKey = ""
+        s = keyParts.count()
+        if s > 0
+          firstPart = keyParts[0]
+          if m._firstWords[firstPart] <> Invalid
+            newKey = m._firstWords[firstPart]
+          else
+            newKey = firstPart
+          end if
+        end if
+        for i = 1 To s - 1  Step 1
+          nextPart = keyParts[i]
+          newKey = newKey + "_"
+          if m._subsequentWords[nextPart] <> Invalid
+            newKey = newKey + m._subsequentWords[nextPart]
+          else
+            newKey = newKey + nextPart
+          end if
+        end for
+        result[newKey] = src[key]
+      end for
+    end if
+    return result
+  end function
 
   prototype._generateShortID = function () as String
     randomNumber = Rnd(0)*2176782336
@@ -957,11 +1038,52 @@ function muxAnalytics() as Object
     return _createAppInfo()
   end function
 
+  prototype._getDateTime = function() as Object
+    return CreateObject("roDateTime")
+  end function
+
+  prototype._firstWords = {
+   property: "a",
+   beacon: "b",
+   ad: "d",
+   event: "e",
+   experiment: "f",
+   mux: "m",
+   player: "p",
+   retry: "r",
+   session: "s",
+   timestamp: "t",
+   viewer: "u",
+   video: "v",
+   page: "w",
+   view: "x",
+   sub: "y"
+  }
+
+  prototype._subsequentWords = {
+   ad: "ad", aggregate: "ag", api: "ap", application: "al", architecture: "ar",
+   asset: "as", autoplay: "au", break: "br", code: "cd", category: "cg", config: "cn",
+   count: "co", complete: "cp", content: "ct", current: "cu", downscaling: "dg",
+   domain: "dm", cdn: "dn", downscale: "do", duration: "du", device: "dv", encoding: "ec",
+   end: "en", engine: "eg", embed: "em", error: "er", events: "ev", expires: "ex", first: "fi",
+   family: "fm", format: "ft", frequency: "fq", frame: "fr", fullscreen: "fs", host: "ho",
+   hostname: "hn", height: "ht", id: "id", init: "ii", instance: "in", ip: "ip", is: "is",
+   key: "ke", language: "la", live: "li", load: "lo", max: "ma", message: "me", mime: "mi",
+   midroll: "ml", manufacturer: "mn", model: "mo", mux: "mx", name: "nm",  number: "no",
+   on: "on", os: "os", paused: "pa", playback: "pb", producer: "pd", percentage: "pe",
+   played: "pf", playhead: "ph", plugin: "pi", preroll: "pl", poster: "po", preload: "pr",
+   property: "py", rate: "ra", requested: "rd", rebuffer: "re", ratio: "ro", request: "rq",
+   requests: "rs", sample: "sa", session: "se", seek: "sk", stream: "sm", source: "so",
+   sequence: "sq", series: "sr", start: "st", startup: "su", server: "sv", software: "sw",
+   tag: "ta", tech: "tc", time: "ti", total: "tl", to: "to", title: "tt", type: "ty",
+   upscaling: "ug", upscale: "up", url: "ur", user: "us", variant: "va", viewed: "vd",
+   video: "vi", version: "ve", view: "vw", viewer: "vr", width: "wd", watch: "wa",
+   waiting: "wt"
+  }
+
+
   return prototype
 end function
 
 
-' UNSET PROPERTIES 
-' video_source_width
-' video_source_height
 

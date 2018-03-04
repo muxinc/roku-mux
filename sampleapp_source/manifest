@@ -1,7 +1,7 @@
 title=roku-mux
 major_version=0
 minor_version=0
-build_version=1
+build_version=2
 mm_icon_focus_hd=pkg:/images/MainMenu_Icon_Center_HD.png
 mm_icon_focus_sd=pkg:/images/MainMenu_Icon_Center_SD43.png
 subtitle=SDK2
@@ -19,3 +19,4 @@ mux_dry_run=true
 mux_base_url=http://img.litix.io
 mux_debug_events=none
 mux_debug_beacons=full
+mux_minification=false

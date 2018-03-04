@@ -16,8 +16,8 @@ function playContent()
         contentId: "TED Talks", 'String value representing content to allow potential ad targeting.
         length: "1200", 'Integer value representing total length of content (in seconds).
     }
-    mux = GetGlobalAA().global.findNode("mux")
-    mux.setField("view", "start")
+    ' mux = GetGlobalAA().global.findNode("mux")
+    ' mux.setField("view", "start")
     if selectionId = "none"
         contentNode.URL= "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
         contentInfo.contentId = "TED Talks"
@@ -106,7 +106,10 @@ function PlayContentOnlyNoAds(contentInfo as Object)
     video = m.top.video
     view = video.getParent()
     video.visible = true
+Print "video control >> play"
     video.control = "play"
+Print "video control << play"
+    
     video.setFocus(true)
     keepPlaying = true
     port = createObject("roMessagePort")
@@ -126,6 +129,8 @@ function PlayContentOnlyNoAds(contentInfo as Object)
                 else if curState = "paused" then
                 else if curState = "finished" then
                     video.control = "stop"
+                    ' mux = GetGlobalAA().global.findNode("mux")
+                    ' mux.setField("view", "end")                   
                 end if
             end if
         end if
@@ -140,7 +145,6 @@ function PlayContentWithFullRAFIntegration(contentInfo as Object)
     adIface.setContentId(contentInfo.contentId)
     adIface.setContentGenre(contentInfo.genre)
     adIface.setAdPrefs(true, 2)
-Print "contentInfo.adUrl:",contentInfo.adUrl
     adIface.setAdUrl(contentInfo.adUrl) 
     adPods = adIface.getAds()
     playVideoWithAds(adPods, adIface)
@@ -288,6 +292,7 @@ function playVideoWithAds(adPods as object, adIface as object) as void
     curPos = 0
     adPods = invalid
     isPlayingPostroll = false
+ Print "[PlayerTask] playVideoWithAds"
     while keepPlaying
         msg = wait(0, port)
         msgType = type(msg)

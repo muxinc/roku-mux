@@ -7,7 +7,9 @@ function init()
   '   property_key: "ALEXPROPERTYKEY"
   ' }
   m.mux = m.top.FindNode("mux")
+  Print "[VideoScene] setField video>>"
   m.mux.setField("video", m.video)
+  Print "[VideoScene] setField video<<"
   m.mux.setField("config", muxConfig)
   m.mux.control = "RUN"
   m.list = m.top.FindNode("MenuList")
@@ -89,7 +91,7 @@ end function
 sub taskStateChanged(msg as Object)
     state = msg.GetData()
     if state = "done" or state = "stop"
-        m.mux.setField("view", "end")
+        ' m.mux.setField("view", "end")
         m.PlayerTask = invalid
         m.list.visible = true
         m.video.control = "stop"
