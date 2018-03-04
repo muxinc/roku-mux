@@ -985,6 +985,8 @@ Print "videoControlChangeHandler"
         end for
         result[newKey] = src[key]
       end for
+    else
+      result = src
     end if
     return result
   end function

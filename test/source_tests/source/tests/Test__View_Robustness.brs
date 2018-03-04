@@ -184,7 +184,7 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_1() as String
   m.SUT._clientOperatedStartAndEnd = false
   m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
   ' WHEN
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
   ' THEN
   return m.assertTrue(m.SUT._inView)
@@ -195,7 +195,7 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_2() as String
   ' check that control=stop takes us out the view'
   ' GIVEN
   m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
   ' WHEN
   m.fakeSGNodeEvent._dataToReturn = "stop"
@@ -208,7 +208,7 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_3() as String
   ' Once we end a view. Check event queue has one viewstart and one viewend
   ' GIVEN
   m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
   ' WHEN
   m.fakeSGNodeEvent._dataToReturn = "stop"
@@ -223,7 +223,7 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_4() as String
   ' Client sending a viewend event should not matter if they havent started a view
   ' GIVEN
   m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
   ' WHEN
   m.fakeSGNodeEvent._dataToReturn = "end"
@@ -237,7 +237,7 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_5() as String
   ' even if they send it twice'
   ' GIVEN
   m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
   ' WHEN
   m.fakeSGNodeEvent._dataToReturn = "end"
@@ -253,7 +253,7 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_6() as String
   ' But that should not prevent the library from closing the view internally
   ' GIVEN
   m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
   m.fakeSGNodeEvent._dataToReturn = "end"
   m.SUT.videoViewChangeHandler(m.fakeSGNodeEvent)
@@ -270,10 +270,10 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_7() as String
   ' Two internal starts should only launch the view once
   ' GIVEN
   m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
   ' WHEN
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
   ' THEN
   'two events playerready and viewstart'
@@ -285,10 +285,10 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_8() as String
   ' just check the events are as expected
   ' GIVEN
   m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
   ' WHEN
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
   ' THEN
   result = m.SUT._eventQueue[0].e + m.SUT._eventQueue[1].e
@@ -300,12 +300,12 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_9() as String
   ' why not test 3
   ' GIVEN
   m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
   ' WHEN
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
   ' THEN
   return m.assertEqual(2, m.SUT._eventQueue.count())
@@ -316,12 +316,12 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_10() as String
   ' Check view watch time is initialised to zero
   ' GIVEN
   m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
   ' WHEN
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
   ' THEN
   return m.assertEqual(0, m.SUT._viewWatchTime)
@@ -332,7 +332,7 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_end_1() as String
 
   ' GIVEN
   m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
-  m.fakeSGNodeEvent._dataToReturn = "run"
+  m.fakeSGNodeEvent._dataToReturn = "play"
   m.SUT.videoControlChangeHandler(m.fakeSGNodeEvent)
   ' WHEN
   m.fakeSGNodeEvent._dataToReturn = "stop"

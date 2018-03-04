@@ -91,7 +91,7 @@ end function
 sub taskStateChanged(msg as Object)
     state = msg.GetData()
     if state = "done" or state = "stop"
-        ' m.mux.setField("view", "end")
+        m.mux.setField("view", "end")
         m.PlayerTask = invalid
         m.list.visible = true
         m.video.control = "stop"

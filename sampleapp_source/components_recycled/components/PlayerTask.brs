@@ -3,7 +3,6 @@ Library  "Roku_Ads.brs"
 function init()
     m.top.functionName = "playContent"
     m.top.id = "PlayerTask"
-    Print "[PlayerTask] init"
 end function
 
 function playContent()
@@ -16,8 +15,8 @@ function playContent()
         contentId: "TED Talks", 'String value representing content to allow potential ad targeting.
         length: "1200", 'Integer value representing total length of content (in seconds).
     }
-    ' mux = GetGlobalAA().global.findNode("mux")
-    ' mux.setField("view", "start")
+    mux = GetGlobalAA().global.findNode("mux")
+    mux.setField("view", "start")
     if selectionId = "none"
         contentNode.URL= "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
         contentInfo.contentId = "TED Talks"
@@ -96,19 +95,11 @@ end function
 
 
 function PlayContentOnlyNoAds(contentInfo as Object)
-    ' mux = m.top.CreateChild("MuxTask")
-    ' mux.id = "mux"
-    ' mux.control = "RUN"
-    ' mux.setField("video", m.top.video)
-    ' mux.setField("config", {flintstonesCharacter:"bam bam"})
-    
     m.top.facade.visible = false
     video = m.top.video
     view = video.getParent()
     video.visible = true
-Print "video control >> play"
     video.control = "play"
-Print "video control << play"
     
     video.setFocus(true)
     keepPlaying = true
@@ -129,8 +120,8 @@ Print "video control << play"
                 else if curState = "paused" then
                 else if curState = "finished" then
                     video.control = "stop"
-                    ' mux = GetGlobalAA().global.findNode("mux")
-                    ' mux.setField("view", "end")                   
+                    mux = GetGlobalAA().global.findNode("mux")
+                    mux.setField("view", "end")
                 end if
             end if
         end if
