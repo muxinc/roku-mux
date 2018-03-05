@@ -7,9 +7,7 @@ function init()
   '   property_key: "ALEXPROPERTYKEY"
   ' }
   m.mux = m.top.FindNode("mux")
-  Print "[VideoScene] setField video>>"
   m.mux.setField("video", m.video)
-  Print "[VideoScene] setField video<<"
   m.mux.setField("config", muxConfig)
   m.mux.control = "RUN"
   m.list = m.top.FindNode("MenuList")

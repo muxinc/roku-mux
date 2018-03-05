@@ -16,10 +16,10 @@ function runBeaconLoop()
   m.POSITION_TIMER_INTERVAL = 250 '250
   m.SEEK_THRESHOLD = 1250 'ms jump in position before a seek is considered'
   
-  m.positionPoller = CreateObject("roSGNode", "Timer")
-  m.positionPoller.id = "positionPoller"
-  m.positionPoller.repeat = true
-  m.positionPoller.duration = m.POSITION_TIMER_INTERVAL / 1000
+  m.pollTimer = CreateObject("roSGNode", "Timer")
+  m.pollTimer.id = "pollTimer"
+  m.pollTimer.repeat = true
+  m.pollTimer.duration = m.POSITION_TIMER_INTERVAL / 1000
 
   ' m.heartbeatTimer = m.top.findNode("heartbeatTimer")
   m.heartbeatTimer = CreateObject("roSGNode", "Timer")
@@ -45,7 +45,7 @@ function runBeaconLoop()
                   POSITION_TIMER_INTERVAL: m.POSITION_TIMER_INTERVAL,
                   SEEK_THRESHOLD: m.SEEK_THRESHOLD,
                  }
-  m.mxa.init(m.connection, m.messagePort, appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.positionPoller)
+  m.mxa.init(m.connection, m.messagePort, appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.pollTimer)
 
   m.top.ObserveField("rafEvent", m.messagePort)
   
@@ -76,7 +76,7 @@ function runBeaconLoop()
     m.mxa.videoErrorHandler(m.top.error)
   end if
 
-  m.positionPoller.ObserveField("fire", m.messagePort)
+  m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
   m.heartbeatTimer.ObserveField("fire", m.messagePort)
   running = true
@@ -118,12 +118,10 @@ function runBeaconLoop()
           m.mxa.videoStateChangeHandler(msg)
         else if field = "rafEvent"
           m.mxa.rafEventHandler(msg)
-        else if field = "position"
-          m.mxa._videoPositionChangeHandler(msg)
         else if field = "fire"
           node = msg.getNode()
-          if node= "positionPoller"
-            m.mxa.positionIntervalHandler(msg)
+          if node= "pollTimer"
+            m.mxa.pollingIntervalHandler(msg)
           else if node = "beaconTimer"
             m.mxa.beaconIntervalHandler(msg)
           else if node = "heartbeatTimer"
@@ -137,7 +135,7 @@ function runBeaconLoop()
   end while
   m.beaconTimer.control = "stop"
   m.heartbeatTimer.control = "stop"
-  m.positionPoller.control = "stop"
+  m.pollTimer.control = "stop"
 
   m.top.UnobserveField("video")
   m.top.UnobserveField("config")
@@ -182,7 +180,7 @@ function muxAnalytics() as Object
     m.connection = connection
     m.port = port
     m.heartbeatTimer = hbt
-    m.positionPoller = pp
+    m.pollTimer = pp
 
     m.DEFAULT_DRY_RUN = false
     m.DEFAULT_DEBUG_EVENTS = "none"
@@ -291,7 +289,6 @@ function muxAnalytics() as Object
 
   prototype.videoAddedHandler = function(video as Object)
     m._sessionProperties = m._getSessionProperites()
-    
     m._videoProperties = m._getVideoProperties(video)
     m._videoContentProperties = m._getVideoContentProperties(video.content)
     m.video = video
@@ -304,7 +301,7 @@ function muxAnalytics() as Object
     end if
     
     m.heartbeatTimer.control = "start"
-    m.positionPoller.control = "start"
+    m.pollTimer.control = "start"
   end function
 
   prototype.videoStateChangeHandler = function(videoStateChangeEvent)
@@ -347,10 +344,10 @@ function muxAnalytics() as Object
         m._Flag_isSeeking = false
         m._Flag_atLeastOnePlayEventForContent = true
       else if data = "stopped"
-        m.positionPoller.control = "stop"
+        m.pollTimer.control = "stop"
       else if data = "finished"
         m._addEventToQueue(m._createEvent("ended"))
-        m.positionPoller.control = "stop"
+        m.pollTimer.control = "stop"
         m._endView()
       else if data = "error"
         errorCode = ""
@@ -381,7 +378,6 @@ function muxAnalytics() as Object
 
   prototype.videoControlChangeHandler = function(videoControlChangeEvent)
     data = videoControlChangeEvent.getData()
-Print "videoControlChangeHandler"
     if data = "play"
       m._startView()
     else if data = "stop"
@@ -460,7 +456,7 @@ Print "videoControlChangeHandler"
     end if 
   end function
 
-  prototype.positionIntervalHandler = function(positionIntervalEvent)
+  prototype.pollingIntervalHandler = function(pollingIntervalEvent)
     if m.video <> Invalid
       ' set video properties
       m._videoProperties = m._getVideoProperties(m.video)
@@ -478,13 +474,13 @@ Print "videoControlChangeHandler"
       if m.video.state = "buffering"
         if m._Flag_atLeastOnePlayEventForContent = true
           if m._viewRebufferDuration <> Invalid
-            m._viewRebufferDuration = m._viewRebufferDuration + (m.positionPoller.duration * 1000)
+            m._viewRebufferDuration = m._viewRebufferDuration + (m.pollTimer.duration * 1000)
             if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
               m._viewRebufferPercentage = m._viewRebufferDuration / m._viewWatchTime
             end if
           end if
           if m._viewSeekDuration <> Invalid
-            m._viewSeekDuration = m._viewSeekDuration + (m.positionPoller.duration * 1000)
+            m._viewSeekDuration = m._viewSeekDuration + (m.pollTimer.duration * 1000)
           end if
         end if
       end if
@@ -497,7 +493,9 @@ Print "videoControlChangeHandler"
             end if
           end if
         end if
-        m._Flag_lastReportedPosition = m.video.position
+        if m.video.state = "playing"
+          m._Flag_lastReportedPosition = m.video.position
+        end if
       end if
     end if
   end function
