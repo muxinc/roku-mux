@@ -667,11 +667,7 @@ Print "videoControlChangeHandler"
     appInfo = m._getAppInfo()
     
     ' HARDCODED
-    ' props.mux_sample_rate
-    ' props.player_init_time
-    ' props.player_instance_id
     props.player_sequence_number = 1
-    ' props.player_startup_time
     props.player_software_name = m.PLAYER_SOFTWARE_NAME
     props.player_software_version = Mid(deviceInfo.GetVersion(), 3, 4)
     props.player_model_number = deviceInfo.GetModel()
@@ -803,7 +799,9 @@ Print "videoControlChangeHandler"
     props = {}
 
     if m.video <> Invalid
-      props.player_is_paused = (m._Flag_lastVideoState = "paused").toStr()
+      if m._Flag_lastVideoState <> Invalid
+        props.player_is_paused = (m._Flag_lastVideoState = "paused").toStr()
+      end if
       if m.video.timeToStartStreaming <> Invalid AND m.video.timeToStartStreaming <> 0
         props.player_time_to_first_frame = (m.video.timeToStartStreaming * 1000).toStr()
       end if
