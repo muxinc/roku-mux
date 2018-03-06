@@ -533,6 +533,7 @@ function muxAnalytics() as Object
     else
       if beacon.count() > 0
         m._logBeacon(beacon, "BEACON")
+        m.connection.SetCertificatesFile("common:/certs/ca-bundle.crt")
         m.connection.RetainBodyOnError(true)
         m.connection.SetUrl(m.baseUrl)
         m.connection.AddHeader("Content-Type", "application/json")
@@ -972,7 +973,6 @@ function muxAnalytics() as Object
         end if
         for i = 1 To s - 1  Step 1
           nextPart = keyParts[i]
-          newKey = newKey + "_"
           if m._subsequentWords[nextPart] <> Invalid
             newKey = newKey + m._subsequentWords[nextPart]
           else

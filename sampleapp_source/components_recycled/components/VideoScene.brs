@@ -3,9 +3,10 @@ function init()
 	m.top.backgroundColor="0x111111FF"
   m.video = m.top.FindNode("MainVideo")
   
-  ' muxConfig = {
-  '   property_key: "ALEXPROPERTYKEY"
-  ' }
+  muxConfig = {
+    property_key: "794c4b2668e515963d9de4623",
+    player_name: "frank"
+  }
   m.mux = m.top.FindNode("mux")
   m.mux.setField("video", m.video)
   m.mux.setField("config", muxConfig)
