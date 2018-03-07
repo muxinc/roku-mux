@@ -189,7 +189,7 @@ function muxAnalytics() as Object
     m.DEFAULT_BEACON_URL = "https://img.litix.io"
 
     manifestDryRun = appInfo.GetValue("mux_dry_run")
-    manifestBaseUrl = appInfo.GetValue("mux_base_url")
+    m.manifestBaseUrl = appInfo.GetValue("mux_base_url")
     manifestDebugEvents = appInfo.GetValue("mux_debug_events")
     manifestDebugBeacons = appInfo.GetValue("mux_debug_beacons")
     manifestMinification = appInfo.GetValue("mux_minification")
@@ -226,9 +226,10 @@ function muxAnalytics() as Object
       end if
     end if
 
-    m.baseUrl = m.DEFAULT_BEACON_URL
-    if manifestBaseUrl <> ""
-      m.baseUrl = manifestBaseUrl
+    m.beaconUrl = m.DEFAULT_BEACON_URL
+
+    if m.manifestBaseUrl <> ""
+      m.beaconUrl = m.manifestBaseUrl
     end if
 
     m.MAX_BEACON_SIZE = systemConfig.MAX_BEACON_SIZE
@@ -274,6 +275,7 @@ function muxAnalytics() as Object
     date = m._getDateTime()
     m._startTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
 
+    m._sessionProperties = m._getSessionProperites()
     m._addEventToQueue(m._createEvent("playerready"))
   end function
 
@@ -284,11 +286,12 @@ function muxAnalytics() as Object
 
   prototype.heartbeatIntervalHandler = function(heartbeatIntervalEvent)
     data = heartbeatIntervalEvent.getData()
-    m._addEventToQueue(m._createEvent("hb"))
+    if (m._Flag_lastVideoState <> "paused")
+      m._addEventToQueue(m._createEvent("hb"))
+    end if
   end function
 
   prototype.videoAddedHandler = function(video as Object)
-    m._sessionProperties = m._getSessionProperites()
     m._videoProperties = m._getVideoProperties(video)
     m._videoContentProperties = m._getVideoContentProperties(video.content)
     m.video = video
@@ -300,7 +303,6 @@ function muxAnalytics() as Object
       end if
     end if
     
-    m.heartbeatTimer.control = "start"
     m.pollTimer.control = "start"
   end function
 
@@ -395,6 +397,9 @@ function muxAnalytics() as Object
 
   prototype.configChangeHandler = function(config as Object)
     m._configProperties = config
+    if config.property_key <> Invalid AND config.property_key <> ""
+      m.beaconUrl = m._createBeaconUrl(config.property_key)
+    end if 
   end function
 
   prototype.videoErrorHandler = function(error as Object)
@@ -425,6 +430,10 @@ function muxAnalytics() as Object
       m._Flag_FailedAdsErrorSet = false
     else if eventType = "Impression"
       m._addEventToQueue(m._createEvent("adimpresion"))
+    else if eventType = "Pause"
+      m._addEventToQueue(m._createEvent("adpaused"))
+    else if eventType = "Resume"
+      m._addEventToQueue(m._createEvent("adresume?"))
     else if eventType = "Start"
       m._advertProperties = m._getAdvertProperites(data.ctx)
       m._addEventToQueue(m._createEvent("adplay"))
@@ -507,7 +516,9 @@ function muxAnalytics() as Object
   prototype._addEventToQueue = function(_event as Object) as Object
     m._logEvent(_event)
     m.heartbeatTimer.control = "stop"
-    m.heartbeatTimer.control = "start"
+    if m._inView = true
+      m.heartbeatTimer.control = "start"
+    end if
     m._eventQueue.push(_event)
   end function
 
@@ -534,14 +545,18 @@ function muxAnalytics() as Object
       if beacon.count() > 0
         m._logBeacon(beacon, "BEACON")
         m.connection.SetCertificatesFile("common:/certs/ca-bundle.crt")
-        m.connection.RetainBodyOnError(true)
-        m.connection.SetUrl(m.baseUrl)
+        m.connection.AsyncCancel()
+        m.connection.SetUrl(m.beaconUrl)
         m.connection.AddHeader("Content-Type", "application/json")
+        m.connection.AddHeader("Accept", "*/*")
+        m.connection.AddHeader("Expect", "")
+        m.connection.AddHeader("Connection", "keep-alive")
+        m.connection.AddHeader("Accept-Encoding", "gzip, deflate, br")
+        m.connection.EnableEncodings(true)  
         m.requestId = m.connection.GetIdentity()
         requestBody = {}
         requestBody.events = beacon
         fBody = FormatJson(requestBody)
-        m.connection.AsyncCancel()
         success = m.connection.AsyncPostFromString(fBody)
       end if
     end if
@@ -553,6 +568,8 @@ function muxAnalytics() as Object
     end if
     if (m._clientOperatedStartAndEnd = true and setByClient = false) then return
     if (m._inView = false)
+      m.heartbeatTimer.control = "start"
+
       m._viewSequence = 0
       m._viewWatchTime = 0
       m._contentPlaybackTime = 0
@@ -579,6 +596,8 @@ function muxAnalytics() as Object
     if (m._clientOperatedStartAndEnd = true and setByClient = false) then return
     if (m._clientOperatedStartAndEnd = false and setByClient = true) then return
     if (m._inView = true)
+      m.heartbeatTimer.control = "stop"
+
       m._addEventToQueue(m._createEvent("viewend"))
       m._inView = false
       m._viewStartTimestamp = Invalid
@@ -676,6 +695,7 @@ function muxAnalytics() as Object
     props.player_width = deviceInfo.GetDisplaySize().w
     props.player_height = deviceInfo.GetDisplaySize().h
     props.player_is_fullscreen = m.PLAYER_IS_FULLSCREEN
+    props.beacon_domain = m._getDomain(m.beaconUrl)
 
     props.player_instance_id = m._generateShortID()
 
@@ -686,7 +706,7 @@ function muxAnalytics() as Object
       props.viewer_user_id = deviceInfo.GetAdvertisingId()
     end if
     return props
-  end function  
+  end function
 
   ' called once per video'
   prototype._getVideoProperties = function(video as Object) as Object
@@ -984,6 +1004,25 @@ function muxAnalytics() as Object
     else
       result = src
     end if
+    return result
+  end function
+
+  prototype._createBeaconUrl = function (key as String, domain = "litix.io" as String) as String
+    if m.manifestBaseUrl <> Invalid AND m.manifestBaseUrl <> ""
+      return m.manifestBaseUrl
+    end if
+    keyRegex = CreateObject("roRegex", "[0-9]+", "i")
+    result = "https://"
+    subdomain = "img"
+    if keyRegex <> Invalid 
+      keyValid = keyRegex.isMatch(key)
+      if keyValid = true
+        subdomain = key
+      end if
+    end if
+    result = result + subdomain
+    result = result + "." + domain
+
     return result
   end function
 

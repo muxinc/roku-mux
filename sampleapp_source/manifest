@@ -1,7 +1,7 @@
 title=roku-mux
 major_version=0
 minor_version=0
-build_version=2
+build_version=3
 mm_icon_focus_hd=pkg:/images/MainMenu_Icon_Center_HD.png
 mm_icon_focus_sd=pkg:/images/MainMenu_Icon_Center_SD43.png
 subtitle=SDK2
@@ -14,3 +14,5 @@ splash_screen_sd=pkg:/images/splash_sd.jpg
 splash_color=#000000
 splash_min_time=1000
 ui_resolutions=hd
+
+mux_debug_beacons=full
