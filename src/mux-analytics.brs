@@ -916,6 +916,28 @@ function muxAnalytics() as Object
     return host
   end function
 
+  prototype._getHostnameAndPath= function(src as String) as String
+    hostAndPath = src
+    hostAndPathRegEx = CreateObject("roRegex", "^https?://", "")
+    parts = hostAndPathRegEx.split(src)
+    if parts <> Invalid AND parts.count() > 0
+      if parts.count() > 1
+        parts.shift()
+      end if
+      if parts.count() > 1
+        hostAndPath = parts.join()
+      else
+        hostAndPath = parts[0]
+      end if
+      hostAndPathRegEx = CreateObject("roRegex", "\?|#", "")
+      parts = hostAndPathRegEx.split(hostAndPath)
+      if parts.count() > 1
+        hostAndPath = parts[0]
+      end if
+    end if
+    return hostAndPath
+  end function
+
   prototype._getStreamFormat = function(url as String) as String
     ismRegex = CreateObject("roRegex", "\.isml?\/manifest", "i")
     if ismRegex.IsMatch(url)
@@ -970,9 +992,13 @@ function muxAnalytics() as Object
   end function
 
   prototype._generateVideoId= function(src as String) as String
+    hostAndPath = m._getHostnameAndPath(src)
     byteArray = _createByteArray()
-    byteArray.FromAsciiString(src)
-    return byteArray.ToBase64String()
+    byteArray.FromAsciiString(hostAndPath)
+    bigString = byteArray.ToBase64String()
+    Print "bigString:",bigString
+    smallString = bigString.split("=")[0]
+    return smallString
   end function
 
   prototype._minify = function(src as Object) as Object

@@ -17,6 +17,7 @@ Sub GetSessionProperties_SetUp()
   m.fakeSGNodeEvent = FakeRoSGNodeEvent()
 
   m.SUT = MuxAnalytics()
+  m.SUT.beaconUrl = "http://871292839812303.litix.io"
   m.SUT._getDeviceInfo = function ()
     return FakeDeviceInfo()
   end function
