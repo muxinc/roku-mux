@@ -28,9 +28,8 @@ Function TestCase__MuxAnalytics_VideoStateHandling() as String
   m.SUT._seekThreshold = 5
   m.SUT._Flag_seekSentPlayingNotYetStarted = false
   m.SUT._Flag_atLeastOnePlayEventForContent = true
-  m.fakeSGNodeEvent._dataToReturn = "buffering"
   ' WHEN
-  m.SUT.videoStateChangeHandler(m.fakeSGNodeEvent)
+  m.SUT.videoStateChangeHandler("buffering")
   ' END
   return m.assertEqual("rebufferstart", m.SUT._eventQueue[0].e)
 End Function
