@@ -46,7 +46,7 @@ gulp.task('build_sample_app',['cleanup'], function () {
 })
 
 gulp.task('build_components',['cleanup', 'build_sample_app'], function () {
-  if (buildConfig.sample_app_type == "recycled_video")
+  if (buildConfig.sample_app_type == "recycle_video")
   {
     return gulp.src(['sampleapp_source/components_recycled/**'], { "base" : "sampleapp_source/components_recycled" })
       .pipe(gulp.dest(buildConfig.build_dir_name));
