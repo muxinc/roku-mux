@@ -2,6 +2,7 @@
 <script type="text/brightscript" uri="pkg:/components/VideoScene.brs"/>
 <children>
     <MuxTask id="mux"/>
+    <Video id="mainVideo" visible="false" />
     <LabelList id="MenuList" translation="[100,60]" itemSize="[720, 100]" />
 
     <Rectangle id="LoadingScreen"

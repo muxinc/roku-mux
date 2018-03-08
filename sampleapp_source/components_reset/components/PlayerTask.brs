@@ -3,7 +3,6 @@ Library  "Roku_Ads.brs"
 function init()
     m.top.functionName = "playContent"
     m.top.id = "PlayerTask"
-    Print "[PlayerTask] init"
 end function
 
 function playContent()
@@ -15,7 +14,8 @@ function playContent()
         contentId: "TED Talks", 'String value representing content to allow potential ad targeting.
         length: "1200", 'Integer value representing total length of content (in seconds).
     }
-
+    mux = GetGlobalAA().global.findNode("mux")
+    mux.setField("view", "start")
     if selectionId = "none"
         contentNode.URL= "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
         contentInfo.contentId = "TED Talks"
@@ -45,7 +45,7 @@ function playContent()
         contentInfo.contentId = "TED Talks"
         contentInfo.length = 1200
         m.top.video.content = contentNode
-        PlayContentWithNonStandardRAFIntegration(contentInfo)
+        PlayContentWithCustomAds(contentInfo)
     else if selectionId = "stitched"
         contentNode.URL= "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
         contentInfo.stitchedAdsFilePath = "pkg:/feed/MixedStitchedAds.json"
@@ -94,17 +94,12 @@ end function
 
 
 function PlayContentOnlyNoAds(contentInfo as Object)
-    ' mux = m.top.CreateChild("MuxTask")
-    ' mux.id = "mux"
-    ' mux.control = "RUN"
-    ' mux.setField("video", m.top.video)
-    ' mux.setField("config", {flintstonesCharacter:"bam bam"})
-    
     m.top.facade.visible = false
     video = m.top.video
     view = video.getParent()
     video.visible = true
     video.control = "play"
+    
     video.setFocus(true)
     keepPlaying = true
     port = createObject("roMessagePort")
@@ -124,6 +119,8 @@ function PlayContentOnlyNoAds(contentInfo as Object)
                 else if curState = "paused" then
                 else if curState = "finished" then
                     video.control = "stop"
+                    mux = GetGlobalAA().global.findNode("mux")
+                    mux.setField("view", "end")
                 end if
             end if
         end if
@@ -143,23 +140,11 @@ function PlayContentWithFullRAFIntegration(contentInfo as Object)
     playVideoWithAds(adPods, adIface)
 end function
 
-' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-' "nonstandard"
-' A RAF implementation for non-standard ad responses (neither VMAP, VAST or SMartXML)
-'
-' - Custom Parsing of ad response to create the ad structure.
-' - importAds().
-' - showAds() for rendering.
-'
-function PlayContentWithNonStandardRAFIntegration(contentInfo as Object)
-    ' configure RAF
-    raf = Roku_Ads()            'init RAF library instance
-    raf.setAdPrefs(false)       'disable back-filled ads
-    'raf.setDebugOutput(true)    'debug console (port 8085) extra output ON
+function PlayContentWithCustomAds(contentInfo as Object)
+    raf = Roku_Ads()
+    raf.setAdPrefs(false)
+    setLog = raf.SetTrackingCallback(adTrackingCallback, raf)
      
-    setupLogObject(raf)
-
-    ' import custom parsed ad pods array
      adPods = []
     if contentInfo <> invalid AND contentInfo.nonStandardAdsFilePath <> invalid
         adPods = GetNonStandardAds(contentInfo.nonStandardAdsFilePath)
@@ -172,43 +157,25 @@ function PlayContentWithNonStandardRAFIntegration(contentInfo as Object)
 end function
 
 function ErrorBeforePlayback(contentInfo as Object)
-    mux = m.top.CreateChild("MuxTask")
-    mux.id = "mux"
-    mux.control = "RUN"
-    mux.error = {errorCode: 1, errorMessage: "Video Metadata Error"}
+  mux = GetGlobalAA().global.findNode("mux")
+  mux.error = {errorCode: 1, errorMessage: "Video Metadata Error"}
 end function
 
-' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-' "stitched"
-' A stitched Ads integration Example:
-'
-' - setAdURL to set the ad URL.
-' - getAds for VAST parsing.
-' - stitchedAdsInit to import ad metadata for server-stitched ads.
-' - stitchedAdHandledEvent to determines if a stitched ad is being rendered and returns
-'   metadata about the ad, after handling the event.
 function PlayStitchedContentWithAds(contentInfo as Object)
-    ' init RAF library instance
     adIface = Roku_Ads()
-    ' for debug logging
-    'adIface.setDebugOutput(true) ' set True to debug console (port 8085) extra output ON
-
-    'Ad measurement content params
-    adIface.enableAdMeasurements(true)
+    ' adIface.enableAdMeasurements(true)
+    setLog = adIface.SetTrackingCallback(adTrackingCallback, adIface)
     adIface.setContentLength(contentInfo.length)
     adIface.setContentId(contentInfo.contentId)
     adIface.setContentGenre(contentInfo.genre)
+    adIface.setDebugOutput(false)
 
-    setupLogObject(adIface)
-
-    ' Get adPods array. Normally, we would set publisher's ad URL using setAdUrl and get adPods from getAds function.
     if contentInfo <> invalid AND contentInfo.stitchedAdsFilePath <> invalid
         adPodArray = GetAdPods(contentInfo.stitchedAdsFilePath)
-        ' Imports adPods array with server-stitched ads
         adIface.StitchedAdsInit(adPodArray)
     end if
     m.top.facade.visible = false
-    ' start playback for video
+
     video = m.top.video
     port = createObject("roMessagePort")
     video.observeField("position", port)
@@ -222,9 +189,7 @@ function PlayStitchedContentWithAds(contentInfo as Object)
     ' event-loop
     while keepPlaying
         msg = wait(0, port)
-        ' check if we're rendering a stitched ad which handles the event
         curAd = adIface.StitchedAdHandledEvent(msg, player)
-        ' ad handled event
         if curAd <> invalid and curAd.evtHandled <> invalid
             if curAd.adExited
                 keepPlaying = false
@@ -246,22 +211,6 @@ function PlayStitchedContentWithAds(contentInfo as Object)
         end if
     end while
 end function
-
-
-
-' ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-' ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-' ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-' ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-' ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-' /////////////////////////////// HELPER FUNCTIONS' //////////////////////////////////////////////////////////////////////
-' ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-' ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-' ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-' ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-' ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
 
 function adTrackingCallback(obj = Invalid as Dynamic, eventType = Invalid as Dynamic, ctx = Invalid as Dynamic)
   mux = GetGlobalAA().global.findNode("mux")
@@ -381,29 +330,3 @@ function GetAdPods(feedFile as String) as Object
     return result
 end function
 
-function setupLogObject(adIface as object)
-    ' Create a log object to track events
-    logObj = {
-        Log: function(evtType = invalid as Dynamic, ctx = invalid as Dynamic)
-            if GetInterface(evtType, "ifString") <> invalid
-                ? "*** tracking event " + evtType + " fired."
-                if ctx.errMsg <> invalid then ? "*****   Error message: " + ctx.errMsg
-                if ctx.adIndex <> invalid then ? "*****  Ad Index: " + ctx.adIndex.ToStr()
-                if ctx.ad <> invalid and ctx.ad.adTitle <> invalid then ? "*****  Ad Title: " + ctx.ad.adTitle
-            else if ctx <> invalid and ctx.time <> invalid
-                ? "*** checking tracking events for ad progress: " + ctx.time.ToStr()
-            end if
-        end function
-    }
-    ' Create a log function to track events
-    logFunc = function(obj = Invalid as Dynamic, evtType = invalid as Dynamic, ctx = invalid as Dynamic)
-        Print "addTrackingCallback"
-        Print "obj:",obj
-        Print "evtType:",evtType
-        Print "ctx:",ctx
-
-        obj.log(evtType, ctx)
-    end function
-    ' Setup tracking events callback
-    setLog = adIface.SetTrackingCallback(logFunc, logObj)
-end function

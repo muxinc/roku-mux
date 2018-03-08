@@ -6,5 +6,5 @@
   "app_name" : "mux",
   "build_dir_name" : "build",
   "out_dir_name" : "out",
-  "sample_app_type" : "recycled_video" 
+  "sample_app_type" : "reset_video" 
 }

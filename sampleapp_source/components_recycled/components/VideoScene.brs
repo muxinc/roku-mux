@@ -1,103 +1,99 @@
 function init()
 	m.top.backgroundURI = ""
 	m.top.backgroundColor="0x111111FF"
+  m.facade = m.top.FindNode("adFacade")
+  m.list = m.top.FindNode("MenuList")
   m.video = m.top.FindNode("MainVideo")
-  
-  muxConfig = {
+ 
+  ' SETUP MUX 
+  m.muxConfig = {
     property_key: "794c4b2668e515963d9de4623",
-    player_name: "frank"
+    player_name: "Recycle Player",
+    player_version: "1.0.0",
   }
   m.mux = m.top.FindNode("mux")
   m.mux.setField("video", m.video)
-  m.mux.setField("config", muxConfig)
+  m.mux.setField("config", m.muxConfig)
   m.mux.control = "RUN"
-  m.list = m.top.FindNode("MenuList")
+
+  ' SETUP SELECTION LIST
   m.list.wrapDividerBitmapUri = ""
-  setupContent()
+  m.contentList = [
+      {
+        title: "Big Buck Bunny",
+        selectionID: "1"
+      },
+      {
+        title: "Ted Talks",
+        selectionID: "2"
+      },
+      {
+        title: "Cycling Man",
+        selectionID: "3"
+      }
+  ]
+  listContent = createObject("roSGNode","ContentNode")
+  for each item in m.contentList
+    listItem = listContent.createChild("ContentNode")
+    listItem.title = item.title
+  end for
+  m.list.content = listContent
   m.list.observeField("itemSelected", "onItemSelected")
   m.list.setFocus(true) 
 end function
 
-function setupContent()
-    m.contentList = [
-        {
-          title: "Content Only, No Ads",
-          selectionID: "none"
-        },
-        {
-          title: "Full RAF Integration",
-          selectionID: "standard"
-        },
-        {
-          title: "Custom Ad Parsing",
-          selectionID: "nonstandard"
-        },
-        {
-          title: "Stitched Ad: Mixed",
-          selectionID: "stitched" 
-        },
-        {
-          title: "Error before playback",
-          selectionID: "preplaybackerror" 
-        },
-        {
-          title: "Error during playback",
-          selectionID: "playbackerror" 
-        },
-        {
-          title: "HLS stream no ads",
-          selectionID: "hlsnoads" 
-        },
-        {
-          title: "DASH stream no ads",
-          selectionID: "dashnoads" 
-        },
-        {
-          title: "LIVE stream ",
-          selectionID: "live" 
-        },
-    ]
-    listContent = createObject("roSGNode","ContentNode")
-    for each item in m.contentList
-        listItem = listContent.createChild("ContentNode")
-        listItem.title = item.title
-    end for
-    m.list.content = listContent
 
-    m.video.observeField("state", "stateChanged")
-    m.loading = m.top.FindNode("LoadingScreen")
-    m.loadingText = m.loading.findNode("LoadingScreenText")
-end function
+sub videoStateChanged(msg as Object)
+end sub
 
 function onItemSelected()
-    menuItemTitle = m.contentList[m.list.itemSelected].title
-    'showing facade
-    m.list.visible = false
-    m.loadingText.text = menuItemTitle
-    m.loading.visible = true
-    m.loading.setFocus(true)
- 
-    'Run task to playback with RAF
-    m.PlayerTask = CreateObject("roSGNode", "PlayerTask")
-    m.PlayerTask.observeField("state", "taskStateChanged")
-    selectedId = m.contentList[m.list.itemSelected].selectionID
-    m.PlayerTask.selectionID = selectedId
-    m.PlayerTask.video = m.video
-    m.PlayerTask.facade = m.loading
-    m.PlayerTask.control = "RUN"
+    selectionId = m.contentList[m.list.itemSelected].selectionID
+    setContent(selectionId)
+    m.video.control = "play"
 end function
 
-sub taskStateChanged(msg as Object)
-    state = msg.GetData()
-    if state = "done" or state = "stop"
-        m.mux.setField("view", "end")
-        m.PlayerTask = invalid
-        m.list.visible = true
-        m.video.control = "stop"
-        m.video.visible = false
-        m.list.setFocus(true)
+function setContent(selectionId as String)
+    contentNode = CreateObject("roSGNode", "ContentNode")
+    if selectionId = "1"
+        contentNode.URL= "http://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4"
+        contentNode.TITLE = "Big Buck Bunny"
+        contentNode.Director = "Blender"
+        contentNode.ContentType = "movie"
+        m.muxConfig.video_id = "Mux1"
+        m.muxConfig.video_language_code = "en"
+        m.muxConfig.video_cdn = "cdn1"
+        m.muxConfig.video_variant_name = "BB1"
+        m.muxConfig.current_audio_track = "customer set audio track 1"
+        m.muxConfig.current_subtitle_track = "customer set subtitle track 1"
+        m.mux.setField("config", m.muxConfig)
+    else if selectionId = "2"
+        contentNode.URL= "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
+        contentNode.TITLE = "TED Talks"
+        contentNode.Director = "James Cameron"
+        contentNode.ContentType = "episode"
+        m.muxConfig.video_id = "Mux2"
+        m.muxConfig.video_language_code = "us"
+        m.muxConfig.video_cdn = "cdn2"
+        m.muxConfig.video_variant_name = "TED1"
+        m.muxConfig.current_audio_track = "customer set audio track 2"
+        m.muxConfig.current_subtitle_track = "customer set subtitle track 2"
+        m.mux.setField("config", m.muxConfig)
+    else if selectionId = "3"
+        contentNode.URL= "https://content.jwplatform.com/manifests/yp34SRmf.m3u8"
+        contentNode.TITLE = "Cycling Man"
+        contentNode.Director = "Gullermo Del Toro"
+        contentNode.ContentType = "movie"
+        contentNode.StreamFormat = "hls"
+        m.muxConfig.video_id = "Mux3"
+        m.muxConfig.video_language_code = "bg"
+        m.muxConfig.video_cdn = "cdn3"
+        m.muxConfig.video_variant_name = "CY1"
+        m.muxConfig.current_audio_track = "customer set audio track 3"
+        m.muxConfig.current_subtitle_track = "customer set subtitle track 3"
+        m.mux.setField("config", m.muxConfig)
     end if
-end sub
+    m.video.content = contentNode
+end function
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if press
@@ -107,8 +103,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             return true
         end if
       else if key = "up"
-        PRint "<up>"
-        stop
+        m.list.setFocus(true)
+      else if key = "right"
+        m.video.setFocus(true)
       end if
     end if
     return false

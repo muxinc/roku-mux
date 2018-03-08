@@ -60,21 +60,18 @@ function runBeaconLoop()
 
   if m.top.view <> Invalid AND m.top.view <> ""
     m.mxa.videoViewChangeHandler(m.top.view)
-  else
-    m.top.ObserveField("view", m.messagePort)
   end if
+  m.top.ObserveField("view", m.messagePort)
 
-  if m.top.config = Invalid
-    m.top.ObserveField("config", m.messagePort)
-  else
+  if m.top.config <> Invalid
     m.mxa.configChangeHandler(m.top.config)
   end if
+  m.top.ObserveField("config", m.messagePort)
 
-  if m.top.error = Invalid
-    m.top.ObserveField("error", m.messagePort)
-  else
+  if m.top.error <> Invalid
     m.mxa.videoErrorHandler(m.top.error)
   end if
+  m.top.ObserveField("error", m.messagePort)
 
   m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
@@ -100,22 +97,21 @@ function runBeaconLoop()
           end if
         else if field = "config"
           if m.top.config = Invalid
-            data = msg.getData()
-            m.mxa.configChangeHandler(data)
-            m.top.UnobserveField("config")
+            m.mxa.configChangeHandler(msg.getData())
           end if
         else if field = "error"
-          data = msg.getData()
-          m.mxa.videoErrorHandler(data)
-          m.top.UnobserveField("error")
+          m.mxa.videoErrorHandler(msg.getData())
         else if field = "control"
-          m.mxa.videoControlChangeHandler(msg)
+          m.mxa.videoControlChangeHandler(msg.getData())
         else if field = "content"
-          m.mxa.videoContentChangeHandler(msg)
+          m.mxa.videoContentChangeHandler(msg.getData())
         else if field = "view"
-          m.mxa.videoViewChangeHandler(msg)
+          m.mxa.videoViewChangeHandler(msg.getData())
         else if field = "state"
-          m.mxa.videoStateChangeHandler(msg)
+          msgData = msg.getData()
+          if msgData <> Invalid AND type(msgData) = "roString"
+            m.mxa.videoStateChangeHandler(msgData)
+          end if
         else if field = "rafEvent"
           m.mxa.rafEventHandler(msg)
         else if field = "fire"
@@ -295,8 +291,8 @@ function muxAnalytics() as Object
     m._videoProperties = m._getVideoProperties(video)
     m._videoContentProperties = m._getVideoContentProperties(video.content)
     m.video = video
+
     if video <> Invalid
-      ' seek threshold must be more than native notificationInterval + m.POSITION_TIMER_INTERVAL
       maximimumPossiblePositionChange = ((video.notificationInterval * 1000) + m.POSITION_TIMER_INTERVAL) / 1000
       if m._seekThreshold < maximimumPossiblePositionChange
         m._seekThreshold = maximimumPossiblePositionChange
@@ -306,97 +302,96 @@ function muxAnalytics() as Object
     m.pollTimer.control = "start"
   end function
 
-  prototype.videoStateChangeHandler = function(videoStateChangeEvent)
-    data = videoStateChangeEvent.getData()
-    if data <> Invalid AND type(data) = "roString"
-      if data = "buffering"
-        m._checkForSeek("buffering")
-        if m._Flag_isSeeking = true
-          m._addEventToQueue(m._createEvent("seekend"))
-          m._Flag_isSeeking = false
-        end if
-        if m._Flag_atLeastOnePlayEventForContent = true
-          m._addEventToQueue(m._createEvent("rebufferstart"))
-          m._Flag_RebufferingStarted = true
-          if m._viewRebufferCount <> Invalid
-            m._viewRebufferCount++
-            if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
-              m._viewRebufferFrequency = m._viewRebufferCount / m._viewWatchTime
-            end if
-          end if
-        end if
-      else if data = "paused"
-        m._addEventToQueue(m._createEvent("pause"))
-      else if data = "playing"
-        m._checkForSeek("playing")
-        if m._Flag_atLeastOnePlayEventForContent = false
-          if m._viewStartTimestamp <> Invalid AND m._viewStartTimestamp <> 0
-            date = m._getDateTime()
-            now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
-            m._viewTimeToFirstFrame = now - m._viewStartTimestamp
-          end if
-        end if
-        if m._Flag_lastVideoState = "buffering"
-          if m._Flag_RebufferingStarted = true
-            m._addEventToQueue(m._createEvent("rebufferend"))
-            m._Flag_RebufferingStarted = false
-          end if
-        end if
-        m._addEventToQueue(m._createEvent("play"))
-        m._addEventToQueue(m._createEvent("playing"))
+  prototype.videoStateChangeHandler = function(videoState as String)
+    if videoState = "buffering"
+      m._checkForSeek("buffering")
+      if m._Flag_isSeeking = true
+        m._addEventToQueue(m._createEvent("seekend"))
         m._Flag_isSeeking = false
-        m._Flag_atLeastOnePlayEventForContent = true
-      else if data = "stopped"
-        m.pollTimer.control = "stop"
-      else if data = "finished"
-        m._addEventToQueue(m._createEvent("ended"))
-        m.pollTimer.control = "stop"
-        m._endView()
-      else if data = "error"
-        errorCode = ""
-        errorMessage = ""
-        if m.video <> Invalid
-          if m.video.errorCode <> Invalid
-            errorCode = m.video.errorCode
-          end if
-          if m.video.errorMsg <> Invalid
-            errorMessage = m.video.errorMsg
+      end if
+      if m._Flag_atLeastOnePlayEventForContent = true
+        m._addEventToQueue(m._createEvent("rebufferstart"))
+        m._Flag_RebufferingStarted = true
+        if m._viewRebufferCount <> Invalid
+          m._viewRebufferCount++
+          if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
+            m._viewRebufferFrequency = m._viewRebufferCount / m._viewWatchTime
           end if
         end if
-        m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage}))
       end if
-      m._Flag_lastVideoState = data
-
+    else if videoState = "paused"
+      m._addEventToQueue(m._createEvent("pause"))
+    else if videoState = "playing"
+      m._checkForSeek("playing")
+      if m._Flag_atLeastOnePlayEventForContent = false
+        if m._viewStartTimestamp <> Invalid AND m._viewStartTimestamp <> 0
+          date = m._getDateTime()
+          now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+          m._viewTimeToFirstFrame = now - m._viewStartTimestamp
+        end if
+      end if
+      if m._Flag_lastVideoState = "buffering"
+        if m._Flag_RebufferingStarted = true
+          m._addEventToQueue(m._createEvent("rebufferend"))
+          m._Flag_RebufferingStarted = false
+        end if
+      end if
+      m._addEventToQueue(m._createEvent("play"))
+      m._addEventToQueue(m._createEvent("playing"))
+      m._Flag_isSeeking = false
+      m._Flag_atLeastOnePlayEventForContent = true
+    else if videoState = "stopped"
+      m.pollTimer.control = "stop"
+    else if videoState = "finished"
+      m._addEventToQueue(m._createEvent("ended"))
+      m.pollTimer.control = "stop"
+      m._endView()
+    else if videoState = "error"
+      errorCode = ""
+      errorMessage = ""
+      if m.video <> Invalid
+        if m.video.errorCode <> Invalid
+          errorCode = m.video.errorCode
+        end if
+        if m.video.errorMsg <> Invalid
+          errorMessage = m.video.errorMsg
+        end if
+      end if
+      m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage}))
     end if
+    m._Flag_lastVideoState = videoState
   end function
  
-  prototype.videoViewChangeHandler = function(videoViewChangeEvent)
-    data = videoViewChangeEvent.getData()
-    if data = "end"
+  prototype.videoViewChangeHandler = function(view as String)
+    if view = "end"
       m._endView(true)
-    else if data = "start"
+    else if view = "start"
       m._startView(true)
     end if
   end function
 
-  prototype.videoControlChangeHandler = function(videoControlChangeEvent)
-    data = videoControlChangeEvent.getData()
-    if data = "play"
+  prototype.videoControlChangeHandler = function(control as String)
+    if control = "play"
       m._startView()
-    else if data = "stop"
+    else if control = "stop"
       m._endView()
     end if
   end function
 
-  prototype.videoContentChangeHandler = function(videoContentChangeEvent)
-    data = videoContentChangeEvent.getData()
-    m._videoContentProperties = m._getVideoContentProperties(data)
+  prototype.videoContentChangeHandler = function(videoContent as Object)
+    if m._clientOperatedStartAndEnd <> true
+      m._endView()
+      m._startView()
+    end if
+
+    m._videoContentProperties = m._getVideoContentProperties(videoContent)
     if m.video <> Invalid
       m._videoProperties = m._getVideoProperties(m.video)
     end if
   end function
 
   prototype.configChangeHandler = function(config as Object)
+    Print "[mux-analytics] configChangeHandler"
     m._configProperties = config
     if config.property_key <> Invalid AND config.property_key <> ""
       m.beaconUrl = m._createBeaconUrl(config.property_key)
@@ -404,6 +399,7 @@ function muxAnalytics() as Object
   end function
 
   prototype.videoErrorHandler = function(error as Object)
+    stop
     errorCode = "0"
     errorMessage = "Unknown"
     if error <> Invalid
@@ -434,7 +430,6 @@ function muxAnalytics() as Object
     else if eventType = "Pause"
       m._addEventToQueue(m._createEvent("adpaused"))
     else if eventType = "Resume"
-      m._addEventToQueue(m._createEvent("adresume?"))
     else if eventType = "Start"
       m._advertProperties = m._getAdvertProperites(data.ctx)
       m._addEventToQueue(m._createEvent("adplay"))
@@ -684,7 +679,7 @@ function muxAnalytics() as Object
     end if
 
     date = m._getDateTime()
-    newEvent.viewer_time = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
+    newEvent.viewer_time = FormatJson(0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds())
 
     newEvent = m._minify(newEvent)
 
@@ -1010,7 +1005,6 @@ function muxAnalytics() as Object
     byteArray = _createByteArray()
     byteArray.FromAsciiString(hostAndPath)
     bigString = byteArray.ToBase64String()
-    Print "bigString:",bigString
     smallString = bigString.split("=")[0]
     return smallString
   end function

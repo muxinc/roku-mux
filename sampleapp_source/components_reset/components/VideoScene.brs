@@ -1,9 +1,15 @@
 function init()
-	m.top.backgroundURI = ""
-	m.top.backgroundColor="0x111111FF"
+  m.top.backgroundURI = ""
+  m.top.backgroundColor="0x111111FF"
+  m.video = m.top.FindNode("MainVideo")
+  
+  muxConfig = {
+    property_key: "794c4b2668e515963d9de4623",
+    player_name: "Reset Player"
+  }
   m.mux = m.top.FindNode("mux")
-
-  m.mux.setField("config", {flintstonesCharacter:"bum bum"})
+  m.mux.setField("video", m.video)
+  m.mux.setField("config", muxConfig)
   m.mux.control = "RUN"
   m.list = m.top.FindNode("MenuList")
   m.list.wrapDividerBitmapUri = ""
@@ -27,7 +33,7 @@ function setupContent()
           selectionID: "nonstandard"
         },
         {
-          title: "Stitched Ad: Mixed",
+          title: "Stitched Ad",
           selectionID: "stitched" 
         },
         {
@@ -45,11 +51,7 @@ function setupContent()
         {
           title: "DASH stream no ads",
           selectionID: "dashnoads" 
-        },
-        {
-          title: "LIVE stream ",
-          selectionID: "live" 
-        },
+        }
     ]
     listContent = createObject("roSGNode","ContentNode")
     for each item in m.contentList
@@ -70,14 +72,11 @@ function onItemSelected()
     m.loadingText.text = menuItemTitle
     m.loading.visible = true
     m.loading.setFocus(true)
-    
+ 
     'Run task to playback with RAF
     m.PlayerTask = CreateObject("roSGNode", "PlayerTask")
     m.PlayerTask.observeField("state", "taskStateChanged")
     selectedId = m.contentList[m.list.itemSelected].selectionID
-    Print "[VideoScene] onItemSelected:",selectedId
-    m.video = m.top.createNode("MainVideo")
-    m.mux.setField("video", m.video)
     m.PlayerTask.selectionID = selectedId
     m.PlayerTask.video = m.video
     m.PlayerTask.facade = m.loading
@@ -87,6 +86,7 @@ end function
 sub taskStateChanged(msg as Object)
     state = msg.GetData()
     if state = "done" or state = "stop"
+        m.mux.setField("view", "end")
         m.PlayerTask = invalid
         m.list.visible = true
         m.video.control = "stop"

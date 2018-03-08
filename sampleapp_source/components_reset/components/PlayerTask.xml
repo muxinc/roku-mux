@@ -5,7 +5,6 @@
     <field id="selectionId" type="string" />
     <field id="facade"      type="node" />
     <field id="video"       type="node" />
-    <field id="rafEvent"       type="assocarray" />
 </interface>
 <script type="text/brightscript" uri="./PlayerTask.brs" />
 </component>

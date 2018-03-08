@@ -1,29 +1,16 @@
 <component name="VideoScene" extends="Scene">
 <script type="text/brightscript" uri="pkg:/components/VideoScene.brs"/>
 <children>
-    <Video id="mainVideo" visible="false"/>
     <MuxTask id="mux"/>
-    <LabelList id="MenuList" translation="[100,60]" itemSize="[720, 100]" />
-
-    <Rectangle id="LoadingScreen"
-	  color="0x000000FF" 
-	  width="1280" 
-	  height="720" 
-	  translation="[0,0]" 
-	  visible="false">
-
-	  <Label 
-		  id="LoadingScreenText"
-		  width="720"
-		  height="20"
-		  font="font:MediumBoldSystemFont"
-		  text=""
-		  horizAlign="center"
-		  vertAlign="center"
-		  translation="[280, 350]" 
-      />
-
-	</Rectangle>
+    <Rectangle id="adFacade" visible="true" />
+    <Video id="mainVideo" visible="true" translation="[460, 180]" width="640" height="360" enableUI="false"/>
+    <Rectangle id="MenuBack"
+      color="0x000000FF" 
+      width="340" 
+      height="720" 
+      translation="[0,0]" 
+      visible="true">
+      </Rectangle>
+    <LabelList id="MenuList" numRows="5" translation="[20,20]" itemSize="[300, 100]" />
 </children>
-
 </component>
