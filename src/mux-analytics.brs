@@ -342,6 +342,7 @@ function muxAnalytics() as Object
             m._Flag_RebufferingStarted = false
           end if
         end if
+        m._addEventToQueue(m._createEvent("play"))
         m._addEventToQueue(m._createEvent("playing"))
         m._Flag_isSeeking = false
         m._Flag_atLeastOnePlayEventForContent = true
@@ -641,22 +642,32 @@ function muxAnalytics() as Object
     if m._playerSequence <> Invalid
       m._playerSequence++
     end if
+
     if m._viewSequence <> Invalid
       m._viewSequence++
     end if
+
+    ' session properties are set once per player session
     if m._sessionProperties <> Invalid
       newEvent.Append(m._sessionProperties)
     end if
+    
+    ' video content properties are checked once per view
     if m._videoContentProperties <> Invalid
       newEvent.Append(m._videoContentProperties)
     end if
-    'actual video values overwrite content set values such as duration
+
+    'actual video values overwrite video content values such as duration
     if m._videoProperties <> Invalid
       newEvent.Append(m._videoProperties)
     end if
+
+    'advert properties are checked during ad events
     if m._advertProperties <> Invalid
       newEvent.Append(m._advertProperties)
     end if
+    
+    'dynamic properties are checked during every event
     dynamicProperties = m._getDynamicProperties()
     newEvent.Append(dynamicProperties)
     newEvent.Append(eventProperties)
@@ -666,11 +677,14 @@ function muxAnalytics() as Object
       newEvent.Append(m._configProperties)
     end if
 
-    if newEvent.property_key = Invalid OR newEvent.property_key = Invalid
+    if newEvent.property_key = Invalid OR newEvent.property_key = ""
       if m._playerSequence <> Invalid AND m._playerSequence < 2
         Print "[mux-analytics] warning property_key not set."
       end if
     end if
+
+    date = m._getDateTime()
+    newEvent.viewer_time = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
 
     newEvent = m._minify(newEvent)
 
@@ -1065,7 +1079,9 @@ function muxAnalytics() as Object
     tot = title + " (" + eventArray.count().toStr() + ") [ "
     for each evt in eventArray
       if fullEvent = false
-        tot = tot + " " + evt.e
+        if evt <> Invalid
+          tot = tot + " " + evt.e
+        end if
       else
         tot = tot + "{"
         for each prop in evt
