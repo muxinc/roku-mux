@@ -247,6 +247,7 @@ function muxAnalytics() as Object
     m._startTimestamp = Invalid
     m._viewStartTimestamp = Invalid
     m._viewSequence = Invalid
+    m._viewId = Invalid
     m._viewTimeToFirstFrame = Invalid
     m._contentPlaybackTime = Invalid
     m._viewWatchTime = Invalid
@@ -567,6 +568,7 @@ function muxAnalytics() as Object
       m.heartbeatTimer.control = "start"
 
       m._viewSequence = 0
+      m._viewId = m._generateViewID()
       m._viewWatchTime = 0
       m._contentPlaybackTime = 0
       m._viewRebufferCount = 0
@@ -596,6 +598,7 @@ function muxAnalytics() as Object
 
       m._addEventToQueue(m._createEvent("viewend"))
       m._inView = false
+      m._viewId = Invalid
       m._viewStartTimestamp = Invalid
       m._viewSequence = Invalid
       m._viewTimeToFirstFrame = Invalid
@@ -840,6 +843,9 @@ function muxAnalytics() as Object
     if m._viewSequence <> Invalid AND m._viewSequence <> 0
       props.view_sequence_number = m._viewSequence.toStr()
     end if
+    if m._viewID <> Invalid AND m._viewID <> ""
+      props.view_id = m._viewID
+    end if
     if m._startTimestamp <> Invalid AND m._startTimestamp <> 0
       props.player_start = FormatJson(m._startTimestamp)
     end if
@@ -1065,6 +1071,35 @@ function muxAnalytics() as Object
     randomNumber = randomNumber << 2
     shortID = Right(StrI(randomNumber, 36), 6)
     return shortID
+  end function
+
+'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {var r = Math.random() * 16 | 0;var v = c === 'x' ? r : (r & 0x3 | 0x8);return v.toString(16);});
+  prototype._generateViewID = function () as String
+    viewRegex = CreateObject("roRegex", "x", "i")
+    pattern = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
+    randomiseX = function() as String
+      return StrI(Rnd(0) * 16, 16)
+    end function
+    randomiseY = function() as String
+      randomNumber = Rnd(0) * 16
+      randomNumber = randomNumber + 3
+      if randomNumber >= 16
+        randomNumber = 8
+      end if
+      return StrI(randomNumber, 16)
+    end function
+    patternArray = pattern.split("")
+    viewId = ""
+    for each char in patternArray
+      if char = "x"
+        viewId = viewId + randomiseX()
+      else if char = "y"
+        viewId = viewId + randomiseY()
+      else 
+        viewId = viewId + char
+      end if
+    end for
+    return viewId
   end function
 
   prototype._logBeacon = function(eventArray as Object, title = "BEACON" as String) as Void
