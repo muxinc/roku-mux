@@ -9,7 +9,7 @@ function init()
   m.muxConfig = {
     property_key: "794c4b2668e515963d9de4623",
     player_name: "Recycle Player",
-    player_version: "1.0.0",
+    player_version: "1.0.0"
   }
   m.mux = m.top.FindNode("mux")
   m.mux.setField("video", m.video)

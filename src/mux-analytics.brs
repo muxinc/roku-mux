@@ -332,10 +332,12 @@ function muxAnalytics() as Object
       m._videoProperties = m._getVideoProperties(m.video)
       m._checkForSeek("playing")
       if m._Flag_atLeastOnePlayEventForContent = false
-        if m._viewStartTimestamp <> Invalid AND m._viewStartTimestamp <> 0
-          date = m._getDateTime()
-          now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
-          m._viewTimeToFirstFrame = now - m._viewStartTimestamp
+        if m._viewTimeToFirstFrame = Invalid
+          if m._viewStartTimestamp <> Invalid AND m._viewStartTimestamp <> 0
+            date = m._getDateTime()
+            now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+            m._viewTimeToFirstFrame = now - m._viewStartTimestamp
+          end if
         end if
       end if
       if m._Flag_lastVideoState = "buffering"
@@ -433,6 +435,13 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adpaused"))
     else if eventType = "Resume"
     else if eventType = "Start"
+      if m._viewTimeToFirstFrame = Invalid
+        if m._viewStartTimestamp <> Invalid AND m._viewStartTimestamp <> 0
+          date = m._getDateTime()
+          now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+          m._viewTimeToFirstFrame = now - m._viewStartTimestamp
+        end if
+      end if
       m._advertProperties = m._getAdvertProperites(data.ctx)
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
@@ -733,8 +742,7 @@ function muxAnalytics() as Object
   prototype._getVideoProperties = function(video as Object) as Object
     props = {}
     if video <> Invalid
-    Print "video.duration:",video.duration
-      if video.duration <> Invalid
+      if video.duration <> Invalid AND video.duration > 0
         m._videoSourceDuration = video.duration.toStr() 
       end if
 
@@ -800,9 +808,7 @@ function muxAnalytics() as Object
           props.video_source_is_live = "false"
         end if
       end if
- Print "_getVideoContentProperties"
       if content.Length <> Invalid AND content.Length > 0
- Print "_getVideoContentProperties:",content.Length
         m._videoSourceDuration = content.Length
       end if
     end if
