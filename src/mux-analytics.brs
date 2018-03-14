@@ -514,8 +514,9 @@ function muxAnalytics() as Object
 
   prototype._addEventToQueue = function(_event as Object) as Object
     m._logEvent(_event)
-    m.heartbeatTimer.control = "stop"
-    if m._inView = true
+    ' If the hearbeat is running restart it.
+    if m.heartbeatTimer.control = "start"
+      m.heartbeatTimer.control = "stop"
       m.heartbeatTimer.control = "start"
     end if
     m._eventQueue.push(_event)
@@ -597,7 +598,6 @@ function muxAnalytics() as Object
     if (m._clientOperatedStartAndEnd = false and setByClient = true) then return
     if (m._inView = true)
       m.heartbeatTimer.control = "stop"
-
       m._addEventToQueue(m._createEvent("viewend"))
       m._inView = false
       m._viewId = Invalid
@@ -707,8 +707,9 @@ function muxAnalytics() as Object
     props.player_version = appInfo.GetVersion()
     props.player_mux_plugin_version = m.MUX_SDK_VERSION
     props.player_language_code = deviceInfo.GetCountryCode()
-    props.player_width = deviceInfo.GetDisplaySize().w
-    props.player_height = deviceInfo.GetDisplaySize().h
+    videoMode = deviceInfo.GetVideoMode()
+    props.player_width = m._getVideoPlaybackMetric(videoMode, "width")
+    props.player_height = m._getVideoPlaybackMetric(videoMode, "height")
     props.player_is_fullscreen = m.PLAYER_IS_FULLSCREEN
     props.beacon_domain = m._getDomain(m.beaconUrl)
 
@@ -1075,7 +1076,43 @@ function muxAnalytics() as Object
     return shortID
   end function
 
-'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {var r = Math.random() * 16 | 0;var v = c === 'x' ? r : (r & 0x3 | 0x8);return v.toString(16);});
+  prototype._getVideoPlaybackMetric = function (videoMode as String, metricType as String) as String
+    result = ""
+    metrics = {
+      "480i":     {width: "720", height: "480", aspect: "4:3", refresh: "60 Hz", depth: "8 Bit"},
+      "480p":    {width: "720", height: "480", aspect: "4:3", refresh: "60 Hz", depth: "8 Bit"},
+      "576i25":  {width: "720", height: "576", aspect: "4:3", refresh: "25 Hz", depth: "8 Bit"},
+      "576p50":  {width: "720", height: "576", aspect: "4:3", refresh: "50 Hz", depth: "8 Bit"},
+      "576p60":  {width: "720", height: "576", aspect: "4:3", refresh: "60 Hz", depth: "8 Bit"},
+      "720p50":  {width: "1280", height: "720 ", aspect: "16:9", refresh: "50 Hz", depth: "8 Bit"},
+      "720p":    {width: "1280", height: "720 ", aspect: "16:9", refresh: "60 Hz", depth: "8 Bit"},
+      "1080i50": {width: "1920", height: "1080", aspect: "16:9", refresh: "50 Hz", depth: "8 Bit"},
+      "1080i":   {width: "1920", height: "1080", aspect: "16:9", refresh: "60 Hz", depth: "8 Bit"},
+      "1080p24": {width: "1920", height: "1080", aspect: "16:9", refresh: "24 Hz", depth: "8 Bit"},
+      "1080p25": {width: "1920", height: "1080", aspect: "16:9", refresh: "25 Hz", depth: "8 Bit"},
+      "1080p30": {width: "1920", height: "1080", aspect: "16:9", refresh: "30 Hz", depth: "8 Bit"},
+      "1080p50": {width: "1920", height: "1080", aspect: "16:9", refresh: "50 Hz", depth: "8 Bit"},
+      "1080p":   {width: "1920", height: "1080", aspect: "16:9", refresh: "60 Hz", depth: "8 Bit"},
+      "2160p25": {width: "3840", height: "2160", aspect: "16:9", refresh: "25 Hz", depth: "8 Bit"},
+      "2160p24": {width: "3840", height: "2160", aspect: "16:9", refresh: "24 Hz", depth: "8 Bit"},
+      "2160p30": {width: "3840", height: "2160", aspect: "16:9", refresh: "30 Hz", depth: "8 Bit"},
+      "2160p50": {width: "3840", height: "2160", aspect: "16:9", refresh: "50 Hz", depth: "8 Bit"},
+      "2160p60": {width: "3840", height: "2160", aspect: "16:9", refresh: "60 Hz", depth: "8 Bit"},
+      "2160p24b10": {width: "3840", height: "2160", aspect: "16:9", refresh: "24 Hz", depth: "10 Bit"},
+      "2160p25b10": {width: "3840", height: "2160", aspect: "16:9", refresh: "25 Hz", depth: "10 Bit"},
+      "2160p50b10": {width: "3840", height: "2160", aspect: "16:9", refresh: "50 Hz", depth: "10 Bit"},
+      "2160p30b10": {width: "3840", height: "2160", aspect: "16:9", refresh: "30 Hz", depth: "10 Bit"},
+      "2160p60b10": {width: "3840", height: "2160", aspect: "16:9", refresh: "60 Hz", depth: "10 Bit"}
+    }
+    if metrics[videoMode] <> Invalid
+      modeMetrics = metrics[videoMode]
+      if modeMetrics[metricType] <> Invalid
+        result = modeMetrics[metricType]
+      end if
+    end if
+    return result
+  end function
+
   prototype._generateViewID = function () as String
     viewRegex = CreateObject("roRegex", "x", "i")
     pattern = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
