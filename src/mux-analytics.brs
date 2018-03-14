@@ -387,11 +387,6 @@ function muxAnalytics() as Object
       m._endView()
       m._startView()
     end if
-
-    m._videoContentProperties = m._getVideoContentProperties(videoContent)
-    if m.video <> Invalid
-      m._videoProperties = m._getVideoProperties(m.video)
-    end if
   end function
 
   prototype.configChangeHandler = function(config as Object)
@@ -587,6 +582,13 @@ function muxAnalytics() as Object
       date = m._getDateTime()
       m._viewStartTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
 
+      if m.video <> Invalid
+        if m.video.content <> Invalid
+          m._videoContentProperties = m._getVideoContentProperties(m.video.content)
+        end if
+        m._videoProperties = m._getVideoProperties(m.video)
+      end if
+
       m._addEventToQueue(m._createEvent("viewstart"))
       
       m._inView = true
@@ -743,7 +745,6 @@ function muxAnalytics() as Object
   ' Set called per video content'
   prototype._getVideoContentProperties = function(content as Object) as Object
     props = {}
-
     if content <> Invalid
       if content.title <> Invalid AND content.title <> ""
         props.video_title = content.title
@@ -1164,6 +1165,7 @@ function muxAnalytics() as Object
   end function
 
   prototype._logEvent = function(event = {} as Object, subtype = "" as String, title = "EVENT" as String) as Void
+    if event.e <> "viewend" AND event.e <> "viewstart" then return
     if m.debugEvents = "none" then return
     tot = title + " " + event.e
     if m.debugEvents = "full"

@@ -15,8 +15,8 @@ splash_color=#000000
 splash_min_time=1000
 ui_resolutions=hd
 
-#mux_dry_run=true
+mux_dry_run=true
 #mux_base_url=http://img.litix.io
-#mux_debug_events=none
-#mux_debug_beacons=full
-#mux_minification=false
+mux_debug_events=full
+mux_debug_beacons=partial
+mux_minification=false
