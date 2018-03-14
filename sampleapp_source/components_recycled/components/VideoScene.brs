@@ -1,6 +1,6 @@
 function init()
-	m.top.backgroundURI = ""
-	m.top.backgroundColor="0x111111FF"
+  m.top.backgroundURI = ""
+  m.top.backgroundColor="0x111111FF"
   m.facade = m.top.FindNode("adFacade")
   m.list = m.top.FindNode("MenuList")
   m.video = m.top.FindNode("MainVideo")
@@ -11,6 +11,7 @@ function init()
     player_name: "Recycle Player",
     player_version: "1.0.0"
   }
+  m.muxConfig.player_init_time = m.global.appstart
   m.mux = m.top.FindNode("mux")
   m.mux.setField("video", m.video)
   m.mux.setField("config", m.muxConfig)

@@ -911,8 +911,11 @@ function muxAnalytics() as Object
       props.video_source_duration = m._videoSourceDuration
     end if
     if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
-      if m._configProperties.player_init_time > 0
-        props.player_startup_time = m._configProperties.player_init_time - m._startTimestamp
+      if type(m._configProperties.player_init_time) = "roString"
+        playerInitTime = Val(m._configProperties.player_init_time)
+        if playerInitTime > 0
+          props.player_startup_time = playerInitTime - m._startTimestamp
+        end if
       end if
     end if
 
