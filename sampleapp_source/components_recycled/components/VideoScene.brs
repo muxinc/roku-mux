@@ -60,6 +60,7 @@ function setContent(selectionId as String)
         contentNode.TITLE = "Big Buck Bunny"
         contentNode.Director = "Blender"
         contentNode.ContentType = "movie"
+        contentNode.length = 512
         m.muxConfig.video_id = "Mux1"
         m.muxConfig.video_language_code = "en"
         m.muxConfig.video_cdn = "cdn1"
@@ -71,7 +72,8 @@ function setContent(selectionId as String)
         contentNode.URL= "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
         contentNode.TITLE = "TED Talks"
         contentNode.Director = "James Cameron"
-        contentNode.ContentType = "episode"
+        contentNode.ContentType = 2042
+        contentNode.length = "episode"
         m.muxConfig.video_id = "Mux2"
         m.muxConfig.video_language_code = "us"
         m.muxConfig.video_cdn = "cdn2"
@@ -85,6 +87,7 @@ function setContent(selectionId as String)
         contentNode.Director = "Gullermo Del Toro"
         contentNode.ContentType = "movie"
         contentNode.StreamFormat = "hls"
+        contentNode.length = 50
         m.muxConfig.video_id = "Mux3"
         m.muxConfig.video_language_code = "bg"
         m.muxConfig.video_cdn = "cdn3"
