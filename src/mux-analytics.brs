@@ -262,6 +262,9 @@ function muxAnalytics() as Object
     m._viewSeekDuration = Invalid
     m._viewAdPlayedCount = Invalid
     m._viewPrerollPlayedCount = Invalid
+    m._videoSourceFormat = Invalid
+    m._videoSourceDuration = Invalid
+    m._viewPrerollPlayedCount = Invalid
 
     ' flags
     m._Flag_atLeastOnePlayEventForContent = false
@@ -326,6 +329,7 @@ function muxAnalytics() as Object
     else if videoState = "paused"
       m._addEventToQueue(m._createEvent("pause"))
     else if videoState = "playing"
+      m._videoProperties = m._getVideoProperties(m.video)
       m._checkForSeek("playing")
       if m._Flag_atLeastOnePlayEventForContent = false
         if m._viewStartTimestamp <> Invalid AND m._viewStartTimestamp <> 0
@@ -461,9 +465,6 @@ function muxAnalytics() as Object
 
   prototype.pollingIntervalHandler = function(pollingIntervalEvent)
     if m.video <> Invalid
-      ' set video properties
-      m._videoProperties = m._getVideoProperties(m.video)
-      
       ' update total watched time. (ViewStart - now)
       if m._viewWatchTime <> Invalid
         if m._viewStartTimestamp <> Invalid
@@ -616,6 +617,8 @@ function muxAnalytics() as Object
       m._viewSeekDuration = Invalid
       m._viewAdPlayedCount = Invalid
       m._viewPrerollPlayedCount = Invalid
+      m._videoSourceFormat = Invalid
+      m._videoSourceDuration = Invalid
     end if
   end function
 
@@ -730,12 +733,13 @@ function muxAnalytics() as Object
   prototype._getVideoProperties = function(video as Object) as Object
     props = {}
     if video <> Invalid
+    Print "video.duration:",video.duration
       if video.duration <> Invalid
-        props.video_source_duration = video.duration.toStr() 
+        m._videoSourceDuration = video.duration.toStr() 
       end if
 
       if video.videoFormat <> Invalid AND video.videoFormat <> ""
-        props.video_source_format = video.videoFormat
+        m._videoSourceFormat = video.videoFormat
       end if
     end if
 
@@ -787,7 +791,7 @@ function muxAnalytics() as Object
         props.video_stream_format = m._getStreamFormat(content.URL)
       end if
 
-      props.video_source_format = m._getVideoFormat(content.URL)
+      props._videoSourceFormat = m._getVideoFormat(content.URL)
 
       if content.Live <> Invalid
         if content.Live = true
@@ -796,8 +800,10 @@ function muxAnalytics() as Object
           props.video_source_is_live = "false"
         end if
       end if
-      if content.Length <> Invalid
-        props.video_source_duration = content.Length
+ Print "_getVideoContentProperties"
+      if content.Length <> Invalid AND content.Length > 0
+ Print "_getVideoContentProperties:",content.Length
+        m._videoSourceDuration = content.Length
       end if
     end if
 
@@ -891,6 +897,12 @@ function muxAnalytics() as Object
     end if
     if m._viewPrerollPlayedCount <> Invalid
       props.view_preroll_played = m._viewPrerollPlayedCount.toStr()
+    end if
+    if m._videoSourceFormat <> Invalid
+      props.video_source_format = m._videoSourceFormat
+    end if
+    if m._videoSourceDuration <> Invalid
+      props.video_source_duration = m._videoSourceDuration
     end if
     if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
       if m._configProperties.player_init_time > 0
@@ -1165,7 +1177,6 @@ function muxAnalytics() as Object
   end function
 
   prototype._logEvent = function(event = {} as Object, subtype = "" as String, title = "EVENT" as String) as Void
-    if event.e <> "viewend" AND event.e <> "viewstart" then return
     if m.debugEvents = "none" then return
     tot = title + " " + event.e
     if m.debugEvents = "full"

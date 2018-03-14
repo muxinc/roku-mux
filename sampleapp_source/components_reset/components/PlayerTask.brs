@@ -77,6 +77,7 @@ function playContent()
     else if selectionId = "dashnoads"
         contentnode.URL = "http://rdmedia.bbc.co.uk/dash/ondemand/bbb/2/client_manifest-common_init.mpd"
         contentnode.StreamFormat = "dash"
+        contentNode.length = 572
         contentInfo.length = 568
         contentInfo.contentId = "BIG BUCK BUNNY"
         m.top.video.content = contentNode

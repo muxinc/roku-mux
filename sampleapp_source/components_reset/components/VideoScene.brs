@@ -102,9 +102,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             m.PlayerTask.control = "stop"
             return true
         end if
-      else if key = "up"
-        PRint "<up>"
-        stop
       end if
     end if
     return false
