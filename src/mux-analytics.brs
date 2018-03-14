@@ -1,4 +1,5 @@
 function init()
+  m.MUX_SDK_VERSION = "0.0.4"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -34,6 +35,7 @@ function runBeaconLoop()
   m.beaconTimer.control = "start"
 
   m.mxa = muxAnalytics()
+  m.mxa.MUX_SDK_VERSION = m.MUX_SDK_VERSION
   
   Print "[mux-analytics] running task loop"
   
@@ -169,6 +171,7 @@ end function
 function muxAnalytics() as Object
   prototype = {}
 
+  prototype.MUX_SDK_VERSION = ""
   prototype.PLAYER_SOFTWARE_NAME = "RokuSG"
   prototype.PLAYER_IS_FULLSCREEN = "true"
 
@@ -392,7 +395,6 @@ function muxAnalytics() as Object
   end function
 
   prototype.configChangeHandler = function(config as Object)
-    Print "[mux-analytics] configChangeHandler"
     m._configProperties = config
     if config.property_key <> Invalid AND config.property_key <> ""
       m.beaconUrl = m._createBeaconUrl(config.property_key)
@@ -702,7 +704,8 @@ function muxAnalytics() as Object
     props.player_software_version = Mid(deviceInfo.GetVersion(), 3, 4)
     props.player_model_number = deviceInfo.GetModel()
     props.player_mux_plugin_name = appInfo.GetTitle()
-    props.player_mux_plugin_version = appInfo.GetVersion()
+    props.player_version = appInfo.GetVersion()
+    props.player_mux_plugin_version = m.MUX_SDK_VERSION
     props.player_language_code = deviceInfo.GetCountryCode()
     props.player_width = deviceInfo.GetDisplaySize().w
     props.player_height = deviceInfo.GetDisplaySize().h
@@ -1020,7 +1023,6 @@ function muxAnalytics() as Object
     if m.minification = true
       for each key in src
         keyParts = key.split("_")
-        ' Print key, src[key], keyParts[0]
         newKey = ""
         s = keyParts.count()
         if s > 0

@@ -1,7 +1,7 @@
 title=roku-mux
-major_version=0
+major_version=1
 minor_version=0
-build_version=3
+build_version=0
 mm_icon_focus_hd=pkg:/images/MainMenu_Icon_Center_HD.png
 mm_icon_focus_sd=pkg:/images/MainMenu_Icon_Center_SD43.png
 subtitle=SDK2
@@ -15,6 +15,8 @@ splash_color=#000000
 splash_min_time=1000
 ui_resolutions=hd
 
-mux_debug_events=none
-mux_debug_beacons=partial
-
+#mux_dry_run=true
+#mux_base_url=http://img.litix.io
+#mux_debug_events=none
+#mux_debug_beacons=full
+#mux_minification=false
