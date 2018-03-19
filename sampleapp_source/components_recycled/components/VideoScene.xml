@@ -1,5 +1,5 @@
 <component name="VideoScene" extends="Scene">
-<script type="text/brightscript" uri="pkg:/components/VideoScene.brs"/>
+<script type="text/brightscript" uri="./VideoScene.brs"/>
 <children>
     <MuxTask id="mux"/>
     <Rectangle id="adFacade" visible="true" />

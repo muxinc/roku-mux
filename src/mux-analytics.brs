@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "0.0.5"
+  m.MUX_SDK_VERSION = "0.0.6"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -145,7 +145,15 @@ function runBeaconLoop()
 end function
 
 function _createConnection() as Object
-  return CreateObject("roUrlTransfer")
+  connection = CreateObject("roUrlTransfer")
+  connection.SetCertificatesFile("common:/certs/ca-bundle.crt")
+  connection.AddHeader("Content-Type", "application/json")
+  connection.AddHeader("Accept", "*/*")
+  connection.AddHeader("Expect", "")
+  connection.AddHeader("Connection", "keep-alive")
+  connection.AddHeader("Accept-Encoding", "gzip, deflate, br")
+  connection.EnableEncodings(true)
+  return connection
 end function
 
 function _createDeviceInfo() as Object
@@ -256,7 +264,7 @@ function muxAnalytics() as Object
     m._viewWatchTime = Invalid
     m._viewRebufferCount = Invalid
     m._viewRebufferDuration = Invalid
-    m._viewRebufferFrequency = Invalid
+    m._viewRebufferFrequency! = Invalid
     m._viewRebufferPercentage = Invalid
     m._viewSeekCount = Invalid
     m._viewSeekDuration = Invalid
@@ -277,7 +285,6 @@ function muxAnalytics() as Object
     ' kick off analytics
     date = m._getDateTime()
     m._startTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
-
     m._sessionProperties = m._getSessionProperites()
     m._addEventToQueue(m._createEvent("playerready"))
   end function
@@ -322,7 +329,7 @@ function muxAnalytics() as Object
         if m._viewRebufferCount <> Invalid
           m._viewRebufferCount++
           if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
-            m._viewRebufferFrequency = m._viewRebufferCount / m._viewWatchTime
+            m._viewRebufferFrequency! = m._viewRebufferCount / m._viewWatchTime
           end if
         end if
       end if
@@ -549,15 +556,9 @@ function muxAnalytics() as Object
     else
       if beacon.count() > 0
         m._logBeacon(beacon, "BEACON")
-        m.connection.SetCertificatesFile("common:/certs/ca-bundle.crt")
+       
         m.connection.AsyncCancel()
         m.connection.SetUrl(m.beaconUrl)
-        m.connection.AddHeader("Content-Type", "application/json")
-        m.connection.AddHeader("Accept", "*/*")
-        m.connection.AddHeader("Expect", "")
-        m.connection.AddHeader("Connection", "keep-alive")
-        m.connection.AddHeader("Accept-Encoding", "gzip, deflate, br")
-        m.connection.EnableEncodings(true)  
         m.requestId = m.connection.GetIdentity()
         requestBody = {}
         requestBody.events = beacon
@@ -620,7 +621,7 @@ function muxAnalytics() as Object
       m._viewWatchTime = Invalid
       m._viewRebufferCount = Invalid
       m._viewRebufferDuration = Invalid
-      m._viewRebufferFrequency = Invalid
+      m._viewRebufferFrequency! = Invalid
       m._viewRebufferPercentage = Invalid
       m._viewSeekCount = Invalid
       m._viewSeekDuration = Invalid
@@ -889,8 +890,8 @@ function muxAnalytics() as Object
     if m._viewRebufferPercentage <> Invalid
       props.view_rebuffer_percentage = m._viewRebufferPercentage.toStr()
     end if
-    if m._viewRebufferFrequency <> Invalid
-      props.view_rebuffer_frequency = m._viewRebufferFrequency.toStr()
+    if m._viewRebufferFrequency! <> Invalid
+      props.view_rebuffer_frequency = m._viewRebufferFrequency!.toStr()
     end if
     if m._viewSeekCount <> Invalid
       props.view_seek_count = m._viewSeekCount.toStr()
@@ -912,9 +913,9 @@ function muxAnalytics() as Object
     end if
     if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
       if type(m._configProperties.player_init_time) = "roString"
-        playerInitTime = Val(m._configProperties.player_init_time)
+        playerInitTime = ParseJSON(m._configProperties.player_init_time)
         if playerInitTime > 0
-          props.player_startup_time = playerInitTime - m._startTimestamp
+          props.player_startup_time =  m._startTimestamp - playerInitTime
         end if
       end if
     end if
