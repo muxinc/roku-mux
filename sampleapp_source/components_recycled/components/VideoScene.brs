@@ -54,37 +54,42 @@ function onItemSelected()
 end function
 
 function setContent(selectionId as String)
-    contentNode = CreateObject("roSGNode", "ContentNode")
+    contentNode = CreateObject("roSGNode", "VideoContentNode")
     if selectionId = "1"
         contentNode.URL= "http://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4"
         contentNode.TITLE = "Big Buck Bunny"
-        contentNode.Director = "Blender"
+        contentNode.DIRECTOR = "Blender"
+        contentNode.TitleSeason = "Bunny Season"
         contentNode.ContentType = "movie"
         contentNode.length = 512
         m.muxConfig.video_id = "Mux1"
         m.muxConfig.video_language_code = "en"
         m.muxConfig.video_cdn = "cdn1"
         m.muxConfig.video_variant_name = "BB1"
+        m.muxConfig.video_variant_id = "BUNNY_ID"
         m.muxConfig.current_audio_track = "customer set audio track 1"
         m.muxConfig.current_subtitle_track = "customer set subtitle track 1"
         m.mux.setField("config", m.muxConfig)
     else if selectionId = "2"
         contentNode.URL= "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
         contentNode.TITLE = "TED Talks"
-        contentNode.Director = "James Cameron"
-        contentNode.ContentType = 2042
-        contentNode.length = "episode"
+        contentNode.DIRECTOR = "James Cameron"
+        contentNode.TitleSeason = "Ted Season"
+        contentNode.ContentType = "Episode"
+        contentNode.length = 2042
         m.muxConfig.video_id = "Mux2"
         m.muxConfig.video_language_code = "us"
         m.muxConfig.video_cdn = "cdn2"
         m.muxConfig.video_variant_name = "TED1"
+        m.muxConfig.video_variant_id = "TED_ID"
         m.muxConfig.current_audio_track = "customer set audio track 2"
         m.muxConfig.current_subtitle_track = "customer set subtitle track 2"
         m.mux.setField("config", m.muxConfig)
     else if selectionId = "3"
         contentNode.URL= "https://content.jwplatform.com/manifests/yp34SRmf.m3u8"
         contentNode.TITLE = "Cycling Man"
-        contentNode.Director = "Gullermo Del Toro"
+        contentNode.DIRECTOR = "Gullermo Del Toro"
+        contentNode.TitleSeason = "Sport Season"
         contentNode.ContentType = "movie"
         contentNode.StreamFormat = "hls"
         contentNode.length = 50
@@ -92,6 +97,7 @@ function setContent(selectionId as String)
         m.muxConfig.video_language_code = "bg"
         m.muxConfig.video_cdn = "cdn3"
         m.muxConfig.video_variant_name = "CY1"
+        m.muxConfig.video_variant_id = "Cycling_ID"
         m.muxConfig.current_audio_track = "customer set audio track 3"
         m.muxConfig.current_subtitle_track = "customer set subtitle track 3"
         m.mux.setField("config", m.muxConfig)

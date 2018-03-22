@@ -17,6 +17,7 @@ Function TestSuite__URL_Utils() as Object
   this.addTest("URL_Utils Get Domain 10", TestCase__MuxAnalytics_URL_Utils_find_domain_ten)
   this.addTest("URL_Utils Get Domain 11", TestCase__MuxAnalytics_URL_Utils_find_domain_eleven)
   this.addTest("URL_Utils Get Domain 12", TestCase__MuxAnalytics_URL_Utils_find_domain_twelve)
+  this.addTest("URL_Utils Get Domain 13", TestCase__MuxAnalytics_URL_Utils_find_domain_thirteen)
   this.addTest("URL_Utils Get Hostname 1", TestCase__MuxAnalytics_URL_Utils_find_hostname_one)
   this.addTest("URL_Utils Get Hostname 2", TestCase__MuxAnalytics_URL_Utils_find_hostname_two)
   this.addTest("URL_Utils Get Hostname 3", TestCase__MuxAnalytics_URL_Utils_find_hostname_three)
@@ -100,6 +101,11 @@ function TestCase__MuxAnalytics_URL_Utils_find_domain_eleven() as Object
 end function
 
 function TestCase__MuxAnalytics_URL_Utils_find_domain_twelve() as Object
+  result = m.SUT._getDomain("http://rdmedia.bbc.co.uk/dash/ondemand/bbb/2/client_manifest-common_init.mpd")
+  return m.assertEqual(result, "bbc.co.uk")
+end function
+
+function TestCase__MuxAnalytics_URL_Utils_find_domain_thirteen() as Object
   result = m.SUT._getDomain("http://pubads.g.doubleclick.net?url=http://not.the.domain.we.want.net")
   return m.assertEqual(result, "doubleclick.net")
 end function
@@ -143,6 +149,7 @@ function TestCase__MuxAnalytics_URL_Utils_find_hostname_nine() as Object
   result = m.SUT._getHostname("pubads.g.doubleclick.net/gampad/ads#correlator=123456&url=http://not.the.domain.we.want.net")
   return m.assertEqual(result, "pubads.g.doubleclick.net")
 end function
+
 
 
 

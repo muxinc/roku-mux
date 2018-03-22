@@ -8,7 +8,7 @@ Function TestSuite__GetSessionProperties() as Object
   this.addTest("GetSessionProperties Version", TestCase__MuxAnalytics_GetSessionProperties_version)
   this.addTest("GetSessionProperties Fullscreen", TestCase__MuxAnalytics_fullscreen_always_true)
   this.addTest("GetSessionProperties SDK Name", TestCase__MuxAnalytics_sdk_name)
-  this.addTest("GetSessionProperties SDK Version", TestCase__MuxAnalytics_sdk_version)
+  this.addTest("GetSessionProperties Player Version", TestCase__MuxAnalytics_player_version)
 
   return this
 End Function
@@ -64,7 +64,7 @@ Function TestCase__MuxAnalytics_sdk_name() as String
   return m.assertEqual("roku-mux", sessionProps.player_mux_plugin_name)
 End Function
 
-Function TestCase__MuxAnalytics_sdk_version() as String
+Function TestCase__MuxAnalytics_player_version() as String
   ' GIVEN
   m.SUT._getAppInfo = function ()
     fappInfo = FakeAppInfo()
@@ -74,7 +74,7 @@ Function TestCase__MuxAnalytics_sdk_version() as String
   ' WHEN
   sessionProps = m.SUT._getSessionProperites()
   ' THEN
-  return m.assertEqual("7.7.7", sessionProps.player_mux_plugin_version)
+  return m.assertEqual("7.7.7", sessionProps.player_version)
 End Function
 
 

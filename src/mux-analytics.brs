@@ -98,9 +98,7 @@ function runBeaconLoop()
             m.top.video.ObserveField("control", m.messagePort)
           end if
         else if field = "config"
-          if m.top.config = Invalid
-            m.mxa.configChangeHandler(msg.getData())
-          end if
+          m.mxa.configChangeHandler(msg.getData())
         else if field = "error"
           m.mxa.videoErrorHandler(msg.getData())
         else if field = "control"
@@ -275,10 +273,11 @@ function muxAnalytics() as Object
     m._viewPrerollPlayedCount = Invalid
 
     ' flags
+    m._Flag_lastVideoState = "none"
+    m._Flag_isPaused = false
     m._Flag_atLeastOnePlayEventForContent = false
     m._Flag_RebufferingStarted = false
     m._Flag_isSeeking = false
-    m._Flag_lastVideoState = "none"
     m._Flag_lastReportedPosition = 0
     m._Flag_FailedAdsErrorSet = false
 
@@ -296,7 +295,7 @@ function muxAnalytics() as Object
 
   prototype.heartbeatIntervalHandler = function(heartbeatIntervalEvent)
     data = heartbeatIntervalEvent.getData()
-    if (m._Flag_lastVideoState <> "paused")
+    if (m._Flag_isPaused <> true)
       m._addEventToQueue(m._createEvent("hb"))
     end if
   end function
@@ -317,6 +316,7 @@ function muxAnalytics() as Object
   end function
 
   prototype.videoStateChangeHandler = function(videoState as String)
+    m._Flag_isPaused = (videoState = "paused")
     if videoState = "buffering"
       m._checkForSeek("buffering")
       if m._Flag_isSeeking = true
@@ -403,6 +403,7 @@ function muxAnalytics() as Object
   end function
 
   prototype.configChangeHandler = function(config as Object)
+Print "CONFIG CHANGE HANDLERz"
     m._configProperties = config
     if config.property_key <> Invalid AND config.property_key <> ""
       m.beaconUrl = m._createBeaconUrl(config.property_key)
@@ -410,7 +411,6 @@ function muxAnalytics() as Object
   end function
 
   prototype.videoErrorHandler = function(error as Object)
-    stop
     errorCode = "0"
     errorMessage = "Unknown"
     if error <> Invalid
@@ -430,6 +430,7 @@ function muxAnalytics() as Object
   prototype.rafEventHandler = function(rafEvent) as Void
     data = rafEvent.getData()
     eventType = data.eventType
+    m._Flag_isPaused = (eventType = "Pause")
     if eventType = "PodStart"
       m._advertProperties = m._getAdvertProperites(data.obj)
       m._addEventToQueue(m._createEvent("adbreakstart"))
@@ -476,7 +477,7 @@ function muxAnalytics() as Object
         m._addEventToQueue(m._createEvent("aderror", {player_error_code: errorCode, player_error_message: errorMessage}))
         m._Flag_FailedAdsErrorSet = true
       end if
-    end if 
+    end if
   end function
 
   prototype.pollingIntervalHandler = function(pollingIntervalEvent)
@@ -721,7 +722,8 @@ function muxAnalytics() as Object
     props.player_mux_plugin_name = appInfo.GetTitle()
     props.player_version = appInfo.GetVersion()
     props.player_mux_plugin_version = m.MUX_SDK_VERSION
-    props.player_language_code = deviceInfo.GetCountryCode()
+    props.player_country_code = deviceInfo.GetCountryCode()
+    props.player_language_code = deviceInfo.GetCurrentLocale()
     videoMode = deviceInfo.GetVideoMode()
     props.player_width = m._getVideoPlaybackMetric(videoMode, "width")
     props.player_height = m._getVideoPlaybackMetric(videoMode, "height")
@@ -729,7 +731,6 @@ function muxAnalytics() as Object
     props.beacon_domain = m._getDomain(m.beaconUrl)
 
     props.player_instance_id = m._generateShortID()
-
     ' DEVICE INFO 
     if deviceInfo.IsAdIdTrackingDisabled() = true
       props.viewer_user_id = deviceInfo.GetClientTrackingId()
@@ -846,10 +847,11 @@ function muxAnalytics() as Object
   ' called once per event
   prototype._getDynamicProperties = function() as Object
     props = {}
-
     if m.video <> Invalid
-      if m._Flag_lastVideoState <> Invalid
-        props.player_is_paused = (m._Flag_lastVideoState = "paused").toStr()
+      if m._Flag_isPaused = true
+        props.player_is_paused = "true"
+      else
+        props.player_is_paused = "false"
       end if
       if m.video.timeToStartStreaming <> Invalid AND m.video.timeToStartStreaming <> 0
         props.player_time_to_first_frame = (m.video.timeToStartStreaming * 1000).toStr()
@@ -940,7 +942,7 @@ function muxAnalytics() as Object
     if strippedUrl.count() > 0
       url = strippedUrl[0]
     end if
-    domainRegex = CreateObject("roRegex", "[^.\s]+\.[^.\s]+$", "i")
+    domainRegex = CreateObject("roRegex", "([a-z0-9\-]+)\.([a-z]+|[a-z]{2}\.[a-z]+)$", "i")
     matchResults = domainRegex.Match(url)
     if matchResults.count() > 0
       domain = matchResults[0]
