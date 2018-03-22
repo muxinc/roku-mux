@@ -24,8 +24,14 @@ var lookupIpAddress;
 info.date = now.getFullYear().toString() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + (now.getDate().toString())).slice(-2);
 
 
-gulp.task('install', ['closeApp', 'cleanup', 'build_sample_app', 'build_components', 'package', 'deploy'], function () {})
-gulp.task('test', ['closeApp', 'cleanup', 'build_test_source', 'add_test_framework', 'add_mux_library_to_test','package_test', 'deploy_test'], function () {})
+gulp.task('install', ['closeApp', 'cleanup', 'build_sample_app', 'build_components', 'package', 'deploy'], function () {
+    return gulp.src('build')
+    .pipe(clean());
+})
+gulp.task('test', ['closeApp', 'cleanup', 'build_test_source', 'add_test_framework', 'add_mux_library_to_test','package_test', 'deploy_test'], function () {
+  return gulp.src('build')
+    .pipe(clean());
+})
 
 gulp.task('deploy', ['closeApp', 'cleanup', 'build_sample_app','build_components', 'package'], function () {
   var roku_ip = (env_roku_ip == undefined) ? buildConfig.default_roku_target : env_roku_ip

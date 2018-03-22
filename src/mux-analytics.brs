@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "0.0.6"
+  m.MUX_SDK_VERSION = "0.0.7"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -265,6 +265,7 @@ function muxAnalytics() as Object
     m._viewRebufferFrequency! = Invalid
     m._viewRebufferPercentage = Invalid
     m._viewSeekCount = Invalid
+    m._viewSeekStartTimeStamp = Invalid
     m._viewSeekDuration = Invalid
     m._viewAdPlayedCount = Invalid
     m._viewPrerollPlayedCount = Invalid
@@ -319,10 +320,6 @@ function muxAnalytics() as Object
     m._Flag_isPaused = (videoState = "paused")
     if videoState = "buffering"
       m._checkForSeek("buffering")
-      if m._Flag_isSeeking = true
-        m._addEventToQueue(m._createEvent("seekend"))
-        m._Flag_isSeeking = false
-      end if
       if m._Flag_atLeastOnePlayEventForContent = true
         m._addEventToQueue(m._createEvent("rebufferstart"))
         m._Flag_RebufferingStarted = true
@@ -403,7 +400,6 @@ function muxAnalytics() as Object
   end function
 
   prototype.configChangeHandler = function(config as Object)
-Print "CONFIG CHANGE HANDLERz"
     m._configProperties = config
     if config.property_key <> Invalid AND config.property_key <> ""
       m.beaconUrl = m._createBeaconUrl(config.property_key)
@@ -499,9 +495,6 @@ Print "CONFIG CHANGE HANDLERz"
             if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
               m._viewRebufferPercentage = m._viewRebufferDuration / m._viewWatchTime
             end if
-          end if
-          if m._viewSeekDuration <> Invalid
-            m._viewSeekDuration = m._viewSeekDuration + (m.pollTimer.duration * 1000)
           end if
         end if
       end if
@@ -638,6 +631,8 @@ Print "CONFIG CHANGE HANDLERz"
       if m._Flag_isSeeking <> true
         if m.video.position > (m._Flag_lastReportedPosition + m._seekThreshold) OR m.video.position < m._Flag_lastReportedPosition
           m._addEventToQueue(m._createEvent("seeking"))
+          date = m._getDateTime()
+          m._viewSeekStartTimeStamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
           if m._viewSeekCount <> Invalid
             m._viewSeekCount++
             m._Flag_isSeeking = true
@@ -646,6 +641,10 @@ Print "CONFIG CHANGE HANDLERz"
       end if
     else if state = "playing"
       if m._Flag_isSeeking = true
+        date = m._getDateTime()
+        now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+        Print "_checkForSeek now|_startTimestamp",now,m._viewSeekStartTimeStamp
+        m._viewSeekDuration = m._viewSeekDuration + (now - m._viewSeekStartTimeStamp)
         m._addEventToQueue(m._createEvent("seekend"))
         m._Flag_isSeeking = false
       end if
