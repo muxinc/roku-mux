@@ -29,8 +29,11 @@ Sub MuxAnalyticsTestSuite__SetUp()
   m.fakePort = FakePort()
   m.fakeTimer = FakeTimer()
   m.fakeAppInfo = FakeAppInfo()
-  m.fakeConfig = {
-    SEEK_THRESHOLD: 1500
+  m.fakeAppConfig = {
+    SEEK_THRESHOLD: 1500,
+  }
+  m.fakeCustomerConfig = {
+    property_key: "UNIT_TEST_PROPERTY_KEY"
   }
   m.SUT = MuxAnalytics()
 End Sub
@@ -42,7 +45,7 @@ Function TestCase__MuxAnalytics_DryRun_Defaults_to_false() as String
   ' GIVEN
     m.fakeAppInfo = FakeAppInfo()
   ' WHEN
-    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
+    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeAppConfig, m.fakeCustomerConfig, m.fakeTimer, m.fakeTimer)
   ' THEN
   return m.assertFalse(m.SUT.dryRun)
 End Function
@@ -52,7 +55,7 @@ Function TestCase__MuxAnalytics_DryRun_settable_by_config_true() as String
     m.fakeAppInfo = FakeAppInfo()
     m.fakeAppInfo._GetValueValueToReturn = "true"
   ' WHEN
-    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
+    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeAppConfig, m.fakeCustomerConfig, m.fakeTimer, m.fakeTimer)
   ' THEN
   return m.assertTrue(m.SUT.dryRun)
 End Function
@@ -63,7 +66,7 @@ Function TestCase__MuxAnalytics_DryRun_settable_by_config_false() as String
     m.fakeAppInfo._GetValueValueToReturn = "false"
 
   ' WHEN
-    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
+    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeAppConfig, m.fakeCustomerConfig, m.fakeTimer, m.fakeTimer)
   ' THEN
   return m.assertFalse(m.SUT.dryRun)
 End Function
@@ -74,7 +77,7 @@ Function TestCase__MuxAnalytics_DryRun_settable_to_something_wacky_ignored_as_fa
     m.fakeAppInfo._GetValueValueToReturn = "wacky"
 
   ' WHEN
-    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
+    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeAppConfig, m.fakeCustomerConfig, m.fakeTimer, m.fakeTimer)
   ' THEN
   return m.assertFalse(m.SUT.dryRun)
 End Function
@@ -83,7 +86,7 @@ Function TestCase__MuxAnalytics_DebugEvents_Defaults_to_none() as String
   ' GIVEN
     m.fakeAppInfo = FakeAppInfo()
   ' WHEN
-    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
+    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeAppConfig, m.fakeCustomerConfig, m.fakeTimer, m.fakeTimer)
   ' THEN
   return m.assertEqual(m.SUT.debugEvents, "none")
 End Function
@@ -93,7 +96,7 @@ Function TestCase__MuxAnalytics_DebugEvents_settable_by_config_full() as String
     m.fakeAppInfo = FakeAppInfo()
     m.fakeAppInfo._GetValueValueToReturn = "full"
   ' WHEN
-    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
+    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeAppConfig, m.fakeCustomerConfig, m.fakeTimer, m.fakeTimer)
   ' THEN
   return m.assertEqual(m.SUT.debugEvents, "full")
 End Function
@@ -103,7 +106,7 @@ Function TestCase__MuxAnalytics_DebugEvents_settable_by_config_partial() as Stri
     m.fakeAppInfo = FakeAppInfo()
     m.fakeAppInfo._GetValueValueToReturn = "partial"
   ' WHEN
-    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
+    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeAppConfig, m.fakeCustomerConfig, m.fakeTimer, m.fakeTimer)
   ' THEN
   return m.assertEqual(m.SUT.debugEvents, "partial")
 End Function
@@ -112,7 +115,7 @@ Function TestCase__MuxAnalytics_DebugEvents_settable_to_something_wacky_ignored_
   ' GIVEN
     m.fakeAppInfo._GetValueValueToReturn = "wacky"
   ' WHEN
-    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
+    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeAppConfig, m.fakeCustomerConfig, m.fakeTimer, m.fakeTimer)
   ' THEN
   return m.assertEqual(m.SUT.debugEvents, "none")
 End Function
@@ -121,7 +124,7 @@ Function TestCase__MuxAnalytics_check_values() as String
   ' GIVEN
     m.fakeAppInfo._GetValueValueToReturn = "wacky"
   ' WHEN
-    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
+    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeAppConfig, {}, m.fakeTimer, m.fakeTimer)
   
     result = "ok"
     if m.SUT._beaconCount <> 0 then result = "failed:_beaconCount"
@@ -156,7 +159,7 @@ Function TestCase__MuxAnalytics_check_startTime_is_set() as String
       return faker
     end function
   ' WHEN
-    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
+    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeAppConfig, {}, m.fakeTimer, m.fakeTimer)
   ' THEN
     return m.assertEqual(m.SUT._startTimestamp, 1520195373111)
 End Function
@@ -171,7 +174,7 @@ Function TestCase__MuxAnalytics_check_startTime_is_set_2() as String
       return faker
     end function
   ' WHEN
-    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
+    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeAppConfig, {}, m.fakeTimer, m.fakeTimer)
   ' THEN
     return m.assertEqual(m.SUT._startTimestamp, 1520195373000)
 End Function
@@ -186,7 +189,7 @@ Function TestCase__MuxAnalytics_check_startTime_is_set_3() as String
       return faker
     end function
   ' WHEN
-    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeConfig, {}, m.fakeTimer, m.fakeTimer)
+    m.SUT.init(m.fakeConnection, m.fakePort, m.fakeAppInfo, m.fakeAppConfig, {}, m.fakeTimer, m.fakeTimer)
   ' THEN
     return m.assertEqual(m.SUT._startTimestamp, 1520195373999)
 End Function

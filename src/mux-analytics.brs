@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "0.0.7"
+  m.MUX_SDK_VERSION = "0.0.8"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -313,7 +313,7 @@ function muxAnalytics() as Object
       end if
     end if
     
-    m.pollTimer.control = "start"
+
   end function
 
   prototype.videoStateChangeHandler = function(videoState as String)
@@ -355,10 +355,8 @@ function muxAnalytics() as Object
       m._Flag_isSeeking = false
       m._Flag_atLeastOnePlayEventForContent = true
     else if videoState = "stopped"
-      m.pollTimer.control = "stop"
     else if videoState = "finished"
       m._addEventToQueue(m._createEvent("ended"))
-      m.pollTimer.control = "stop"
       m._endView()
     else if videoState = "error"
       errorCode = ""
@@ -427,6 +425,7 @@ function muxAnalytics() as Object
     data = rafEvent.getData()
     eventType = data.eventType
     m._Flag_isPaused = (eventType = "Pause")
+    m._advertProperties = {}
     if eventType = "PodStart"
       m._advertProperties = m._getAdvertProperites(data.obj)
       m._addEventToQueue(m._createEvent("adbreakstart"))
@@ -569,7 +568,7 @@ function muxAnalytics() as Object
     if (m._clientOperatedStartAndEnd = true and setByClient = false) then return
     if (m._inView = false)
       m.heartbeatTimer.control = "start"
-
+      m.pollTimer.control = "start"
       m._viewSequence = 0
       m._viewId = m._generateViewID()
       m._viewWatchTime = 0
@@ -605,6 +604,7 @@ function muxAnalytics() as Object
     if (m._clientOperatedStartAndEnd = false and setByClient = true) then return
     if (m._inView = true)
       m.heartbeatTimer.control = "stop"
+      m.pollTimer.control = "stop"
       m._addEventToQueue(m._createEvent("viewend"))
       m._inView = false
       m._viewId = Invalid
@@ -643,7 +643,6 @@ function muxAnalytics() as Object
       if m._Flag_isSeeking = true
         date = m._getDateTime()
         now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
-        Print "_checkForSeek now|_startTimestamp",now,m._viewSeekStartTimeStamp
         m._viewSeekDuration = m._viewSeekDuration + (now - m._viewSeekStartTimeStamp)
         m._addEventToQueue(m._createEvent("seekend"))
         m._Flag_isSeeking = false
@@ -820,7 +819,6 @@ function muxAnalytics() as Object
   ' called once per advert session'
   prototype._getAdvertProperites = function(adData as Object) as Object
     props = {}
-    
     if adData <> Invalid
       if adData.ad <> Invalid
         if adData.adIndex <> Invalid and adData.adIndex = 1 'preroll only'
@@ -828,14 +826,16 @@ function muxAnalytics() as Object
             if adData.ad.streams.count() > 0
               if adData.ad.streams[0].url <> Invalid
                 adUrl = adData.ad.streams[0].url
-                props.view_preroll_ad_asset_hostname = m._getHostname(adurl)
-                props.view_preroll_ad_asset_domain = m._getDomain(adurl)
+                if adUrl <> Invalid AND adUrl <> ""
+                  props.view_preroll_ad_asset_hostname = m._getHostname(adurl)
+                  props.view_preroll_ad_asset_domain = m._getDomain(adurl)
+                end if 
               end if 
             end if 
           end if 
         end if 
       end if 
-      if adData.adurl <> Invalid
+      if adData.adurl <> Invalid AND adData.adurl <> ""
         props.view_preroll_ad_tag_hostname = m._getHostname(adData.adurl)
         props.view_preroll_ad_tag_domain = m._getDomain(adData.adurl)
       end if
