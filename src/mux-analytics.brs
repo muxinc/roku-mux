@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "0.0.8"
+  m.MUX_SDK_VERSION = "0.0.9"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -255,6 +255,7 @@ function muxAnalytics() as Object
     m._playerSequence = 0
     m._startTimestamp = Invalid
     m._viewStartTimestamp = Invalid
+    m._playerViewCount = Invalid
     m._viewSequence = Invalid
     m._viewId = Invalid
     m._viewTimeToFirstFrame = Invalid
@@ -285,6 +286,7 @@ function muxAnalytics() as Object
     ' kick off analytics
     date = m._getDateTime()
     m._startTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
+    m._playerViewCount = 0
     m._sessionProperties = m._getSessionProperites()
     m._addEventToQueue(m._createEvent("playerready"))
   end function
@@ -312,8 +314,6 @@ function muxAnalytics() as Object
         m._seekThreshold = maximimumPossiblePositionChange
       end if
     end if
-    
-
   end function
 
   prototype.videoStateChangeHandler = function(videoState as String)
@@ -478,11 +478,13 @@ function muxAnalytics() as Object
   prototype.pollingIntervalHandler = function(pollingIntervalEvent)
     if m.video <> Invalid
       ' update total watched time. (ViewStart - now)
-      if m._viewWatchTime <> Invalid
-        if m._viewStartTimestamp <> Invalid
-          date = m._getDateTime()
-          now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
-          m._viewWatchTime = now - m._viewStartTimestamp
+      if m.video.state <> "paused"
+        if m._viewWatchTime <> Invalid
+          if m._viewStartTimestamp <> Invalid
+            date = m._getDateTime()
+            now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+            m._viewWatchTime = now - m._viewStartTimestamp
+          end if
         end if
       end if
       
@@ -570,6 +572,9 @@ function muxAnalytics() as Object
       m.heartbeatTimer.control = "start"
       m.pollTimer.control = "start"
       m._viewSequence = 0
+      if m._playerViewCount <> Invalid
+        m._playerViewCount++
+      end if
       m._viewId = m._generateViewID()
       m._viewWatchTime = 0
       m._contentPlaybackTime = 0
@@ -794,9 +799,9 @@ function muxAnalytics() as Object
       props.video_source_domain = m._getDomain(content.URL)
       
       if content.StreamFormat <> Invalid AND content.StreamFormat <> "(null)"
-        props.video_stream_format = content.StreamFormat
+        props.video_source_mime_type = content.StreamFormat
       else
-        props.video_stream_format = m._getStreamFormat(content.URL)
+        props.video_source_mime_type = m._getStreamFormat(content.URL)
       end if
 
       props._videoSourceFormat = m._getVideoFormat(content.URL)
@@ -858,6 +863,9 @@ function muxAnalytics() as Object
     end if
     if m._playerSequence <> Invalid AND m._playerSequence <> 0
       props.player_sequence_number = m._playerSequence.toStr()
+    end if
+    if m._playerViewCount <> Invalid AND m._playerViewCount <> 0
+      props.player_view_count = m._playerViewCount
     end if
     if m._viewSequence <> Invalid AND m._viewSequence <> 0
       props.view_sequence_number = m._viewSequence.toStr()
