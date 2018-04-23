@@ -68,7 +68,7 @@ function setContent(selectionId as String)
         m.muxConfig.video_variant_name = "BB1"
         m.muxConfig.video_variant_id = "BUNNY_ID"
         m.muxConfig.current_audio_track = "customer set audio track 1"
-        m.muxConfig.current_subtitle_track = "customer set subtitle track 1"
+        m.muxConfig.video_source_current_subtitle_track = "customer set subtitle track 1"
         m.mux.setField("config", m.muxConfig)
     else if selectionId = "2"
         contentNode.URL= "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
@@ -82,8 +82,8 @@ function setContent(selectionId as String)
         m.muxConfig.video_cdn = "cdn2"
         m.muxConfig.video_variant_name = "TED1"
         m.muxConfig.video_variant_id = "TED_ID"
-        m.muxConfig.current_audio_track = "customer set audio track 2"
-        m.muxConfig.current_subtitle_track = "customer set subtitle track 2"
+        m.muxConfig.video_source_current_audio_track = "customer set audio track 2"
+        m.muxConfig.video_source_current_subtitle_track = "customer set subtitle track 2"
         m.mux.setField("config", m.muxConfig)
     else if selectionId = "3"
         contentNode.URL= "https://content.jwplatform.com/manifests/yp34SRmf.m3u8"
@@ -99,7 +99,7 @@ function setContent(selectionId as String)
         m.muxConfig.video_variant_name = "CY1"
         m.muxConfig.video_variant_id = "Cycling_ID"
         m.muxConfig.current_audio_track = "customer set audio track 3"
-        m.muxConfig.current_subtitle_track = "customer set subtitle track 3"
+        m.muxConfig.video_source_current_audio_track = "customer set subtitle track 3"
         m.mux.setField("config", m.muxConfig)
     end if
     m.video.content = contentNode

@@ -21,6 +21,10 @@ Function TestSuite__Minification() as Object
   this.addTest("Minification [3] Terrible Property", TestCase__MuxAnalytics_Minification_minifies_terrible_property_3)
   this.addTest("Minification [4] Terrible Property", TestCase__MuxAnalytics_Minification_minifies_terrible_property_4)
   this.addTest("Minification [5] Terrible Property", TestCase__MuxAnalytics_Minification_minifies_terrible_property_5)
+  this.addTest("Minification [6] video_source_format", TestCase__MuxAnalytics_Minification_minifies_video_source_format)
+  this.addTest("Minification [7] video_source_current_audio_track", TestCase__MuxAnalytics_Minification_minifies_video_source_current_audio_track)
+  this.addTest("Minification [8] video_source_current_subtitle_track", TestCase__MuxAnalytics_Minification_minifies_video_source_current_subtitle_track)
+  this.addTest("Minification [9] player_country_code", TestCase__MuxAnalytics_Minification_minifies_player_country_code)
 
   return this
 End Function
@@ -192,4 +196,44 @@ Function TestCase__MuxAnalytics_Minification_minifies_terrible_property_5() as S
   result = m.SUT._minify(body)
   ' THEN
   return m.assertEqual("omg", result.pp)
+end function
+
+Function TestCase__MuxAnalytics_Minification_minifies_video_source_format() as String
+  ' GIVEN
+  m.SUT.minification = true
+  body = {video_source_format: "mp4"}
+  ' WHEN
+  result = m.SUT._minify(body)
+  ' THEN
+  return m.assertEqual(result.keys()[0], "vsoft")
+end function
+
+Function TestCase__MuxAnalytics_Minification_minifies_video_source_current_audio_track() as String
+  ' GIVEN
+  m.SUT.minification = true
+  body = {video_source_current_audio_track: "http://audiotrack.url"}
+  ' WHEN
+  result = m.SUT._minify(body)
+  ' THEN
+  return m.assertEqual(result.keys()[0], "vsocuaotr")
+end function
+
+Function TestCase__MuxAnalytics_Minification_minifies_video_source_current_subtitle_track() as String
+  ' GIVEN
+  m.SUT.minification = true
+  body = {video_source_current_subtitle_track: "mp4"}
+  ' WHEN
+  result = m.SUT._minify(body)
+  ' THEN
+  return m.assertEqual(result.keys()[0], "vsocusbtr")
+end function
+
+Function TestCase__MuxAnalytics_Minification_minifies_player_country_code() as String
+  ' GIVEN
+  m.SUT.minification = true
+  body = {player_country_code: "de"}
+  ' WHEN
+  result = m.SUT._minify(body)
+  ' THEN
+  return m.assertEqual(result.keys()[0], "pcycd")
 end function
