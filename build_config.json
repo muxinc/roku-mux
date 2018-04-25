@@ -1,10 +1,10 @@
 {
   "app_name" : "mux",
   "default_roku_user" : "rokudev",
-  "default_roku_target" : "192.168.1.242",
+  "default_roku_target" : "192.168.5.119",
   "default_roku_pass" : "rokudev",
   "app_name" : "mux",
   "build_dir_name" : "build",
   "out_dir_name" : "out",
-  "sample_app_type" : "recycle_video"
+  "sample_app_type" : "reset_video"
 }
