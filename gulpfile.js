@@ -37,10 +37,10 @@ gulp.task('deploy', ['closeApp', 'cleanup', 'build_sample_app','build_components
   var roku_ip = (env_roku_ip == undefined) ? buildConfig.default_roku_target : env_roku_ip
   var roku_user = (env_roku_user == undefined) ? buildConfig.default_roku_user : env_roku_user
   var roku_pass = (env_roku_pass == undefined) ? buildConfig.default_roku_pass : env_roku_pass
-  console.debug("Deploying to device IP: " + roku_ip + " (" + roku_user + " | " + roku_pass + ")")
+  console.log("Deploying to device IP: " + roku_ip + " (" + roku_user + " | " + roku_pass + ")")
 
-  var curlCommand = "curl --user " + roku_user + ":" + roku_pass 
-                    + " --digest --show-error -F 'mysubmit=Install' -F 'archive=@" + buildConfig.out_dir_name + "/" + buildConfig.app_name 
+  var curlCommand = "curl --user " + roku_user + ":" + roku_pass
+                    + " --digest --show-error -F 'mysubmit=Install' -F 'archive=@" + buildConfig.out_dir_name + "/" + buildConfig.app_name
                     + ".zip' --output /tmp/dev_server_out --write-out '%{http_code}' http://" + roku_ip + "/plugin_install"
   console.log("curlCommand:"+curlCommand)
   var response = exec(curlCommand)
@@ -73,10 +73,10 @@ gulp.task('deploy_test', ['closeApp', 'cleanup', 'build_sample_app', 'package_te
   var roku_ip = (env_roku_ip == undefined) ? buildConfig.default_roku_target : env_roku_ip
   var roku_user = (env_roku_user == undefined) ? buildConfig.default_roku_user : env_roku_user
   var roku_pass = (env_roku_pass == undefined) ? buildConfig.default_roku_pass : env_roku_pass
-  console.debug("Deploying to device IP: " + roku_ip + " (" + roku_user + " | " + roku_pass + ")")
+  console.log("Deploying to device IP: " + roku_ip + " (" + roku_user + " | " + roku_pass + ")")
 
-  var curlCommand = "curl --user " + roku_user + ":" + roku_pass 
-                    + " --digest --show-error -F 'mysubmit=Install' -F 'archive=@" + buildConfig.out_dir_name + "/" + buildConfig.app_name + "-tests" 
+  var curlCommand = "curl --user " + roku_user + ":" + roku_pass
+                    + " --digest --show-error -F 'mysubmit=Install' -F 'archive=@" + buildConfig.out_dir_name + "/" + buildConfig.app_name + "-tests"
                     + ".zip' --output /tmp/dev_server_out --write-out '%{http_code}' http://" + roku_ip + "/plugin_install"
   // console.log("curlCommand:"+curlCommand)
   var response = exec(curlCommand)
