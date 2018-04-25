@@ -179,6 +179,7 @@ function muxAnalytics() as Object
 
   prototype.MUX_SDK_VERSION = ""
   prototype.PLAYER_SOFTWARE_NAME = "RokuSG"
+  prototype.MUX_API_VERSION = "2.0"
   prototype.PLAYER_IS_FULLSCREEN = "true"
 
   prototype.init = function(connection as Object, port as Object, appInfo as Object, systemConfig as Object, customerConfig as Object, hbt as Object, pp as Object)
@@ -723,6 +724,12 @@ function muxAnalytics() as Object
     props.player_software_version = Mid(deviceInfo.GetVersion(), 3, 4)
     props.player_model_number = deviceInfo.GetModel()
     props.player_mux_plugin_name = appInfo.GetTitle()
+    props.viewer_application_name = "Roku"
+    props.viewer_application_version = Mid(deviceInfo.GetVersion(), 3, 4)
+    props.viewer_device_name = "Roku"
+    props.viewer_os_family = "Roku"
+    props.viewer_os_version = Mid(deviceInfo.GetVersion(), 3, 4)
+    props.mux_api_version = m.MUX_API_VERSION
     props.player_version = appInfo.GetVersion()
     props.player_mux_plugin_version = m.MUX_SDK_VERSION
     props.player_country_code = deviceInfo.GetCountryCode()
@@ -804,7 +811,7 @@ function muxAnalytics() as Object
         props.video_source_mime_type = m._getStreamFormat(content.URL)
       end if
 
-      props._videoSourceFormat = m._getVideoFormat(content.URL)
+      m._videoSourceFormat = m._getVideoFormat(content.URL)
 
       if content.Live <> Invalid
         if content.Live = true
@@ -881,7 +888,6 @@ function muxAnalytics() as Object
     end if
     if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
       props.view_time_to_first_frame = m._viewTimeToFirstFrame.toStr()
-      props.view_aggregate_startup_time = m._viewTimeToFirstFrame.toStr()
     end if
     if m._contentPlaybackTime <> Invalid AND m._contentPlaybackTime <> 0
       props.view_content_playback_time = m._contentPlaybackTime.toStr()
@@ -925,6 +931,9 @@ function muxAnalytics() as Object
         playerInitTime = ParseJSON(m._configProperties.player_init_time)
         if playerInitTime > 0
           props.player_startup_time =  m._startTimestamp - playerInitTime
+          if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
+            props.view_aggregate_startup_time = m._viewTimeToFirstFrame + (m._startTimestamp - playerInitTime)
+          end if
         end if
       end if
     end if
@@ -1240,9 +1249,9 @@ function muxAnalytics() as Object
   }
 
   prototype._subsequentWords = {
-   ad: "ad", aggregate: "ag", api: "ap", application: "al", architecture: "ar",
+   ad: "ad", aggregate: "ag", api: "ap", application: "al", audio: "ao", architecture: "ar",
    asset: "as", autoplay: "au", break: "br", code: "cd", category: "cg", config: "cn",
-   count: "co", complete: "cp", content: "ct", current: "cu", downscaling: "dg",
+   count: "co", complete: "cp", content: "ct", current: "cu",country: "cy", downscaling: "dg",
    domain: "dm", cdn: "dn", downscale: "do", duration: "du", device: "dv", encoding: "ec",
    end: "en", engine: "eg", embed: "em", error: "er", events: "ev", expires: "ex", first: "fi",
    family: "fm", format: "ft", frequency: "fq", frame: "fr", fullscreen: "fs", host: "ho",
@@ -1254,9 +1263,9 @@ function muxAnalytics() as Object
    property: "py", rate: "ra", requested: "rd", rebuffer: "re", ratio: "ro", request: "rq",
    requests: "rs", sample: "sa", session: "se", seek: "sk", stream: "sm", source: "so",
    sequence: "sq", series: "sr", start: "st", startup: "su", server: "sv", software: "sw",
-   tag: "ta", tech: "tc", time: "ti", total: "tl", to: "to", title: "tt", type: "ty",
-   upscaling: "ug", upscale: "up", url: "ur", user: "us", variant: "va", viewed: "vd",
-   video: "vi", version: "ve", view: "vw", viewer: "vr", width: "wd", watch: "wa",
+   subtitle: "sb", tag: "ta", tech: "tc", time: "ti", total: "tl", to: "to", title: "tt", 
+   type: "ty",track: "tr", upscaling: "ug", upscale: "up", url: "ur", user: "us", variant: "va", 
+   viewed: "vd", video: "vi", version: "ve", view: "vw", viewer: "vr", width: "wd", watch: "wa",
    waiting: "wt"
   }
 

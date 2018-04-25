@@ -2,9 +2,9 @@ function init()
   m.top.backgroundURI = ""
   m.top.backgroundColor="0x111111FF"
   m.video = m.top.FindNode("MainVideo")
-  
+
   muxConfig = {
-    property_key: "794c4b2668e515963d9de4623",
+    property_key: "<YOUR PROPERTY KEY>",
     player_name: "Reset Player"
   }
   m.mux = m.top.FindNode("mux")
@@ -15,7 +15,7 @@ function init()
   m.list.wrapDividerBitmapUri = ""
   setupContent()
   m.list.observeField("itemSelected", "onItemSelected")
-  m.list.setFocus(true) 
+  m.list.setFocus(true)
 end function
 
 function setupContent()
@@ -34,23 +34,23 @@ function setupContent()
         },
         {
           title: "Stitched Ad",
-          selectionID: "stitched" 
+          selectionID: "stitched"
         },
         {
           title: "Error before playback",
-          selectionID: "preplaybackerror" 
+          selectionID: "preplaybackerror"
         },
         {
           title: "Error during playback",
-          selectionID: "playbackerror" 
+          selectionID: "playbackerror"
         },
         {
           title: "HLS stream no ads",
-          selectionID: "hlsnoads" 
+          selectionID: "hlsnoads"
         },
         {
           title: "DASH stream no ads",
-          selectionID: "dashnoads" 
+          selectionID: "dashnoads"
         }
     ]
     listContent = createObject("roSGNode","ContentNode")
@@ -72,7 +72,7 @@ function onItemSelected()
     m.loadingText.text = menuItemTitle
     m.loading.visible = true
     m.loading.setFocus(true)
- 
+
     'Run task to playback with RAF
     m.PlayerTask = CreateObject("roSGNode", "PlayerTask")
     m.PlayerTask.observeField("state", "taskStateChanged")

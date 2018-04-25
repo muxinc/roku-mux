@@ -9,6 +9,7 @@ Function TestSuite__GetSessionProperties() as Object
   this.addTest("GetSessionProperties Fullscreen", TestCase__MuxAnalytics_fullscreen_always_true)
   this.addTest("GetSessionProperties SDK Name", TestCase__MuxAnalytics_sdk_name)
   this.addTest("GetSessionProperties Player Version", TestCase__MuxAnalytics_player_version)
+  this.addTest("GetSessionProperties Viewer Version", TestCase__MuxAnalytics_viewer_version)
 
   return this
 End Function
@@ -75,6 +76,24 @@ Function TestCase__MuxAnalytics_player_version() as String
   sessionProps = m.SUT._getSessionProperites()
   ' THEN
   return m.assertEqual("7.7.7", sessionProps.player_version)
+End Function
+
+Function TestCase__MuxAnalytics_viewer_version() as String
+  ' GIVEN
+  m.SUT._getAppInfo = function ()
+    fappInfo = FakeAppInfo()
+    fappInfo._GetVersionValueToReturn = "7.7.7"
+    return fappInfo
+  end function 
+  m.SUT._getDeviceInfo = function()
+    deviceInfo = FakeDeviceInfo()
+    deviceInfo._GetVersionValueToReturn = "048.10E04143A"
+    return deviceInfo
+  end function
+  ' WHEN
+  sessionProps = m.SUT._getSessionProperites()
+  ' THEN
+  return m.assertEqual("8.10", sessionProps.viewer_os_version)
 End Function
 
 
