@@ -5,9 +5,7 @@ function init()
 end function
 
 function runBeaconLoop()
-  
   m.messagePort = _createPort()
-  m.connection = _createConnection()
   appInfo = _createAppInfo()
 
   m.MAX_BEACON_SIZE = 300 'controls size of a single beacon (in events)
@@ -16,6 +14,8 @@ function runBeaconLoop()
   m.HEARTBEAT_INTERVAL = 10000
   m.POSITION_TIMER_INTERVAL = 250 '250
   m.SEEK_THRESHOLD = 1250 'ms jump in position before a seek is considered'
+  m.HTTP_RETRIES = 5 'number of times to reattempt http call'
+  m.HTTP_TIMEOUT = 1500 'time before an http call is cancelled'
   
   m.pollTimer = CreateObject("roSGNode", "Timer")
   m.pollTimer.id = "pollTimer"
@@ -42,12 +42,14 @@ function runBeaconLoop()
   systemConfig = {
                   MAX_BEACON_SIZE: m.MAX_BEACON_SIZE,
                   MAX_QUEUE_LENGTH: m.MAX_QUEUE_LENGTH,
+                  HTTP_RETRIES: m.HTTP_RETRIES,
+                  HTTP_TIMEOUT: m.HTTP_TIMEOUT,
                   BASE_TIME_BETWEEN_BEACONS: m.BASE_TIME_BETWEEN_BEACONS,
                   HEARTBEAT_INTERVAL: m.HEARTBEAT_INTERVAL,
                   POSITION_TIMER_INTERVAL: m.POSITION_TIMER_INTERVAL,
                   SEEK_THRESHOLD: m.SEEK_THRESHOLD,
                  }
-  m.mxa.init(m.connection, m.messagePort, appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.pollTimer)
+  m.mxa.init(appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.pollTimer)
 
   m.top.ObserveField("rafEvent", m.messagePort)
   
@@ -142,8 +144,9 @@ function runBeaconLoop()
   return true
 end function
 
-function _createConnection() as Object
+function _createConnection(port as Object) as Object
   connection = CreateObject("roUrlTransfer")
+  connection.SetPort(port)
   connection.SetCertificatesFile("common:/certs/ca-bundle.crt")
   connection.AddHeader("Content-Type", "application/json")
   connection.AddHeader("Accept", "*/*")
@@ -182,9 +185,11 @@ function muxAnalytics() as Object
   prototype.MUX_API_VERSION = "2.0"
   prototype.PLAYER_IS_FULLSCREEN = "true"
 
-  prototype.init = function(connection as Object, port as Object, appInfo as Object, systemConfig as Object, customerConfig as Object, hbt as Object, pp as Object)
-    m.connection = connection
-    m.port = port
+  prototype.init = function(appInfo as Object, systemConfig as Object, customerConfig as Object, hbt as Object, pp as Object)
+    m.httpPort = _createPort()
+    m.connection = _createConnection(m.httpPort)
+    m.httpRetries = 5
+    m.httpTimeout = 1500
     m.heartbeatTimer = hbt
     m.pollTimer = pp
 
@@ -240,6 +245,8 @@ function muxAnalytics() as Object
 
     m.MAX_BEACON_SIZE = systemConfig.MAX_BEACON_SIZE
     m.MAX_QUEUE_LENGTH = systemConfig.MAX_QUEUE_LENGTH
+    m.HTTP_RETRIES = systemConfig.HTTP_RETRIES
+    m.HTTP_TIMEOUT = systemConfig.HTTP_TIMEOUT
     m.BASE_TIME_BETWEEN_BEACONS = systemConfig.BASE_TIME_BETWEEN_BEACONS
     m.HEARTBEAT_INTERVAL = systemConfig.HEARTBEAT_INTERVAL
     m.POSITION_TIMER_INTERVAL = systemConfig.POSITION_TIMER_INTERVAL
@@ -552,14 +559,28 @@ function muxAnalytics() as Object
     else
       if beacon.count() > 0
         m._logBeacon(beacon, "BEACON")
-       
+        retryCountdown% = m.HTTP_RETRIES
+        timeout% = m.HTTP_TIMEOUT
         m.connection.AsyncCancel()
         m.connection.SetUrl(m.beaconUrl)
         m.requestId = m.connection.GetIdentity()
         requestBody = {}
         requestBody.events = beacon
         fBody = FormatJson(requestBody)
-        success = m.connection.AsyncPostFromString(fBody)
+        while retryCountdown% > 0
+          m.connection.AsyncPostFromString(fBody)
+          event = wait(1500, m.httpPort)
+          if type(event) = "roUrlEvent"
+            exit while
+          else if event = invalid
+            m.connection.AsyncCancel()
+            ' reset the connection after a timeout
+            m.connection = _createConnection(m.httpPort)
+          else
+            print "[mux-analytics] Unknown port event"
+          end if
+          retryCountdown% = retryCountdown% - 1
+        end while
       end if
     end if
   end function
