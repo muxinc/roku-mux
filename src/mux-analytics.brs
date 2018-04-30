@@ -135,6 +135,10 @@ function runBeaconLoop()
   m.heartbeatTimer.control = "stop"
   m.pollTimer.control = "stop"
 
+  m.beaconTimer.UnobserveField("fire")
+  m.heartbeatTimer.UnobserveField("fire")
+  m.pollTimer.UnobserveField("fire")
+
   m.top.UnobserveField("video")
   m.top.UnobserveField("config")
   m.top.UnobserveField("control")
