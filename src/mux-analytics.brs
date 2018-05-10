@@ -15,7 +15,7 @@ function runBeaconLoop()
   m.POSITION_TIMER_INTERVAL = 250 '250
   m.SEEK_THRESHOLD = 1250 'ms jump in position before a seek is considered'
   m.HTTP_RETRIES = 5 'number of times to reattempt http call'
-  m.HTTP_TIMEOUT = 1500 'time before an http call is cancelled'
+  m.HTTP_TIMEOUT = 5000 'time before an http call is cancelled (ms)'
   
   m.pollTimer = CreateObject("roSGNode", "Timer")
   m.pollTimer.id = "pollTimer"
@@ -573,7 +573,7 @@ function muxAnalytics() as Object
         fBody = FormatJson(requestBody)
         while retryCountdown% > 0
           m.connection.AsyncPostFromString(fBody)
-          event = wait(1500, m.httpPort)
+          event = wait(timeout%, m.httpPort)
           if type(event) = "roUrlEvent"
             exit while
           else if event = invalid
