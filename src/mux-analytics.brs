@@ -16,7 +16,7 @@ function runBeaconLoop()
   m.SEEK_THRESHOLD = 1250 'ms jump in position before a seek is considered'
   m.HTTP_RETRIES = 5 'number of times to reattempt http call'
   m.HTTP_TIMEOUT = 10000 'time before an http call is cancelled (ms)'
-  
+
   m.pollTimer = CreateObject("roSGNode", "Timer")
   m.pollTimer.id = "pollTimer"
   m.pollTimer.repeat = true
@@ -36,9 +36,9 @@ function runBeaconLoop()
 
   m.mxa = muxAnalytics()
   m.mxa.MUX_SDK_VERSION = m.MUX_SDK_VERSION
-  
+
   Print "[mux-analytics] running task loop"
-  
+
   systemConfig = {
                   MAX_BEACON_SIZE: m.MAX_BEACON_SIZE,
                   MAX_QUEUE_LENGTH: m.MAX_QUEUE_LENGTH,
@@ -52,7 +52,7 @@ function runBeaconLoop()
   m.mxa.init(appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.pollTimer)
 
   m.top.ObserveField("rafEvent", m.messagePort)
-  
+
   if m.top.video = Invalid
     m.top.ObserveField("video", m.messagePort)
   else
@@ -143,7 +143,7 @@ function runBeaconLoop()
   m.top.UnobserveField("config")
   m.top.UnobserveField("control")
   m.top.UnobserveField("view")
-  
+
   Print "[mux-analytics] end running task loop"
   return true
 end function
@@ -385,7 +385,7 @@ function muxAnalytics() as Object
     end if
     m._Flag_lastVideoState = videoState
   end function
- 
+
   prototype.videoViewChangeHandler = function(view as String)
     if view = "end"
       m._endView(true)
@@ -413,7 +413,7 @@ function muxAnalytics() as Object
     m._configProperties = config
     if config.property_key <> Invalid AND config.property_key <> ""
       m.beaconUrl = m._createBeaconUrl(config.property_key)
-    end if 
+    end if
   end function
 
   prototype.videoErrorHandler = function(error as Object)
@@ -499,7 +499,7 @@ function muxAnalytics() as Object
           end if
         end if
       end if
-      
+
       ' set buffering metrics
       if m.video.state = "buffering"
         if m._Flag_atLeastOnePlayEventForContent = true
@@ -543,7 +543,7 @@ function muxAnalytics() as Object
 
   prototype._LIGHT_THE_BEACONS = function() as Object
     queueSize = m._eventQueue.count()
-    if queueSize >= m.MAX_BEACON_SIZE 
+    if queueSize >= m.MAX_BEACON_SIZE
       beacon = []
       for i = 0 To m.MAX_BEACON_SIZE - 1  Step 1
         beacon.push(m._eventQueue.shift())
@@ -625,7 +625,7 @@ function muxAnalytics() as Object
       end if
 
       m._addEventToQueue(m._createEvent("viewstart"))
-      
+
       m._inView = true
     end if
   end function
@@ -696,7 +696,7 @@ function muxAnalytics() as Object
     if m._sessionProperties <> Invalid
       newEvent.Append(m._sessionProperties)
     end if
-    
+
     ' video content properties are checked once per view
     if m._videoContentProperties <> Invalid
       newEvent.Append(m._videoContentProperties)
@@ -711,7 +711,7 @@ function muxAnalytics() as Object
     if m._advertProperties <> Invalid
       newEvent.Append(m._advertProperties)
     end if
-    
+
     'dynamic properties are checked during every event
     dynamicProperties = m._getDynamicProperties()
     newEvent.Append(dynamicProperties)
@@ -742,7 +742,7 @@ function muxAnalytics() as Object
     props = {}
     deviceInfo = m._getDeviceInfo()
     appInfo = m._getAppInfo()
-    
+
     ' HARDCODED
     props.player_sequence_number = 1
     props.player_software_name = m.PLAYER_SOFTWARE_NAME
@@ -766,11 +766,11 @@ function muxAnalytics() as Object
     props.beacon_domain = m._getDomain(m.beaconUrl)
 
     props.player_instance_id = m._generateShortID()
-    ' DEVICE INFO 
-    if deviceInfo.IsAdIdTrackingDisabled() = true
-      props.viewer_user_id = deviceInfo.GetClientTrackingId()
+    ' DEVICE INFO
+    if deviceInfo.IsRIDADisabled() = true
+      props.viewer_user_id = deviceInfo.GetChannelClientId()
     else
-      props.viewer_user_id = deviceInfo.GetAdvertisingId()
+      props.viewer_user_id = deviceInfo.GetRIDA()
     end if
     return props
   end function
@@ -780,7 +780,7 @@ function muxAnalytics() as Object
     props = {}
     if video <> Invalid
       if video.duration <> Invalid AND video.duration > 0
-        m._videoSourceDuration = video.duration.toStr() 
+        m._videoSourceDuration = video.duration.toStr()
       end if
 
       if video.videoFormat <> Invalid AND video.videoFormat <> ""
@@ -790,7 +790,7 @@ function muxAnalytics() as Object
 
     return props
   end function
-  
+
   ' Set called per video content'
   prototype._getVideoContentProperties = function(content as Object) as Object
     props = {}
@@ -829,7 +829,7 @@ function muxAnalytics() as Object
       props.video_source_url = content.URL
       props.video_source_hostname = m._getHostname(content.URL)
       props.video_source_domain = m._getDomain(content.URL)
-      
+
       if content.StreamFormat <> Invalid AND content.StreamFormat <> "(null)"
         props.video_source_mime_type = content.StreamFormat
       else
@@ -866,12 +866,12 @@ function muxAnalytics() as Object
                 if adUrl <> Invalid AND adUrl <> ""
                   props.view_preroll_ad_asset_hostname = m._getHostname(adurl)
                   props.view_preroll_ad_asset_domain = m._getDomain(adurl)
-                end if 
-              end if 
-            end if 
-          end if 
-        end if 
-      end if 
+                end if
+              end if
+            end if
+          end if
+        end if
+      end if
       if adData.adurl <> Invalid AND adData.adurl <> ""
         props.view_preroll_ad_tag_hostname = m._getHostname(adData.adurl)
         props.view_preroll_ad_tag_domain = m._getDomain(adData.adurl)
@@ -964,7 +964,7 @@ function muxAnalytics() as Object
     end if
 
     return props
-  end function  
+  end function
 
   prototype._getDomain = function(url as String) as String
     domain = ""
@@ -978,7 +978,7 @@ function muxAnalytics() as Object
         url = strippedUrl[1]
       end if
     end if
-    splitRegex = CreateObject("roRegex", "[\/|\?|\#]", "") 
+    splitRegex = CreateObject("roRegex", "[\/|\?|\#]", "")
     strippedUrl = splitRegex.Split(url)
     if strippedUrl.count() > 0
       url = strippedUrl[0]
@@ -1039,10 +1039,10 @@ function muxAnalytics() as Object
       return "dash"
     end if
 ''
-    formatRegex = CreateObject("roRegex", "\*?\.([^\.]*?)(\?|\/$|$|#).*", "i") 
-    if formatRegex <> Invalid 
+    formatRegex = CreateObject("roRegex", "\*?\.([^\.]*?)(\?|\/$|$|#).*", "i")
+    if formatRegex <> Invalid
       extension = formatRegex.Match(url)
-      if extension <> Invalid AND extension.count() > 1 
+      if extension <> Invalid AND extension.count() > 1
         return extension[1]
       end if
     end if
@@ -1051,10 +1051,10 @@ function muxAnalytics() as Object
   end function
 
   prototype._getVideoFormat = function(url as String) as String
-    formatRegex = CreateObject("roRegex", "\*?\.([^\.]*?)(\?|\/$|$|#).*", "i") 
-    if formatRegex <> Invalid 
+    formatRegex = CreateObject("roRegex", "\*?\.([^\.]*?)(\?|\/$|$|#).*", "i")
+    if formatRegex <> Invalid
       extension = formatRegex.Match(url)
-      if extension <> Invalid AND extension.count() > 1 
+      if extension <> Invalid AND extension.count() > 1
         return extension[1]
       end if
     end if
@@ -1067,7 +1067,7 @@ function muxAnalytics() as Object
     cookie.Write("UserRegistrationToken", data)
     cookie.Flush()
   end function
-  
+
   prototype._getCookieData = function() as Dynamic
     cookie = _createRegistry()
     if cookie.Exists("UserRegistrationToken")
@@ -1123,7 +1123,7 @@ function muxAnalytics() as Object
     keyRegex = CreateObject("roRegex", "[0-9]+", "i")
     result = "https://"
     subdomain = "img"
-    if keyRegex <> Invalid 
+    if keyRegex <> Invalid
       keyValid = keyRegex.isMatch(key)
       if keyValid = true
         subdomain = key
@@ -1200,7 +1200,7 @@ function muxAnalytics() as Object
         viewId = viewId + randomiseX()
       else if char = "y"
         viewId = viewId + randomiseY()
-      else 
+      else
         viewId = viewId + char
       end if
     end for
@@ -1288,8 +1288,8 @@ function muxAnalytics() as Object
    property: "py", rate: "ra", requested: "rd", rebuffer: "re", ratio: "ro", request: "rq",
    requests: "rs", sample: "sa", session: "se", seek: "sk", stream: "sm", source: "so",
    sequence: "sq", series: "sr", start: "st", startup: "su", server: "sv", software: "sw",
-   subtitle: "sb", tag: "ta", tech: "tc", time: "ti", total: "tl", to: "to", title: "tt", 
-   type: "ty",track: "tr", upscaling: "ug", upscale: "up", url: "ur", user: "us", variant: "va", 
+   subtitle: "sb", tag: "ta", tech: "tc", time: "ti", total: "tl", to: "to", title: "tt",
+   type: "ty",track: "tr", upscaling: "ug", upscale: "up", url: "ur", user: "us", variant: "va",
    viewed: "vd", video: "vi", version: "ve", view: "vw", viewer: "vr", width: "wd", watch: "wa",
    waiting: "wt"
   }
@@ -1297,6 +1297,3 @@ function muxAnalytics() as Object
 
   return prototype
 end function
-
-
-
