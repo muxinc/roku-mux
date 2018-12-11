@@ -38,7 +38,7 @@ Please configure mux settings in manifest.
 
 ### Who do I talk to? ###
 
-* alex@loungelogic.tv
+* help@mux.com
 
 ### Instructions ###
 
