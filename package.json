@@ -1,7 +1,7 @@
 {
-  "name": "mux-bs-sdk",
+  "name": "roku-mux",
   "version": "1.0.0",
-  "description": "Mux SDK",
+  "description": "Mux SDK for Roku",
   "main": "none",
   "directories": {
     "test": "test"
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@bitbucket.org/loungelogic/mux-bs-sdk.git"
+    "url": "git+ssh://git@gihub.com:muxinc/roku-mux.git"
   },
   "keywords": [
     "mux",
@@ -19,9 +19,9 @@
     "reporting",
     "brightscript"
   ],
-  "author": "Alex Urquhart",
+  "author": "Mux, Inc.",
   "license": "ISC",
-  "homepage": "https://bitbucket.org/loungelogic/mux-bs-sdk#readme",
+  "homepage": "https://docs.mux.com/docs/integration-guide-roku",
   "dependencies": {
     "del": "^3.0.0",
     "gulp": "^3.9.1",
