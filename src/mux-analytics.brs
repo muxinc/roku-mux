@@ -678,7 +678,9 @@ function muxAnalytics() as Object
         if m._viewSeekStartTimeStamp <> Invalid
           seekStartTs = m._viewSeekStartTimeStamp
         end if
-        m._viewSeekDuration = m._viewSeekDuration + (now - seekStartTs)
+        if m._viewSeekDuration <> Invalid
+          m._viewSeekDuration = m._viewSeekDuration + (now - seekStartTs)
+        end if
         m._addEventToQueue(m._createEvent("seekend"))
         m._Flag_isSeeking = false
       end if
