@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "0.0.10"
+  m.MUX_SDK_VERSION = "0.0.11"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -607,7 +607,7 @@ function muxAnalytics() as Object
       m._viewRebufferCount = 0
       m._viewRebufferDuration = 0
       m._viewSeekCount = 0
-      m._viewSeekDuration = 0
+      m._viewSeekDuration = 0#
       m._viewAdPlayedCount = 0
       m._viewPrerollPlayedCount = 0
 
@@ -674,7 +674,13 @@ function muxAnalytics() as Object
       if m._Flag_isSeeking = true
         date = m._getDateTime()
         now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
-        m._viewSeekDuration = m._viewSeekDuration + (now - m._viewSeekStartTimeStamp)
+        seekStartTs = 0#
+        if m._viewSeekStartTimeStamp <> Invalid
+          seekStartTs = m._viewSeekStartTimeStamp
+        end if
+        if m._viewSeekDuration <> Invalid
+          m._viewSeekDuration = m._viewSeekDuration + (now - seekStartTs)
+        end if
         m._addEventToQueue(m._createEvent("seekend"))
         m._Flag_isSeeking = false
       end if
