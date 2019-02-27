@@ -196,7 +196,7 @@ function muxAnalytics() as Object
     m.httpTimeout = 1500
     m.heartbeatTimer = hbt
     m.pollTimer = pp
-
+    m.loggingPrefix = "[mux-analytics] "
     m.DEFAULT_DRY_RUN = false
     m.DEFAULT_DEBUG_EVENTS = "none"
     m.DEFAULT_DEBUG_BEACONS = "none" 'full','partial','none'
@@ -1216,7 +1216,7 @@ function muxAnalytics() as Object
   prototype._logBeacon = function(eventArray as Object, title = "BEACON" as String) as Void
     if m.debugBeacons <> "full" AND m.debugBeacons <> "partial" then return
     fullEvent = (m.debugBeacons = "full")
-    tot = title + " (" + eventArray.count().toStr() + ") [ "
+    tot = m.loggingPrefix + title + " (" + eventArray.count().toStr() + ") [ "
     for each evt in eventArray
       if fullEvent = false
         if evt <> Invalid
@@ -1237,7 +1237,7 @@ function muxAnalytics() as Object
 
   prototype._logEvent = function(event = {} as Object, subtype = "" as String, title = "EVENT" as String) as Void
     if m.debugEvents = "none" then return
-    tot = title + " " + event.e
+    tot = m.loggingPrefix + title + " " + event.e
     if m.debugEvents = "full"
       tot = tot + "{"
       for each prop in event
