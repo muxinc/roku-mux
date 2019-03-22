@@ -54,7 +54,106 @@ You can also test that Mux is receiving data in the Mux Data dashboard. Login to
 
 Note that it may take a few minutes for views to show up in the Mux Data dashboard.
 
-### 7. Add Metadata
+### 7. Debugging
+
+To help you with the integration process and ensure you have successfully incorporated the SDK within your player, we have provided a number of optional manifest attributes. Those attribute can help you better understand how the MUX SDK event tracking works as well as show you the actual data being collected. Some of the benefits of using some of the debugging attributes (mentioned below) are that you will be able to see instantly the SDK events and data collected as it occurs.
+
+---
+
+#### mux_debu_events
+
+##### Values
+full, partial or none
+
+##### Description
+Outputs the event at the time it occurs.
+
+##### Example output
+
+Property set to partial: 
+
+`[mux-analytics] EVENT playerready`
+
+Property set to full:
+
+```javascript
+[mux-analytics] EVENT playerready 
+{
+  pmxpive: 0.0.11,
+  ake: ,
+  ualve: 9.00,
+  e: playerready,
+  ...
+```
+---
+#### mux_minification
+
+##### Values
+true or false
+
+##### Description
+Transforms the data property keys to a user friendly format so you can see and understand what is actually captured and sent and determine if the values are what they are expected to be.
+
+**NOTE:** If minification is set to false the data will not be recognized and used.
+
+##### Example output
+
+Property set to false:
+
+```json
+{  
+  "events": [{
+    "Beacon_domain": "litix.io",
+    "e": "playerready",
+    "mux_api_version": "2.0",
+    "player_country_code": "GB",
+    ... 
+}
+``` 
+
+Property set to true:   
+
+```json
+{   
+  "events": [{     
+    "ake": "",     
+    "bdm": "litix.io",     
+    "e": "play",     
+    "mapve": "2.0",     
+    "pcycd": "GB",
+    ...
+} 
+```
+#### mux_debug_beacons
+
+##### Values
+full, partial or none
+
+##### Description
+Outputs the data (full) or event(s) (partial) that is being sent (at the time of sending).
+
+##### Example output
+
+None                                                                       
+
+----
+
+#### mux_base_url
+
+##### Values
+Protocol + domain name. Eg. `https://img.litix.io`
+
+##### Description
+Controls to which domain the data should be sent. Useful for environmental builds of your project
+
+##### Example output
+
+None
+
+----
+
+
+### 8. Add Metadata
 The Roku SDK supports adding metadata via two different mechanisms.
 
 The majority of the metadata should be passed inside the `muxConfig` object that is passed to the Mux Task. You can read detailed information about the fields that are supported in [Metadata](https://docs.mux.com/v1/docs/metadata). To update any field, update this within `muxConfig` and then call `m.mux.setField("config", muxConfig)`.
@@ -66,7 +165,7 @@ Some other underlying information is mapped from standard [Roku content metadata
  - *StreamFormat*
  - *Length*
 
-### 8. Advertising Configuration
+### 9. Advertising Configuration
 If advertising is to be used, you must send the appropriate events to the Mux Task, as shown below.
 
 ```
@@ -80,7 +179,7 @@ function adTrackingCallback(obj = Invalid as Dynamic, eventType = Invalid as Dyn
 end function
 ```
 
-### 9. Additional Configuration
+### 10. Additional Configuration
 In some situations, it is necessary to directly signal the beginning or ending of a `view` to Mux. This is necessary when the `Video` Node is recycled (i.e. more pieces of content are loaded into the same Video node), or when using advertising, as the ads run outside of the lifecycle of the Video.
 
 Note: A `view` is defined as the user watching a single piece of _content_, which includes any advertising.
