@@ -60,21 +60,21 @@ To help you with the integration process and ensure you have successfully incorp
 
 ---
 
-#### mux_debu_events
+#### mux_debug_events
 
 ##### Values
-full, partial or none
+`full`, `partial` or `none`
 
 ##### Description
 Outputs the event at the time it occurs.
 
 ##### Example output
 
-Property set to partial: 
+Property set to `partial`: 
 
 `[mux-analytics] EVENT playerready`
 
-Property set to full:
+Property set to `full`:
 
 ```javascript
 [mux-analytics] EVENT playerready 
@@ -89,7 +89,7 @@ Property set to full:
 #### mux_minification
 
 ##### Values
-true or false
+`true` or `false`
 
 ##### Description
 Transforms the data property keys to a user friendly format so you can see and understand what is actually captured and sent and determine if the values are what they are expected to be.
@@ -98,7 +98,7 @@ Transforms the data property keys to a user friendly format so you can see and u
 
 ##### Example output
 
-Property set to false:
+Property set to `false`:
 
 ```json
 {  
@@ -108,10 +108,9 @@ Property set to false:
     "mux_api_version": "2.0",
     "player_country_code": "GB",
     ... 
-}
 ``` 
 
-Property set to true:   
+Property set to `true`:   
 
 ```json
 {   
@@ -122,12 +121,11 @@ Property set to true:
     "mapve": "2.0",     
     "pcycd": "GB",
     ...
-} 
 ```
 #### mux_debug_beacons
 
 ##### Values
-full, partial or none
+`full`, `partial` or `none`
 
 ##### Description
 Outputs the data (full) or event(s) (partial) that is being sent (at the time of sending).
