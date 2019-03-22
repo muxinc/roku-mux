@@ -82,8 +82,8 @@ Property set to `full`:
   pmxpive: 0.0.11,
   ake: ,
   ualve: 9.00,
-  e: playerready,
-  ...
+  e: playerready
+}
 ```
 ---
 #### mux_minification
@@ -106,8 +106,9 @@ Property set to `false`:
     "Beacon_domain": "litix.io",
     "e": "playerready",
     "mux_api_version": "2.0",
-    "player_country_code": "GB",
-    ... 
+    "player_country_code": "GB"
+  }]
+}
 ``` 
 
 Property set to `true`:   
@@ -119,8 +120,9 @@ Property set to `true`:
     "bdm": "litix.io",     
     "e": "play",     
     "mapve": "2.0",     
-    "pcycd": "GB",
-    ...
+    "pcycd": "GB"
+  }]
+}
 ```
 #### mux_debug_beacons
 
