@@ -58,6 +58,8 @@ Note that it may take a few minutes for views to show up in the Mux Data dashboa
 
 To help you with the integration process and ensure you have successfully incorporated the SDK within your player, we have provided a number of optional manifest attributes. Those attribute can help you better understand how the MUX SDK event tracking works as well as show you the actual data being collected. Some of the benefits of using some of the debugging attributes (mentioned below) are that you will be able to see instantly the SDK events and data collected as it occurs.
 
+**NOTE:** The outputs illustrated below are actaully outputted on a single line within the terminal to reduce clutter.
+
 ---
 
 #### mux_debug_events
@@ -66,25 +68,39 @@ To help you with the integration process and ensure you have successfully incorp
 `full`, `partial` or `none`
 
 ##### Description
-Outputs the event at the time it occurs.
+Outputs the event at the time it occurs. Default value is `none`
 
 ##### Example output
 
-Property set to `partial`: 
+Property set to `partial`:
 
-`[mux-analytics] EVENT playerready`
+```
+[mux-analytics] EVENT playerready
+```
 
 Property set to `full`:
 
-```javascript
-[mux-analytics] EVENT playerready 
-{
-  pmxpive: 0.0.11,
-  ake: ,
-  ualve: 9.00,
-  e: playerready
-}
 ```
+[mux-analytics] EVENT playing 
+{
+  vsoft: mpeg4_15,
+  xwati: 3247,
+  xplpf: 0,
+  pmxpive: 0.0.11,
+  ake: <YOUR PROPERTY KEY>,
+  xadpfco: 0,
+  ualve: 9.00,
+  e: playing,
+  pst: 1554383588173,
+  bdm: litix.io,
+  vsomity: mp4,
+  pnm: Reset Player,
+  uosfm: Roku,
+  pve: 1.0.0,
+  ualnm: Roku,
+  ...
+```
+
 ---
 #### mux_minification
 
@@ -92,52 +108,106 @@ Property set to `full`:
 `true` or `false`
 
 ##### Description
-Transforms the data property keys to a user friendly format so you can see and understand what is actually captured and sent and determine if the values are what they are expected to be.
+Transforms the data property keys to a user friendly format so you can see and understand what is actually captured and sent and determine if the values are what they are expected to be. The default value is `true`.
 
-**NOTE:** If minification is set to false the data will not be recognized and used.
+**NOTE: If minification is set to false the data will not be recognized and used.**
 
 ##### Example output
 
 Property set to `false`:
 
-```json
-{  
-  "events": [{
-    "Beacon_domain": "litix.io",
-    "e": "playerready",
-    "mux_api_version": "2.0",
-    "player_country_code": "GB"
-  }]
-}
+```
+[mux-analytics] EVENT playerready
+{
+  player_software_name: RokuSG,
+  viewer_application_name: Roku,
+  player_country_code: US,
+  mux_api_version: 2.0,
+  player_software_version: 9.00,
+  viewer_application_version: 9.00,
+  player_name: Reset Player,
+  e: playerready,
+  viewer_time: 1554383992397,
+  property_key: <YOUR PROPERTY KEY>,
+  player_model_number: 4640X,
+  player_version: 1.0.0,
+  player_language_code: en_US,
+  player_instance_id: i8k3jc,
+  player_sequence_number: 1,
+  player_mux_plugin_name: roku-mux,
+  beacon_domain: litix.io,
+  player_start: 1554383992394,
+  viewer_os_version: 9.00,
+  viewer_os_family: Roku,
+  ...
 ``` 
 
 Property set to `true`:   
 
-```json
-{   
-  "events": [{     
-    "ake": "",     
-    "bdm": "litix.io",     
-    "e": "play",     
-    "mapve": "2.0",     
-    "pcycd": "GB"
-  }]
-}
 ```
+{
+  vsoft: mpeg4_15,
+  xwati: 3247,
+  xplpf: 0,
+  pmxpive: 0.0.11,
+  ake: <YOUR PROPERTY KEY>,
+  xadpfco: 0,
+  ualve: 9.00,
+  e: playing,
+  pst: 1554383588173,
+  bdm: litix.io,
+  vsomity: mp4,
+  pnm: Reset Player,
+  uosfm: Roku,
+  pve: 1.0.0,
+  ualnm: Roku,
+  ...
+```
+
+---
+
 #### mux_debug_beacons
 
 ##### Values
 `full`, `partial` or `none`
 
 ##### Description
-Outputs the data (full) or event(s) (partial) that is being sent (at the time of sending).
+Outputs the data (full) or event(s) (partial) that is being sent (at the time of sending). Default value is `none`.
 
 ##### Example output
 
-None                                                                       
+Property set to `partial`:
+```
+[mux-analytics] BEACON (2) [  playerready viewstart ]
+```
+
+Property set to `full`:
+```
+[mux-analytics] BEACON (2)
+[
+  {
+    pmxpive: 0.0.11,
+    ake: <YOUR PROPERTY KEY>,
+    ualve: 9.00,
+    e: playerready,
+    mapve: 2.0,
+    pst: 1554385186538,
+    bdm: litix.io,
+    ...
+  }, {
+    vsoft:mp4,
+    xplpf:0,
+    pmxpive:0.0.11,
+    ake:<YOUR PROPERTY KEY>,
+    xadpfco:0, ualve:9.00,
+    e:viewstart,
+    pst:1554385186538,
+    ...
+  }
+]
+```
 
 ----
-
 #### mux_base_url
 
 ##### Values
@@ -145,10 +215,6 @@ Protocol + domain name. Eg. `https://img.litix.io`
 
 ##### Description
 Controls to which domain the data should be sent. Useful for environmental builds of your project
-
-##### Example output
-
-None
 
 ----
 

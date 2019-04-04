@@ -24,4 +24,4 @@ mux_minification=true
 #Display events in the log as they are created. Values: full | partial | none
 mux_debug_events=none
 #Display beacons in the log as they are sent. Values: full | partial | none
-mux_debug_beacons=none
+mux_debug_beacons=partial
