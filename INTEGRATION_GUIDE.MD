@@ -3,9 +3,7 @@ Mux Data is the best way to monitor video streaming performance.
 Integration is easy - just initialize the Mux SDK, pass in some metadata, and you're up and running in minutes.
 
 ### 1. Getting Started
-
 This documents integration instructions for Roku. For other players, see the additional Integration Guides.
-
 
 ### 2. Architecture
 Mux's Roku integration supports Roku SceneGraph applications, in conjunction with standard `Video` nodes. Mux runs as a `Task` alongside the `Video` node, and supports instances where the `Video` nodes are reused with additional content as well as when the `Video` nodes are reset between content.
@@ -58,7 +56,7 @@ Note that it may take a few minutes for views to show up in the Mux Data dashboa
 
 To help you with the integration process and ensure you have successfully incorporated the SDK within your player, we have provided a number of optional manifest attributes. Those attribute can help you better understand how the MUX SDK event tracking works as well as show you the actual data being collected. Some of the benefits of using some of the debugging attributes (mentioned below) are that you will be able to see instantly the SDK events and data collected as it occurs.
 
-**NOTE:** The outputs illustrated below are actaully outputted on a single line within the terminal to reduce clutter.
+**NOTE:** The outputs illustrated below are printed on a single line within the terminal to reduce clutter.
 
 ---
 
@@ -217,8 +215,6 @@ Protocol + domain name. Eg. `https://img.litix.io`
 Controls to which domain the data should be sent. Useful for environmental builds of your project
 
 ----
-
-
 ### 8. Add Metadata
 The Roku SDK supports adding metadata via two different mechanisms.
 
