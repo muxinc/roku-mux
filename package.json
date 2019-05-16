@@ -28,6 +28,7 @@
     "gulp-clean": "^0.4.0",
     "gulp-rename": "^1.2.2",
     "gulp-zip": "^3.2.0",
+    "natives": "^1.1.6",
     "replace": "^0.3.0",
     "yargs": "^11.1.0"
   },

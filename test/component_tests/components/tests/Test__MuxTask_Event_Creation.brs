@@ -31,11 +31,11 @@ end function
 
 function _createDeviceInfo() as Object
   deviceInfo = {
-    IsAdIdTrackingDisabled: function() as Object
+    IsRIDADisabled: function() as Object
       return true
     end function,
-    GetClientTrackingId: function() as String
-      return "TestClientTrackedID"
+    GetChannelClientId: function() as String
+      return "TestChannelClientID"
     end function,
     GetVersion: function() as String
       return "1234"
