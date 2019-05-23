@@ -7,9 +7,9 @@ function FakeDeviceInfo() as Object
   prototype._GetCountryCodeToReturn = "mx"
   prototype._GetLocaleToReturn = "mx"
   prototype._GetDisplaySizeToReturn = {w:4, h:3}
-  prototype._GetClientTrackingIDToReturn = ""
+  prototype._GetChannelClientIdToReturn = ""
   prototype._GetAdvertisingIDToReturn = "bcde8fc1-9f66-5a93-8f8f-07dd3c079425"
-  prototype._GetIsAdIDTrackingDisabledToReturn = true
+  prototype._GetIsRIDADisabledToReturn = true
 
   prototype.GetVideoMode = function() as String
     return m._GetVideoModeToReturn
@@ -29,14 +29,14 @@ function FakeDeviceInfo() as Object
   prototype.GetDisplaySize = function() as Object
     return m._GetDisplaySizeToReturn
   end function
-  prototype.GetClientTrackingId = function() as String
-    return m._GetClientTrackingIDToReturn
+  prototype.GetChannelClientId = function() as String
+    return m._GetChannelClientIdToReturn
   end function
   prototype.GetAdvertisingId = function() as String
     return m._GetAdvertisingIDToReturn
   end function
-  prototype.IsAdIdTrackingDisabled = function() as Boolean
-    return m._GetIsAdIDTrackingDisabledToReturn
+  prototype.IsRIDADisabled = function() as Boolean
+    return m._GetIsRIDADisabledToReturn
   end function
 
   return prototype 

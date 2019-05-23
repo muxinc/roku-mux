@@ -82,6 +82,21 @@ gulp.task('deploy_test', ['closeApp', 'cleanup', 'build_sample_app', 'package_te
   var response = exec(curlCommand)
 })
 
+gulp.task('lint', function () {
+  var bsLintVersion = "bslint --version"
+  exec(bsLintVersion, {}, function(err, stdout, stderr) {
+    err && console.log("missing linter see https://github.com/sky-uk/bslint")
+    stdout && exec("bslint -l", {}, function(err, stdout, stderr) {
+      console.log("******************************************************************************")
+      console.log("If you are seeing an error of the type: \"No manifest file found\" that is ok")
+      console.log("The reason behind this is due to the manifest being located within the sampleapp_source")
+      console.log("as the scope of this project a bit different than a regular ROKU application")
+      console.log("******************************************************************************")
+      console.log(stdout)
+    })
+  })
+})
+
 gulp.task('build_test_source',['build_sample_app', 'cleanup'], function () {
   return gulp.src(['test/source_tests/**']).pipe(gulp.dest(buildConfig.build_dir_name))
 })

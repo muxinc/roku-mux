@@ -204,9 +204,9 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_3() as String
   ' WHEN
   m.SUT.videoControlChangeHandler("stop")
 
-  result = m.SUT._eventQueue[1].e + m.SUT._eventQueue[2].e
+  result = m.SUT._eventQueue[1].e + m.SUT._eventQueue[2].e + m.SUT._eventQueue[3].e
   ' THEN
-  return m.assertEqual("viewstartviewend", result)
+  return m.assertEqual("viewstartplayviewend", result)
 End Function
 
 Function TestCase__MuxAnalytics_ViewRobustness_internal_start_4() as String
@@ -255,8 +255,8 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_7() as String
   ' WHEN
   m.SUT.videoControlChangeHandler("play")
   ' THEN
-  'two events playerready and viewstart'
-  return m.assertEqual(2, m.SUT._eventQueue.count())
+  'four events playerready, viewstart, play event and play event again'
+  return m.assertEqual(4, m.SUT._eventQueue.count())
 End Function
 
 Function TestCase__MuxAnalytics_ViewRobustness_internal_start_8() as String
@@ -282,7 +282,8 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_9() as String
   ' WHEN
   m.SUT.videoControlChangeHandler("play")
   ' THEN
-  return m.assertEqual(2, m.SUT._eventQueue.count())
+  'five events playerready, viewstart, play event, play event and play event again'
+  return m.assertEqual(5, m.SUT._eventQueue.count())
 End Function
 
 Function TestCase__MuxAnalytics_ViewRobustness_internal_start_10() as String
@@ -307,8 +308,8 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_end_1() as String
   ' WHEN
   m.SUT.videoControlChangeHandler("stop")
   ' THEN
-  result = m.SUT._eventQueue[1].e + m.SUT._eventQueue[2].e
-  return m.assertEqual("viewstartviewend", result)
+  result = m.SUT._eventQueue[1].e + m.SUT._eventQueue[2].e + m.SUT._eventQueue[3].e
+  return m.assertEqual("viewstartplayviewend", result)
 End Function
 
 
