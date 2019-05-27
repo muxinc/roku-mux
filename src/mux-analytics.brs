@@ -144,6 +144,14 @@ function runBeaconLoop()
   m.top.UnobserveField("control")
   m.top.UnobserveField("view")
 
+  if m.top.exitType = "soft"
+    while (NOT m.mxa.isQueueEmpty())
+      m.mxa.LIGHT_THE_BEACONS()
+    end while
+  end if
+
+  m.top.exit = false
+
   Print "[mux-analytics] end running task loop"
   return true
 end function
@@ -305,7 +313,7 @@ function muxAnalytics() as Object
 
   prototype.beaconIntervalHandler = function(beaconIntervalEvent)
     data = beaconIntervalEvent.getData()
-    m._LIGHT_THE_BEACONS()
+    m.LIGHT_THE_BEACONS()
   end function
 
   prototype.heartbeatIntervalHandler = function(heartbeatIntervalEvent)
@@ -554,7 +562,11 @@ function muxAnalytics() as Object
     m._eventQueue.push(_event)
   end function
 
-  prototype._LIGHT_THE_BEACONS = function() as Object
+  prototype.isQueueEmpty = function() as Boolean
+    return m._eventQueue.count() = 0
+  end function
+
+  prototype.LIGHT_THE_BEACONS = function() as Object
     queueSize = m._eventQueue.count()
     if queueSize >= m.MAX_BEACON_SIZE
       beacon = []

@@ -23,6 +23,7 @@ Create a new `Task` XML named `MuxTask.xml` inside your `components` folder and 
     <field id="error" type="assocarray" alwaysNotify="true"/>
     <field id="view" type="String" alwaysNotify="true"/>
     <field id="exit" type="Boolean" alwaysNotify="true"/>
+    <field id="exitType" type="String" alwaysNotify="true" value="hard" />
   </interface>
   <script type="text/brightscript" uri="pkg:/libs/mux-analytics.brs"/>
 </component>
@@ -255,3 +256,14 @@ mux.setField("view", "start")
 ' To signal the end of a view:
 mux.setField("view", "end")
 ```
+
+The `exitType` controls the behaviour of the task when a request to exit/terminate the thread is invoked (via `mux.exit=true`).
+The default value of `exitType` is `hard`.
+
+If the value is set to `hard` then the thread terminates immediately and any data that has not propagated already to the MUX servers is lost.
+
+If the value is set to `soft` then the thread sends all the remaining data to the MUX servers and terminates afterwards.
+
+To change value to `soft` call `m.mux.setField("exitType", "soft")`
+
+NOTE: This means that there might be a time difference between you calling `mux.exit=true` and the task thread actually terminating. Please ensure you have a single `MUX Task` running at any given time.
