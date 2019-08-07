@@ -508,49 +508,56 @@ function muxAnalytics() as Object
     end if
   end function
 
-  prototype.pollingIntervalHandler = function(pollingIntervalEvent)
-    if m.video <> Invalid
-      ' update total watched time. (ViewStart - now)
-      if m.video.state <> "paused"
-        if m._viewWatchTime <> Invalid
-          if m._viewStartTimestamp <> Invalid
-            date = m._getDateTime()
-            now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
-            m._viewWatchTime = now - m._viewStartTimestamp
-          end if
-        end if
-      end if
+  prototype.pollingIntervalHandler = function(pollingIntervalEvent) as Void
+    if m.video = Invalid then return
 
-      ' set buffering metrics
-      if m.video.state = "buffering"
-        if m._Flag_atLeastOnePlayEventForContent = true
-          if m._viewRebufferDuration <> Invalid
-            m._viewRebufferDuration = m._viewRebufferDuration + (m.pollTimer.duration * 1000)
-            if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
-              m._viewRebufferPercentage = m._viewRebufferDuration / m._viewWatchTime
-            end if
-          end if
-        end if
-      end if
-      if NOT m.video.position = m._Flag_lastReportedPosition
-        if m.video.position > m._Flag_lastReportedPosition
-          ' playposition has increased. This is a progress update
-          if m.video.state = "playing"
-            if m._contentPlaybackTime <> Invalid
-              m._contentPlaybackTime = m._contentPlaybackTime + ((m.video.position - m._Flag_lastReportedPosition) * 1000)
-            end if
-          end if
-        end if
-        if m.video.state = "playing"
-          m._Flag_lastReportedPosition = m.video.position
-        end if
-      end if
-    end if
+    m._setBufferingMetrics()
+    m._updateContentPlaybackTime()
+
+    m._updateTotalWatchTime()
+    m._updateLastReportedPositionFlag()
   end function
 
   ' ' //////////////////////////////////////////////////////////////
   ' ' INTERNAL METHODS
   ' ' //////////////////////////////////////////////////////////////
+
+  prototype._updateLastReportedPositionFlag = function() as Void
+    if m.video.position = m._Flag_lastReportedPosition then return
+    if m.video.state <> "playing" AND m.video.state <> "buffering" then return
+    m._Flag_lastReportedPosition = m.video.position
+  end function
+
+  prototype._updateContentPlaybackTime = function() as Void
+    if m._Flag_isInAdBreak = true then return
+    if m.video.position <= m._Flag_lastReportedPosition then return
+    if m.video.state <> "playing" then return
+    if m._contentPlaybackTime = Invalid then return
+
+    m._contentPlaybackTime = m._contentPlaybackTime + ((m.video.position - m._Flag_lastReportedPosition) * 1000)
+  end function
+
+  prototype._updateTotalWatchTime = function() as Void
+    if m.video.state = "paused" then return
+    if m._viewWatchTime = Invalid then return
+    if m._viewStartTimestamp = Invalid then return
+    if m._viewTimeToFirstFrame = Invalid then return
+    if m._viewRebufferDuration = Invalid then return
+    if m._contentPlaybackTime = Invalid then return
+
+    m._viewWatchTime = m._viewTimeToFirstFrame + m._viewRebufferDuration + m._contentPlaybackTime
+  end function
+
+  prototype._setBufferingMetrics = function() as Void
+    if m.video.state <> "buffering" then return
+    if m._Flag_atLeastOnePlayEventForContent <> true then return
+    if m._viewRebufferDuration = Invalid then return
+
+    m._viewRebufferDuration = m._viewRebufferDuration + (m.pollTimer.duration * 1000)
+    if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
+      m._viewRebufferPercentage = m._viewRebufferDuration / m._viewWatchTime
+    end if
+  end function
 
   prototype._addEventToQueue = function(_event as Object) as Object
     m._logEvent(_event)
@@ -943,32 +950,32 @@ function muxAnalytics() as Object
       props.view_start = FormatJson(m._viewStartTimestamp)
     end if
     if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
-      props.view_time_to_first_frame = m._viewTimeToFirstFrame.toStr()
+      props.view_time_to_first_frame = m._viewTimeToFirstFrame
     end if
     if m._contentPlaybackTime <> Invalid AND m._contentPlaybackTime <> 0
-      props.view_content_playback_time = m._contentPlaybackTime.toStr()
-      props.view_total_content_playback_time = m._contentPlaybackTime.toStr()
+      props.view_content_playback_time = m._contentPlaybackTime
+      props.view_total_content_playback_time = m._contentPlaybackTime
     end if
     if m._viewWatchTime <> Invalid AND m._viewWatchTime <> 0
-      props.view_watch_time = m._viewWatchTime.toStr()
+      props.view_watch_time = m._viewWatchTime
     end if
     if m._viewRebufferCount <> Invalid
       props.view_rebuffer_count = m._viewRebufferCount.toStr()
     end if
     if m._viewRebufferDuration <> Invalid
-      props.view_rebuffer_duration = m._viewRebufferDuration.toStr()
+      props.view_rebuffer_duration = m._viewRebufferDuration
     end if
     if m._viewRebufferPercentage <> Invalid
-      props.view_rebuffer_percentage = m._viewRebufferPercentage.toStr()
+      props.view_rebuffer_percentage = m._viewRebufferPercentage
     end if
     if m._viewRebufferFrequency! <> Invalid
-      props.view_rebuffer_frequency = m._viewRebufferFrequency!.toStr()
+      props.view_rebuffer_frequency = m._viewRebufferFrequency!
     end if
     if m._viewSeekCount <> Invalid
       props.view_seek_count = m._viewSeekCount.toStr()
     end if
     if m._viewSeekDuration <> Invalid
-      props.view_seek_duration = m._viewSeekDuration.toStr()
+      props.view_seek_duration = m._viewSeekDuration
     end if
     if m._viewAdPlayedCount <> Invalid
       props.view_ad_played_count = m._viewAdPlayedCount.toStr()
