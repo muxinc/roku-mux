@@ -26,6 +26,7 @@ Function TestCase__MuxAnalytics_VideoStateHandling() as String
   m.SUT.video.position = 2
   m.SUT._Flag_lastReportedPosition = 1
   m.SUT._seekThreshold = 5
+  m.SUT.debugEvents = "none"
   m.SUT._Flag_seekSentPlayingNotYetStarted = false
   m.SUT._Flag_atLeastOnePlayEventForContent = true
   ' WHEN

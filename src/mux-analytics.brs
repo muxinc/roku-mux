@@ -40,15 +40,15 @@ function runBeaconLoop()
   Print "[mux-analytics] running task loop"
 
   systemConfig = {
-                  MAX_BEACON_SIZE: m.MAX_BEACON_SIZE,
-                  MAX_QUEUE_LENGTH: m.MAX_QUEUE_LENGTH,
-                  HTTP_RETRIES: m.HTTP_RETRIES,
-                  HTTP_TIMEOUT: m.HTTP_TIMEOUT,
-                  BASE_TIME_BETWEEN_BEACONS: m.BASE_TIME_BETWEEN_BEACONS,
-                  HEARTBEAT_INTERVAL: m.HEARTBEAT_INTERVAL,
-                  POSITION_TIMER_INTERVAL: m.POSITION_TIMER_INTERVAL,
-                  SEEK_THRESHOLD: m.SEEK_THRESHOLD,
-                 }
+    MAX_BEACON_SIZE: m.MAX_BEACON_SIZE,
+    MAX_QUEUE_LENGTH: m.MAX_QUEUE_LENGTH,
+    HTTP_RETRIES: m.HTTP_RETRIES,
+    HTTP_TIMEOUT: m.HTTP_TIMEOUT,
+    BASE_TIME_BETWEEN_BEACONS: m.BASE_TIME_BETWEEN_BEACONS,
+    HEARTBEAT_INTERVAL: m.HEARTBEAT_INTERVAL,
+    POSITION_TIMER_INTERVAL: m.POSITION_TIMER_INTERVAL,
+    SEEK_THRESHOLD: m.SEEK_THRESHOLD,
+  }
   m.mxa.init(appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.pollTimer)
 
   m.top.ObserveField("rafEvent", m.messagePort)
@@ -143,6 +143,14 @@ function runBeaconLoop()
   m.top.UnobserveField("config")
   m.top.UnobserveField("control")
   m.top.UnobserveField("view")
+
+  if m.top.exitType = "soft"
+    while (NOT m.mxa.isQueueEmpty())
+      m.mxa.LIGHT_THE_BEACONS()
+    end while
+  end if
+
+  m.top.exit = false
 
   Print "[mux-analytics] end running task loop"
   return true
@@ -305,7 +313,7 @@ function muxAnalytics() as Object
 
   prototype.beaconIntervalHandler = function(beaconIntervalEvent)
     data = beaconIntervalEvent.getData()
-    m._LIGHT_THE_BEACONS()
+    m.LIGHT_THE_BEACONS()
   end function
 
   prototype.heartbeatIntervalHandler = function(heartbeatIntervalEvent)
@@ -362,7 +370,9 @@ function muxAnalytics() as Object
           m._Flag_RebufferingStarted = false
         end if
       end if
-      m._addEventToQueue(m._createEvent("play"))
+      if m._Flag_lastVideoState = "paused"
+        m._addEventToQueue(m._createEvent("play"))
+      end if
       m._addEventToQueue(m._createEvent("playing"))
       m._Flag_isSeeking = false
       m._Flag_atLeastOnePlayEventForContent = true
@@ -394,9 +404,20 @@ function muxAnalytics() as Object
     end if
   end function
 
+  prototype._triggerPlayEvent = function()
+    if m.video <> Invalid
+      if m.video.content <> Invalid
+        m._videoContentProperties = m._getVideoContentProperties(m.video.content)
+      end if
+      m._videoProperties = m._getVideoProperties(m.video)
+    end if
+    m._addEventToQueue(m._createEvent("play"))
+  end function
+
   prototype.videoControlChangeHandler = function(control as String)
     if control = "play"
       m._startView()
+      m._triggerPlayEvent()
     else if control = "stop"
       m._endView()
     end if
@@ -487,49 +508,56 @@ function muxAnalytics() as Object
     end if
   end function
 
-  prototype.pollingIntervalHandler = function(pollingIntervalEvent)
-    if m.video <> Invalid
-      ' update total watched time. (ViewStart - now)
-      if m.video.state <> "paused"
-        if m._viewWatchTime <> Invalid
-          if m._viewStartTimestamp <> Invalid
-            date = m._getDateTime()
-            now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
-            m._viewWatchTime = now - m._viewStartTimestamp
-          end if
-        end if
-      end if
+  prototype.pollingIntervalHandler = function(pollingIntervalEvent) as Void
+    if m.video = Invalid then return
 
-      ' set buffering metrics
-      if m.video.state = "buffering"
-        if m._Flag_atLeastOnePlayEventForContent = true
-          if m._viewRebufferDuration <> Invalid
-            m._viewRebufferDuration = m._viewRebufferDuration + (m.pollTimer.duration * 1000)
-            if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
-              m._viewRebufferPercentage = m._viewRebufferDuration / m._viewWatchTime
-            end if
-          end if
-        end if
-      end if
-      if NOT m.video.position = m._Flag_lastReportedPosition
-        if m.video.position > m._Flag_lastReportedPosition
-          ' playposition has increased. This is a progress update
-          if m.video.state = "playing"
-            if m._contentPlaybackTime <> Invalid
-              m._contentPlaybackTime = m._contentPlaybackTime + ((m.video.position - m._Flag_lastReportedPosition) * 1000)
-            end if
-          end if
-        end if
-        if m.video.state = "playing"
-          m._Flag_lastReportedPosition = m.video.position
-        end if
-      end if
-    end if
+    m._setBufferingMetrics()
+    m._updateContentPlaybackTime()
+
+    m._updateTotalWatchTime()
+    m._updateLastReportedPositionFlag()
   end function
 
   ' ' //////////////////////////////////////////////////////////////
   ' ' INTERNAL METHODS
   ' ' //////////////////////////////////////////////////////////////
+
+  prototype._updateLastReportedPositionFlag = function() as Void
+    if m.video.position = m._Flag_lastReportedPosition then return
+    if m.video.state <> "playing" AND m.video.state <> "buffering" then return
+    m._Flag_lastReportedPosition = m.video.position
+  end function
+
+  prototype._updateContentPlaybackTime = function() as Void
+    if m._Flag_isInAdBreak = true then return
+    if m.video.position <= m._Flag_lastReportedPosition then return
+    if m.video.state <> "playing" then return
+    if m._contentPlaybackTime = Invalid then return
+
+    m._contentPlaybackTime = m._contentPlaybackTime + ((m.video.position - m._Flag_lastReportedPosition) * 1000)
+  end function
+
+  prototype._updateTotalWatchTime = function() as Void
+    if m.video.state = "paused" then return
+    if m._viewWatchTime = Invalid then return
+    if m._viewStartTimestamp = Invalid then return
+    if m._viewTimeToFirstFrame = Invalid then return
+    if m._viewRebufferDuration = Invalid then return
+    if m._contentPlaybackTime = Invalid then return
+
+    m._viewWatchTime = m._viewTimeToFirstFrame + m._viewRebufferDuration + m._contentPlaybackTime
+  end function
+
+  prototype._setBufferingMetrics = function() as Void
+    if m.video.state <> "buffering" then return
+    if m._Flag_atLeastOnePlayEventForContent <> true then return
+    if m._viewRebufferDuration = Invalid then return
+
+    m._viewRebufferDuration = m._viewRebufferDuration + (m.pollTimer.duration * 1000)
+    if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
+      m._viewRebufferPercentage = m._viewRebufferDuration / m._viewWatchTime
+    end if
+  end function
 
   prototype._addEventToQueue = function(_event as Object) as Object
     m._logEvent(_event)
@@ -541,7 +569,11 @@ function muxAnalytics() as Object
     m._eventQueue.push(_event)
   end function
 
-  prototype._LIGHT_THE_BEACONS = function() as Object
+  prototype.isQueueEmpty = function() as Boolean
+    return m._eventQueue.count() = 0
+  end function
+
+  prototype.LIGHT_THE_BEACONS = function() as Object
     queueSize = m._eventQueue.count()
     if queueSize >= m.MAX_BEACON_SIZE
       beacon = []
@@ -576,12 +608,12 @@ function muxAnalytics() as Object
           event = wait(timeout%, m.httpPort)
           if type(event) = "roUrlEvent"
             exit while
-          else if event = invalid
+          else if event = Invalid
             m.connection.AsyncCancel()
             ' reset the connection after a timeout
             m.connection = _createConnection(m.httpPort)
           else
-            print "[mux-analytics] Unknown port event"
+            Print "[mux-analytics] Unknown port event"
           end if
           retryCountdown% = retryCountdown% - 1
         end while
@@ -593,7 +625,7 @@ function muxAnalytics() as Object
     if setByClient = true
       m._clientOperatedStartAndEnd = true
     end if
-    if (m._clientOperatedStartAndEnd = true and setByClient = false) then return
+    if (m._clientOperatedStartAndEnd = true AND setByClient = false) then return
     if (m._inView = false)
       m.heartbeatTimer.control = "start"
       m.pollTimer.control = "start"
@@ -631,8 +663,8 @@ function muxAnalytics() as Object
   end function
 
   prototype._endView = function(setByClient = false as Boolean) as Void
-    if (m._clientOperatedStartAndEnd = true and setByClient = false) then return
-    if (m._clientOperatedStartAndEnd = false and setByClient = true) then return
+    if (m._clientOperatedStartAndEnd = true AND setByClient = false) then return
+    if (m._clientOperatedStartAndEnd = false AND setByClient = true) then return
     if (m._inView = true)
       m.heartbeatTimer.control = "stop"
       m.pollTimer.control = "stop"
@@ -864,7 +896,7 @@ function muxAnalytics() as Object
     props = {}
     if adData <> Invalid
       if adData.ad <> Invalid
-        if adData.adIndex <> Invalid and adData.adIndex = 1 'preroll only'
+        if adData.adIndex <> Invalid AND adData.adIndex = 1 'preroll only'
           if adData.ad.streams <> Invalid
             if adData.ad.streams.count() > 0
               if adData.ad.streams[0].url <> Invalid
@@ -918,32 +950,32 @@ function muxAnalytics() as Object
       props.view_start = FormatJson(m._viewStartTimestamp)
     end if
     if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
-      props.view_time_to_first_frame = m._viewTimeToFirstFrame.toStr()
+      props.view_time_to_first_frame = m._viewTimeToFirstFrame
     end if
     if m._contentPlaybackTime <> Invalid AND m._contentPlaybackTime <> 0
-      props.view_content_playback_time = m._contentPlaybackTime.toStr()
-      props.view_total_content_playback_time = m._contentPlaybackTime.toStr()
+      props.view_content_playback_time = m._contentPlaybackTime
+      props.view_total_content_playback_time = m._contentPlaybackTime
     end if
     if m._viewWatchTime <> Invalid AND m._viewWatchTime <> 0
-      props.view_watch_time = m._viewWatchTime.toStr()
+      props.view_watch_time = m._viewWatchTime
     end if
     if m._viewRebufferCount <> Invalid
       props.view_rebuffer_count = m._viewRebufferCount.toStr()
     end if
     if m._viewRebufferDuration <> Invalid
-      props.view_rebuffer_duration = m._viewRebufferDuration.toStr()
+      props.view_rebuffer_duration = m._viewRebufferDuration
     end if
     if m._viewRebufferPercentage <> Invalid
-      props.view_rebuffer_percentage = m._viewRebufferPercentage.toStr()
+      props.view_rebuffer_percentage = m._viewRebufferPercentage
     end if
     if m._viewRebufferFrequency! <> Invalid
-      props.view_rebuffer_frequency = m._viewRebufferFrequency!.toStr()
+      props.view_rebuffer_frequency = m._viewRebufferFrequency!
     end if
     if m._viewSeekCount <> Invalid
       props.view_seek_count = m._viewSeekCount.toStr()
     end if
     if m._viewSeekDuration <> Invalid
-      props.view_seek_duration = m._viewSeekDuration.toStr()
+      props.view_seek_duration = m._viewSeekDuration
     end if
     if m._viewAdPlayedCount <> Invalid
       props.view_ad_played_count = m._viewAdPlayedCount.toStr()
@@ -1044,7 +1076,7 @@ function muxAnalytics() as Object
     if dashRegex.IsMatch(url)
       return "dash"
     end if
-''
+    ''
     formatRegex = CreateObject("roRegex", "\*?\.([^\.]*?)(\?|\/$|$|#).*", "i")
     if formatRegex <> Invalid
       extension = formatRegex.Match(url)
@@ -1074,12 +1106,12 @@ function muxAnalytics() as Object
     cookie.Flush()
   end function
 
-  prototype._getCookieData = function() as Dynamic
+  prototype._getCookieData = function() as dynamic
     cookie = _createRegistry()
     if cookie.Exists("UserRegistrationToken")
       return cookie.Read("UserRegistrationToken")
-    endif
-    return invalid
+    end if
+    return Invalid
   end function
 
   prototype._generateVideoId= function(src as String) as String
@@ -1262,44 +1294,43 @@ function muxAnalytics() as Object
   end function
 
   prototype._firstWords = {
-   property: "a",
-   beacon: "b",
-   ad: "d",
-   event: "e",
-   experiment: "f",
-   mux: "m",
-   player: "p",
-   retry: "r",
-   session: "s",
-   timestamp: "t",
-   viewer: "u",
-   video: "v",
-   page: "w",
-   view: "x",
-   sub: "y"
+    "property": "a",
+    "beacon": "b",
+    "ad": "d",
+    "event": "e",
+    "experiment": "f",
+    "mux": "m",
+    "player": "p",
+    "retry": "r",
+    "session": "s",
+    "timestamp": "t",
+    "viewer": "u",
+    "video": "v",
+    "page": "w",
+    "view": "x",
+    "sub": "y"
   }
 
   prototype._subsequentWords = {
-   ad: "ad", aggregate: "ag", api: "ap", application: "al", audio: "ao", architecture: "ar",
-   asset: "as", autoplay: "au", break: "br", code: "cd", category: "cg", config: "cn",
-   count: "co", complete: "cp", content: "ct", current: "cu",country: "cy", downscaling: "dg",
-   domain: "dm", cdn: "dn", downscale: "do", duration: "du", device: "dv", encoding: "ec",
-   end: "en", engine: "eg", embed: "em", error: "er", events: "ev", expires: "ex", first: "fi",
-   family: "fm", format: "ft", frequency: "fq", frame: "fr", fullscreen: "fs", host: "ho",
-   hostname: "hn", height: "ht", id: "id", init: "ii", instance: "in", ip: "ip", is: "is",
-   key: "ke", language: "la", live: "li", load: "lo", max: "ma", message: "me", mime: "mi",
-   midroll: "ml", manufacturer: "mn", model: "mo", mux: "mx", name: "nm",  number: "no",
-   on: "on", os: "os", paused: "pa", playback: "pb", producer: "pd", percentage: "pe",
-   played: "pf", playhead: "ph", plugin: "pi", preroll: "pl", poster: "po", preload: "pr",
-   property: "py", rate: "ra", requested: "rd", rebuffer: "re", ratio: "ro", request: "rq",
-   requests: "rs", sample: "sa", session: "se", seek: "sk", stream: "sm", source: "so",
-   sequence: "sq", series: "sr", start: "st", startup: "su", server: "sv", software: "sw",
-   subtitle: "sb", tag: "ta", tech: "tc", time: "ti", total: "tl", to: "to", title: "tt",
-   type: "ty",track: "tr", upscaling: "ug", upscale: "up", url: "ur", user: "us", variant: "va",
-   viewed: "vd", video: "vi", version: "ve", view: "vw", viewer: "vr", width: "wd", watch: "wa",
-   waiting: "wt"
+    "ad": "ad", "aggregate": "ag", "api": "ap", "application": "al", "audio": "ao", "architecture": "ar",
+    "asset": "as", "autoplay": "au", "break": "br", "code": "cd", "category": "cg", "config": "cn",
+    "count": "co", "complete": "cp", "content": "ct", "current": "cu", "country": "cy", "downscaling": "dg",
+    "domain": "dm", "cdn": "dn", "downscale": "do", "duration": "du", "device": "dv", "encoding": "ec",
+    "end": "en", "engine": "eg", "embed": "em", "error": "er", "events": "ev", "expires": "ex", "first": "fi",
+    "family": "fm", "format": "ft", "frequency": "fq", "frame": "fr", "fullscreen": "fs", "host": "ho",
+    "hostname": "hn", "height": "ht", "id": "id", "init": "ii", "instance": "in", "ip": "ip", "is": "is",
+    "key": "ke", "language": "la", "live": "li", "load": "lo", "max": "ma", "message": "me", "mime": "mi",
+    "midroll": "ml", "manufacturer": "mn", "model": "mo", "mux": "mx", "name": "nm",  "number": "no",
+    "on": "on", "os": "os", "paused": "pa", "playback": "pb", "producer": "pd", "percentage": "pe",
+    "played": "pf", "playhead": "ph", "plugin": "pi", "preroll": "pl", "poster": "po", "preload": "pr",
+    "property": "py", "rate": "ra", "requested": "rd", "rebuffer": "re", "ratio": "ro", "request": "rq",
+    "requests": "rs", "sample": "sa", "session": "se", "seek": "sk", "stream": "sm", "source": "so",
+    "sequence": "sq", "series": "sr", "start": "st", "startup": "su", "server": "sv", "software": "sw",
+    "subtitle": "sb", "tag": "ta", "tech": "tc", "time": "ti", "total": "tl", "to": "to", "title": "tt",
+    "type": "ty","track": "tr", "upscaling": "ug", "upscale": "up", "url": "ur", "user": "us", "variant": "va",
+    "viewed": "vd", "video": "vi", "version": "ve", "view": "vw", "viewer": "vr", "width": "wd", "watch": "wa",
+    "waiting": "wt"
   }
-
 
   return prototype
 end function
