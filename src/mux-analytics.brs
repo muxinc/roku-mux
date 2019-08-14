@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "0.0.11"
+  m.MUX_SDK_VERSION = "0.1.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -818,7 +818,7 @@ function muxAnalytics() as Object
     props = {}
     if video <> Invalid
       if video.duration <> Invalid AND video.duration > 0
-        m._videoSourceDuration = video.duration.toStr()
+        m._videoSourceDuration = (video.duration * 1000).toStr()
       end if
 
       if video.videoFormat <> Invalid AND video.videoFormat <> ""
@@ -884,7 +884,7 @@ function muxAnalytics() as Object
         end if
       end if
       if content.Length <> Invalid AND content.Length > 0
-        m._videoSourceDuration = content.Length
+        m._videoSourceDuration = (content.Length * 1000).toStr()
       end if
     end if
 
