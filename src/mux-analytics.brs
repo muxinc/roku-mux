@@ -818,7 +818,7 @@ function muxAnalytics() as Object
     props = {}
     if video <> Invalid
       if video.duration <> Invalid AND video.duration > 0
-        m._videoSourceDuration = (video.duration * 1000).toStr()
+        m._videoSourceDuration = video.duration * 1000
       end if
 
       if video.videoFormat <> Invalid AND video.videoFormat <> ""
@@ -884,7 +884,7 @@ function muxAnalytics() as Object
         end if
       end if
       if content.Length <> Invalid AND content.Length > 0
-        m._videoSourceDuration = (content.Length * 1000).toStr()
+        m._videoSourceDuration = content.Length * 1000
       end if
     end if
 
@@ -928,17 +928,17 @@ function muxAnalytics() as Object
         props.player_is_paused = "false"
       end if
       if m.video.timeToStartStreaming <> Invalid AND m.video.timeToStartStreaming <> 0
-        props.player_time_to_first_frame = (m.video.timeToStartStreaming * 1000).toStr()
+        props.player_time_to_first_frame = m.video.timeToStartStreaming * 1000
       end if
     end if
     if m._playerSequence <> Invalid AND m._playerSequence <> 0
-      props.player_sequence_number = m._playerSequence.toStr()
+      props.player_sequence_number = m._playerSequence
     end if
     if m._playerViewCount <> Invalid AND m._playerViewCount <> 0
       props.player_view_count = m._playerViewCount
     end if
     if m._viewSequence <> Invalid AND m._viewSequence <> 0
-      props.view_sequence_number = m._viewSequence.toStr()
+      props.view_sequence_number = m._viewSequence
     end if
     if m._viewID <> Invalid AND m._viewID <> ""
       props.view_id = m._viewID
@@ -960,7 +960,7 @@ function muxAnalytics() as Object
       props.view_watch_time = m._viewWatchTime
     end if
     if m._viewRebufferCount <> Invalid
-      props.view_rebuffer_count = m._viewRebufferCount.toStr()
+      props.view_rebuffer_count = m._viewRebufferCount
     end if
     if m._viewRebufferDuration <> Invalid
       props.view_rebuffer_duration = m._viewRebufferDuration
@@ -972,16 +972,16 @@ function muxAnalytics() as Object
       props.view_rebuffer_frequency = m._viewRebufferFrequency!
     end if
     if m._viewSeekCount <> Invalid
-      props.view_seek_count = m._viewSeekCount.toStr()
+      props.view_seek_count = m._viewSeekCount
     end if
     if m._viewSeekDuration <> Invalid
       props.view_seek_duration = m._viewSeekDuration
     end if
     if m._viewAdPlayedCount <> Invalid
-      props.view_ad_played_count = m._viewAdPlayedCount.toStr()
+      props.view_ad_played_count = m._viewAdPlayedCount
     end if
     if m._viewPrerollPlayedCount <> Invalid
-      props.view_preroll_played = m._viewPrerollPlayedCount.toStr()
+      props.view_preroll_played = m._viewPrerollPlayedCount
     end if
     if m._videoSourceFormat <> Invalid
       props.video_source_format = m._videoSourceFormat
