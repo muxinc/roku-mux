@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "0.1.0"
+  m.MUX_SDK_VERSION = "0.2.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -194,7 +194,7 @@ function muxAnalytics() as Object
 
   prototype.MUX_SDK_VERSION = ""
   prototype.PLAYER_SOFTWARE_NAME = "RokuSG"
-  prototype.MUX_API_VERSION = "2.0"
+  prototype.MUX_API_VERSION = "2.1" ' 2.1 because of GUIDs for player instance IDs
   prototype.PLAYER_IS_FULLSCREEN = "true"
 
   prototype.init = function(appInfo as Object, systemConfig as Object, customerConfig as Object, hbt as Object, pp as Object)
@@ -208,14 +208,12 @@ function muxAnalytics() as Object
     m.DEFAULT_DRY_RUN = false
     m.DEFAULT_DEBUG_EVENTS = "none"
     m.DEFAULT_DEBUG_BEACONS = "none" 'full','partial','none'
-    m.DEFAULT_DEFAULT_MINIFY = true 'full','partial','none'
     m.DEFAULT_BEACON_URL = "https://img.litix.io"
 
     manifestDryRun = appInfo.GetValue("mux_dry_run")
     m.manifestBaseUrl = appInfo.GetValue("mux_base_url")
     manifestDebugEvents = appInfo.GetValue("mux_debug_events")
     manifestDebugBeacons = appInfo.GetValue("mux_debug_beacons")
-    manifestMinification = appInfo.GetValue("mux_minification")
 
     m.debugEvents = m.DEFAULT_DEBUG_EVENTS
     if manifestDebugEvents <> ""
@@ -237,15 +235,6 @@ function muxAnalytics() as Object
         m.dryRun = true
       else
         m.dryRun = false
-      end if
-    end if
-
-    m.minification = m.DEFAULT_DEFAULT_MINIFY
-    if manifestMinification <> ""
-      if manifestMinification = "false"
-        m.minification = false
-      else
-        m.minification = true
       end if
     end if
 
@@ -595,13 +584,17 @@ function muxAnalytics() as Object
     else
       if beacon.count() > 0
         m._logBeacon(beacon, "BEACON")
+        minifiedBeacon = []
+        for each b in beacon
+          minifiedBeacon.push(m._minify(b))
+        end for
         retryCountdown% = m.HTTP_RETRIES
         timeout% = m.HTTP_TIMEOUT
         m.connection.AsyncCancel()
         m.connection.SetUrl(m.beaconUrl)
         m.requestId = m.connection.GetIdentity()
         requestBody = {}
-        requestBody.events = beacon
+        requestBody.events = minifiedBeacon
         fBody = FormatJson(requestBody)
         while retryCountdown% > 0
           m.connection.AsyncPostFromString(fBody)
@@ -769,9 +762,7 @@ function muxAnalytics() as Object
     date = m._getDateTime()
     newEvent.viewer_time = FormatJson(0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds())
 
-    newEvent = m._minify(newEvent)
-
-    newEvent.e = eventType
+    newEvent.event = eventType
     return newEvent
   end function
 
@@ -803,7 +794,8 @@ function muxAnalytics() as Object
     props.player_is_fullscreen = m.PLAYER_IS_FULLSCREEN
     props.beacon_domain = m._getDomain(m.beaconUrl)
 
-    props.player_instance_id = m._generateShortID()
+    ' We are moving towards using GUID style instance IDs
+    props.player_instance_id = m._generateViewID()
     ' DEVICE INFO
     if deviceInfo.IsRIDADisabled() = true
       props.viewer_user_id = deviceInfo.GetChannelClientId()
@@ -1125,32 +1117,28 @@ function muxAnalytics() as Object
 
   prototype._minify = function(src as Object) as Object
     result = {}
-    if m.minification = true
-      for each key in src
-        keyParts = key.split("_")
-        newKey = ""
-        s = keyParts.count()
-        if s > 0
-          firstPart = keyParts[0]
-          if m._firstWords[firstPart] <> Invalid
-            newKey = m._firstWords[firstPart]
-          else
-            newKey = firstPart
-          end if
+    for each key in src
+      keyParts = key.split("_")
+      newKey = ""
+      s = keyParts.count()
+      if s > 0
+        firstPart = keyParts[0]
+        if m._firstWords[firstPart] <> Invalid
+          newKey = m._firstWords[firstPart]
+        else
+          newKey = firstPart
         end if
-        for i = 1 To s - 1  Step 1
-          nextPart = keyParts[i]
-          if m._subsequentWords[nextPart] <> Invalid
-            newKey = newKey + m._subsequentWords[nextPart]
-          else
-            newKey = newKey + nextPart
-          end if
-        end for
-        result[newKey] = src[key]
+      end if
+      for i = 1 To s - 1  Step 1
+        nextPart = keyParts[i]
+        if m._subsequentWords[nextPart] <> Invalid
+          newKey = newKey + m._subsequentWords[nextPart]
+        else
+          newKey = newKey + nextPart
+        end if
       end for
-    else
-      result = src
-    end if
+      result[newKey] = src[key]
+    end for
     return result
   end function
 
@@ -1252,7 +1240,7 @@ function muxAnalytics() as Object
     for each evt in eventArray
       if fullEvent = false
         if evt <> Invalid
-          tot = tot + " " + evt.e
+          tot = tot + " " + evt.event
         end if
       else
         tot = tot + "{"
@@ -1269,7 +1257,7 @@ function muxAnalytics() as Object
 
   prototype._logEvent = function(event = {} as Object, subtype = "" as String, title = "EVENT" as String) as Void
     if m.debugEvents = "none" then return
-    tot = m.loggingPrefix + title + " " + event.e
+    tot = m.loggingPrefix + title + " " + event.event
     if m.debugEvents = "full"
       tot = tot + "{"
       for each prop in event
