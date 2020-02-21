@@ -194,7 +194,7 @@ function muxAnalytics() as Object
 
   prototype.MUX_SDK_VERSION = ""
   prototype.PLAYER_SOFTWARE_NAME = "RokuSG"
-  prototype.MUX_API_VERSION = "3.0" ' 3.0 because of GUIDs for player instance IDs
+  prototype.MUX_API_VERSION = "2.1" ' 2.1 because of GUIDs for player instance IDs
   prototype.PLAYER_IS_FULLSCREEN = "true"
 
   prototype.init = function(appInfo as Object, systemConfig as Object, customerConfig as Object, hbt as Object, pp as Object)
