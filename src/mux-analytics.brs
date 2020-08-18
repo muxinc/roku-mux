@@ -798,9 +798,9 @@ function muxAnalytics() as Object
     props.player_instance_id = m._generateViewID()
     ' DEVICE INFO
     if deviceInfo.IsRIDADisabled() = true
-      props.viewer_user_id = deviceInfo.GetChannelClientId()
+      props.mux_viewer_id = deviceInfo.GetChannelClientId()
     else
-      props.viewer_user_id = deviceInfo.GetRIDA()
+      props.mux_viewer_id = deviceInfo.GetRIDA()
     end if
     return props
   end function
