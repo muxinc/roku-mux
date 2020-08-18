@@ -779,7 +779,7 @@ function muxAnalytics() as Object
     props.player_software_version = Mid(deviceInfo.GetVersion(), 3, 4)
     props.player_model_number = deviceInfo.GetModel()
     props.viewer_application_name = appInfo.GetTitle()
-    props.viewer_application_version = Mid(deviceInfo.GetVersion(), 3, 4)
+    props.viewer_application_version = appInfo.GetVersion()
     props.viewer_device_name = "Roku"
     props.viewer_devide_category = "tv"
     props.viewer_os_family = "Roku"
