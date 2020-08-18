@@ -193,6 +193,7 @@ function muxAnalytics() as Object
   prototype = {}
 
   prototype.MUX_SDK_VERSION = ""
+  prototype.MUX_SDK_NAME = "roku-mux"
   prototype.PLAYER_SOFTWARE_NAME = "RokuSG"
   prototype.MUX_API_VERSION = "2.1" ' 2.1 because of GUIDs for player instance IDs
   prototype.PLAYER_IS_FULLSCREEN = "true"
@@ -777,7 +778,6 @@ function muxAnalytics() as Object
     props.player_software_name = m.PLAYER_SOFTWARE_NAME
     props.player_software_version = Mid(deviceInfo.GetVersion(), 3, 4)
     props.player_model_number = deviceInfo.GetModel()
-    props.player_mux_plugin_name = appInfo.GetTitle()
     props.viewer_application_name = "Roku"
     props.viewer_application_version = Mid(deviceInfo.GetVersion(), 3, 4)
     props.viewer_device_name = "Roku"
@@ -786,6 +786,7 @@ function muxAnalytics() as Object
     props.viewer_os_version = Mid(deviceInfo.GetVersion(), 3, 4)
     props.mux_api_version = m.MUX_API_VERSION
     props.player_version = appInfo.GetVersion()
+    props.player_mux_plugin_name = m.MUX_SDK_NAME
     props.player_mux_plugin_version = m.MUX_SDK_VERSION
     props.player_country_code = deviceInfo.GetCountryCode()
     props.player_language_code = deviceInfo.GetCurrentLocale()
