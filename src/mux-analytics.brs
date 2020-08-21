@@ -482,17 +482,19 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adended"))
     else if eventType = "NoAdsError"
       if m._Flag_FailedAdsErrorSet <> true
-        errorCode = ""
-        errorMessage = ""
-        if data.ctx <> Invalid
-          if data.ctx.errcode <> Invalid
-            errorCode = data.ctx.errcode
-          end if
-          if data.ctx.errmsg <> Invalid
-            errorMessage = data.ctx.errmsg
-          end if
-        end if
-        m._addEventToQueue(m._createEvent("aderror", {player_error_code: errorCode, player_error_message: errorMessage}))
+        ' For now, aderror events do not support codes and messages, but leaving
+        ' this here for now for context in the future
+        ' errorCode = ""
+        ' errorMessage = ""
+        ' if data.ctx <> Invalid
+        '   if data.ctx.errcode <> Invalid
+        '     errorCode = data.ctx.errcode
+        '   end if
+        '   if data.ctx.errmsg <> Invalid
+        '     errorMessage = data.ctx.errmsg
+        '   end if
+        ' end if
+        m._addEventToQueue(m._createEvent("aderror"))
         m._Flag_FailedAdsErrorSet = true
       end if
     end if
