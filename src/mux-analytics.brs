@@ -189,6 +189,31 @@ function _createRegistry() as Object
   return CreateObject("roRegistrySection", "mux")
 end function
 
+' Firmware Version Number
+' Return 8.01, 9.01, etc if FW 9.1 or less
+' Otherwise return 9.2, 9.3, 10.1, etc
+function _firmwareVersionNumber(deviceInfo as Object)
+  if FindMemberFunction(deviceInfo, "GetOSVersion") = Invalid
+    version = deviceInfo.GetVersion().Mid(2,4)
+  else
+    osVersion = deviceInfo.GetOSVersion()
+    version = osVersion["major"] + "." + osVersion["minor"]
+  end if
+  return version
+end function
+
+function _getConnectionType(deviceInfo as Object)
+  connectionType = deviceInfo.GetConnectionType()
+  if connectionType = "WiFiConnection"
+    return "wifi"
+  end if
+  if connectionType = "WiredConnection"
+    return "ethernet"
+  end if
+
+  return "none"
+end function
+
 function muxAnalytics() as Object
   prototype = {}
 
@@ -774,20 +799,21 @@ function muxAnalytics() as Object
     props = {}
     deviceInfo = m._getDeviceInfo()
     appInfo = m._getAppInfo()
+    firmwareVersion = _firmwareVersionNumber(deviceInfo)
 
     ' HARDCODED
     props.player_sequence_number = 1
     props.player_software_name = m.PLAYER_SOFTWARE_NAME
-    props.player_software_version = Mid(deviceInfo.GetVersion(), 3, 4)
-    props.player_model_number = deviceInfo.GetModel()
+    props.player_software_version = firmwareVersion
     props.viewer_application_name = appInfo.GetTitle()
     props.viewer_application_version = appInfo.GetVersion()
-    props.viewer_device_name = "Roku"
-    props.viewer_devide_category = "tv"
-    props.viewer_os_family = "Roku"
-    props.viewer_os_version = Mid(deviceInfo.GetVersion(), 3, 4)
+    props.viewer_device_name = deviceInfo.GetModel()
+    props.viewer_device_category = "tv"
+    props.viewer_device_manufacturer = deviceInfo.GetModelDetails()["VendorName"]
+    props.viewer_os_family = "Roku OS"
+    props.viewer_os_version = firmwareVersion
+    props.viewer_connection_type = _getConnectionType(deviceInfo)
     props.mux_api_version = m.MUX_API_VERSION
-    props.player_version = appInfo.GetVersion()
     props.player_mux_plugin_name = m.MUX_SDK_NAME
     props.player_mux_plugin_version = m.MUX_SDK_VERSION
     props.player_country_code = deviceInfo.GetCountryCode()
@@ -797,6 +823,27 @@ function muxAnalytics() as Object
     props.player_height = m._getVideoPlaybackMetric(videoMode, "height")
     props.player_is_fullscreen = m.PLAYER_IS_FULLSCREEN
     props.beacon_domain = m._getDomain(m.beaconUrl)
+
+    Print "player_software_name"
+    Print props.player_software_name
+    Print "player_software_version"
+    Print props.player_software_version
+    Print "viewer_application_name"
+    Print props.viewer_application_name
+    Print "viewer_application_version"
+    Print props.viewer_application_version
+    Print "viewer_device_name"
+    Print props.viewer_device_name
+    Print "viewer_device_category"
+    Print props.viewer_device_category
+    Print "viewer_device_manufacturer"
+    Print props.viewer_device_manufacturer
+    Print "viewer_os_family"
+    Print props.viewer_os_family
+    Print "viewer_os_version"
+    Print props.viewer_os_version
+    Print "viewer_connection_type"
+    Print props.viewer_connection_type
 
     ' We are moving towards using GUID style instance IDs
     props.player_instance_id = m._generateViewID()
@@ -1304,23 +1351,114 @@ function muxAnalytics() as Object
   }
 
   prototype._subsequentWords = {
-    "ad": "ad", "aggregate": "ag", "api": "ap", "application": "al", "audio": "ao", "architecture": "ar",
-    "asset": "as", "autoplay": "au", "break": "br", "code": "cd", "category": "cg", "config": "cn",
-    "count": "co", "complete": "cp", "content": "ct", "current": "cu", "country": "cy", "downscaling": "dg",
-    "domain": "dm", "cdn": "dn", "downscale": "do", "duration": "du", "device": "dv", "encoding": "ec",
-    "end": "en", "engine": "eg", "embed": "em", "error": "er", "events": "ev", "expires": "ex", "first": "fi",
-    "family": "fm", "format": "ft", "frequency": "fq", "frame": "fr", "fullscreen": "fs", "host": "ho",
-    "hostname": "hn", "height": "ht", "id": "id", "init": "ii", "instance": "in", "ip": "ip", "is": "is",
-    "key": "ke", "language": "la", "live": "li", "load": "lo", "max": "ma", "message": "me", "mime": "mi",
-    "midroll": "ml", "manufacturer": "mn", "model": "mo", "mux": "mx", "name": "nm",  "number": "no",
-    "on": "on", "os": "os", "paused": "pa", "playback": "pb", "producer": "pd", "percentage": "pe",
-    "played": "pf", "playhead": "ph", "plugin": "pi", "preroll": "pl", "poster": "po", "preload": "pr",
-    "property": "py", "rate": "ra", "requested": "rd", "rebuffer": "re", "ratio": "ro", "request": "rq",
-    "requests": "rs", "sample": "sa", "session": "se", "seek": "sk", "stream": "sm", "source": "so",
-    "sequence": "sq", "series": "sr", "start": "st", "startup": "su", "server": "sv", "software": "sw",
-    "subtitle": "sb", "tag": "ta", "tech": "tc", "time": "ti", "total": "tl", "to": "to", "title": "tt",
-    "type": "ty","track": "tr", "upscaling": "ug", "upscale": "up", "url": "ur", "user": "us", "variant": "va",
-    "viewed": "vd", "video": "vi", "version": "ve", "view": "vw", "viewer": "vr", "width": "wd", "watch": "wa",
+    "ad": "ad",
+    "aggregate": "ag",
+    "api": "ap",
+    "application": "al",
+    "audio": "ao",
+    "architecture": "ar",
+    "asset": "as",
+    "autoplay": "au",
+    "break": "br",
+    "code": "cd",
+    "category": "cg",
+    "config": "cn",
+    "count": "co",
+    "complete": "cp",
+    "connection": "cx",
+    "content": "ct",
+    "current": "cu",
+    "country": "cy",
+    "downscaling": "dg",
+    "domain": "dm",
+    "cdn": "dn",
+    "downscale": "do",
+    "duration": "du",
+    "device": "dv",
+    "encoding": "ec",
+    "end": "en",
+    "engine": "eg",
+    "embed": "em",
+    "error": "er",
+    "events": "ev",
+    "expires": "ex",
+    "first": "fi",
+    "family": "fm",
+    "format": "ft",
+    "frequency": "fq",
+    "frame": "fr",
+    "fullscreen": "fs",
+    "host": "ho",
+    "hostname": "hn",
+    "height": "ht",
+    "id": "id",
+    "init": "ii",
+    "instance": "in",
+    "ip": "ip",
+    "is": "is",
+    "key": "ke",
+    "language": "la",
+    "live": "li",
+    "load": "lo",
+    "max": "ma",
+    "message": "me",
+    "mime": "mi",
+    "midroll": "ml",
+    "manufacturer": "mn",
+    "model": "mo",
+    "mux": "mx",
+    "name": "nm",
+    "number": "no",
+    "on": "on",
+    "os": "os",
+    "paused": "pa",
+    "playback": "pb",
+    "producer": "pd",
+    "percentage": "pe",
+    "played": "pf",
+    "playhead": "ph",
+    "plugin": "pi",
+    "preroll": "pl",
+    "poster": "po",
+    "preload": "pr",
+    "property": "py",
+    "rate": "ra",
+    "requested": "rd",
+    "rebuffer": "re",
+    "ratio": "ro",
+    "request": "rq",
+    "requests": "rs",
+    "sample": "sa",
+    "session": "se",
+    "seek": "sk",
+    "stream": "sm",
+    "source": "so",
+    "sequence": "sq",
+    "series": "sr",
+    "start": "st",
+    "startup": "su",
+    "server": "sv",
+    "software": "sw",
+    "subtitle": "sb",
+    "tag": "ta",
+    "tech": "tc",
+    "time": "ti",
+    "total": "tl",
+    "to": "to",
+    "title": "tt",
+    "type": "ty","track": "tr",
+    "upscaling": "ug",
+    "upscale": "up",
+    "url": "ur",
+    "user": "us",
+    "variant": "va",
+    "viewed": "vd",
+    "video": "vi",
+    "version": "ve",
+    "view": "vw",
+    "viewer": "vr",
+    "width": "wd",
+    "watch": "wa",
     "waiting": "wt"
   }
 
