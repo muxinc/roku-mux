@@ -824,27 +824,6 @@ function muxAnalytics() as Object
     props.player_is_fullscreen = m.PLAYER_IS_FULLSCREEN
     props.beacon_domain = m._getDomain(m.beaconUrl)
 
-    Print "player_software_name"
-    Print props.player_software_name
-    Print "player_software_version"
-    Print props.player_software_version
-    Print "viewer_application_name"
-    Print props.viewer_application_name
-    Print "viewer_application_version"
-    Print props.viewer_application_version
-    Print "viewer_device_name"
-    Print props.viewer_device_name
-    Print "viewer_device_category"
-    Print props.viewer_device_category
-    Print "viewer_device_manufacturer"
-    Print props.viewer_device_manufacturer
-    Print "viewer_os_family"
-    Print props.viewer_os_family
-    Print "viewer_os_version"
-    Print props.viewer_os_version
-    Print "viewer_connection_type"
-    Print props.viewer_connection_type
-
     ' We are moving towards using GUID style instance IDs
     props.player_instance_id = m._generateViewID()
     ' DEVICE INFO
@@ -962,6 +941,10 @@ function muxAnalytics() as Object
   end function
 
   ' called once per event
+  ' Note - when a number that _should_ be an integer is copied over,
+  ' we force it into that format to help FormatJson do its job correctly
+  ' later. Aslo, timestamps need to be `FormatJson`d immediately to
+  ' try to make sure those don't get into scientific notation
   prototype._getDynamicProperties = function() as Object
     props = {}
     if m.video <> Invalid
@@ -971,17 +954,17 @@ function muxAnalytics() as Object
         props.player_is_paused = "false"
       end if
       if m.video.timeToStartStreaming <> Invalid AND m.video.timeToStartStreaming <> 0
-        props.player_time_to_first_frame = m.video.timeToStartStreaming * 1000
+        props.player_time_to_first_frame = Int(m.video.timeToStartStreaming * 1000)
       end if
     end if
     if m._playerSequence <> Invalid AND m._playerSequence <> 0
-      props.player_sequence_number = m._playerSequence
+      props.player_sequence_number = Int(m._playerSequence)
     end if
     if m._playerViewCount <> Invalid AND m._playerViewCount <> 0
-      props.player_view_count = m._playerViewCount
+      props.player_view_count = Int(m._playerViewCount)
     end if
     if m._viewSequence <> Invalid AND m._viewSequence <> 0
-      props.view_sequence_number = m._viewSequence
+      props.view_sequence_number = Int(m._viewSequence)
     end if
     if m._viewID <> Invalid AND m._viewID <> ""
       props.view_id = m._viewID
@@ -993,52 +976,54 @@ function muxAnalytics() as Object
       props.view_start = FormatJson(m._viewStartTimestamp)
     end if
     if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
-      props.view_time_to_first_frame = m._viewTimeToFirstFrame
+      props.view_time_to_first_frame = Int(m._viewTimeToFirstFrame)
     end if
     if m._contentPlaybackTime <> Invalid AND m._contentPlaybackTime <> 0
-      props.view_content_playback_time = m._contentPlaybackTime
-      props.view_total_content_playback_time = m._contentPlaybackTime
+      props.view_content_playback_time = Int(m._contentPlaybackTime)
+      props.view_total_content_playback_time = Int(m._contentPlaybackTime)
     end if
     if m._viewWatchTime <> Invalid AND m._viewWatchTime <> 0
-      props.view_watch_time = m._viewWatchTime
+      props.view_watch_time = Int(m._viewWatchTime)
     end if
     if m._viewRebufferCount <> Invalid
-      props.view_rebuffer_count = m._viewRebufferCount
+      props.view_rebuffer_count = Int(m._viewRebufferCount)
     end if
     if m._viewRebufferDuration <> Invalid
-      props.view_rebuffer_duration = m._viewRebufferDuration
+      props.view_rebuffer_duration = Int(m._viewRebufferDuration)
     end if
     if m._viewRebufferPercentage <> Invalid
-      props.view_rebuffer_percentage = m._viewRebufferPercentage
+      props.view_rebuffer_percentage = FormatJson(m._viewRebufferPercentage)
     end if
     if m._viewRebufferFrequency! <> Invalid
-      props.view_rebuffer_frequency = m._viewRebufferFrequency!
+      props.view_rebuffer_frequency = FormatJson(m._viewRebufferFrequency!)
     end if
     if m._viewSeekCount <> Invalid
-      props.view_seek_count = m._viewSeekCount
+      props.view_seek_count = Int(m._viewSeekCount)
     end if
     if m._viewSeekDuration <> Invalid
-      props.view_seek_duration = m._viewSeekDuration
+      props.view_seek_duration = Int(m._viewSeekDuration)
     end if
     if m._viewAdPlayedCount <> Invalid
-      props.view_ad_played_count = m._viewAdPlayedCount
+      props.view_ad_played_count = Int(m._viewAdPlayedCount)
     end if
-    if m._viewPrerollPlayedCount <> Invalid
-      props.view_preroll_played = m._viewPrerollPlayedCount
+    if m._viewPrerollPlayedCount <> Invalid AND m._viewPrerollPlayedCount > 0
+      props.view_preroll_played = "true"
+    else
+      props.view_preroll_played = "false"
     end if
     if m._videoSourceFormat <> Invalid
       props.video_source_format = m._videoSourceFormat
     end if
     if m._videoSourceDuration <> Invalid
-      props.video_source_duration = m._videoSourceDuration
+      props.video_source_duration = Int(m._videoSourceDuration)
     end if
     if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
       if type(m._configProperties.player_init_time) = "roString"
         playerInitTime = ParseJSON(m._configProperties.player_init_time)
         if playerInitTime > 0
-          props.player_startup_time =  m._startTimestamp - playerInitTime
+          props.player_startup_time = Int(m._startTimestamp - playerInitTime)
           if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
-            props.view_aggregate_startup_time = m._viewTimeToFirstFrame + (m._startTimestamp - playerInitTime)
+            props.view_aggregate_startup_time = Int(m._viewTimeToFirstFrame + (m._startTimestamp - playerInitTime))
           end if
         end if
       end if
