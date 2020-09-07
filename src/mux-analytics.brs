@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "0.2.0"
+  m.MUX_SDK_VERSION = "1.0.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -189,10 +189,36 @@ function _createRegistry() as Object
   return CreateObject("roRegistrySection", "mux")
 end function
 
+' Firmware Version Number
+' Return 8.01, 9.01, etc if FW 9.1 or less
+' Otherwise return 9.2, 9.3, 10.1, etc
+function _firmwareVersionNumber(deviceInfo as Object)
+  if FindMemberFunction(deviceInfo, "GetOSVersion") = Invalid
+    version = deviceInfo.GetVersion().Mid(2,4)
+  else
+    osVersion = deviceInfo.GetOSVersion()
+    version = osVersion["major"] + "." + osVersion["minor"]
+  end if
+  return version
+end function
+
+function _getConnectionType(deviceInfo as Object)
+  connectionType = deviceInfo.GetConnectionType()
+  if connectionType = "WiFiConnection"
+    return "wifi"
+  end if
+  if connectionType = "WiredConnection"
+    return "ethernet"
+  end if
+
+  return "none"
+end function
+
 function muxAnalytics() as Object
   prototype = {}
 
   prototype.MUX_SDK_VERSION = ""
+  prototype.MUX_SDK_NAME = "roku-mux"
   prototype.PLAYER_SOFTWARE_NAME = "RokuSG"
   prototype.MUX_API_VERSION = "2.1" ' 2.1 because of GUIDs for player instance IDs
   prototype.PLAYER_IS_FULLSCREEN = "true"
@@ -481,17 +507,19 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adended"))
     else if eventType = "NoAdsError"
       if m._Flag_FailedAdsErrorSet <> true
-        errorCode = ""
-        errorMessage = ""
-        if data.ctx <> Invalid
-          if data.ctx.errcode <> Invalid
-            errorCode = data.ctx.errcode
-          end if
-          if data.ctx.errmsg <> Invalid
-            errorMessage = data.ctx.errmsg
-          end if
-        end if
-        m._addEventToQueue(m._createEvent("aderror", {player_error_code: errorCode, player_error_message: errorMessage}))
+        ' For now, aderror events do not support codes and messages, but leaving
+        ' this here for now for context in the future
+        ' errorCode = ""
+        ' errorMessage = ""
+        ' if data.ctx <> Invalid
+        '   if data.ctx.errcode <> Invalid
+        '     errorCode = data.ctx.errcode
+        '   end if
+        '   if data.ctx.errmsg <> Invalid
+        '     errorMessage = data.ctx.errmsg
+        '   end if
+        ' end if
+        m._addEventToQueue(m._createEvent("aderror"))
         m._Flag_FailedAdsErrorSet = true
       end if
     end if
@@ -706,7 +734,7 @@ function muxAnalytics() as Object
         if m._viewSeekDuration <> Invalid
           m._viewSeekDuration = m._viewSeekDuration + (now - seekStartTs)
         end if
-        m._addEventToQueue(m._createEvent("seekend"))
+        m._addEventToQueue(m._createEvent("seeked"))
         m._Flag_isSeeking = false
       end if
     end if
@@ -771,20 +799,22 @@ function muxAnalytics() as Object
     props = {}
     deviceInfo = m._getDeviceInfo()
     appInfo = m._getAppInfo()
+    firmwareVersion = _firmwareVersionNumber(deviceInfo)
 
     ' HARDCODED
     props.player_sequence_number = 1
     props.player_software_name = m.PLAYER_SOFTWARE_NAME
-    props.player_software_version = Mid(deviceInfo.GetVersion(), 3, 4)
-    props.player_model_number = deviceInfo.GetModel()
-    props.player_mux_plugin_name = appInfo.GetTitle()
-    props.viewer_application_name = "Roku"
-    props.viewer_application_version = Mid(deviceInfo.GetVersion(), 3, 4)
-    props.viewer_device_name = "Roku"
-    props.viewer_os_family = "Roku"
-    props.viewer_os_version = Mid(deviceInfo.GetVersion(), 3, 4)
+    props.player_software_version = firmwareVersion
+    props.viewer_application_name = appInfo.GetTitle()
+    props.viewer_application_version = appInfo.GetVersion()
+    props.viewer_device_name = deviceInfo.GetModel()
+    props.viewer_device_category = "tv"
+    props.viewer_device_manufacturer = deviceInfo.GetModelDetails()["VendorName"]
+    props.viewer_os_family = "Roku OS"
+    props.viewer_os_version = firmwareVersion
+    props.viewer_connection_type = _getConnectionType(deviceInfo)
     props.mux_api_version = m.MUX_API_VERSION
-    props.player_version = appInfo.GetVersion()
+    props.player_mux_plugin_name = m.MUX_SDK_NAME
     props.player_mux_plugin_version = m.MUX_SDK_VERSION
     props.player_country_code = deviceInfo.GetCountryCode()
     props.player_language_code = deviceInfo.GetCurrentLocale()
@@ -798,9 +828,9 @@ function muxAnalytics() as Object
     props.player_instance_id = m._generateViewID()
     ' DEVICE INFO
     if deviceInfo.IsRIDADisabled() = true
-      props.viewer_user_id = deviceInfo.GetChannelClientId()
+      props.mux_viewer_id = deviceInfo.GetChannelClientId()
     else
-      props.viewer_user_id = deviceInfo.GetRIDA()
+      props.mux_viewer_id = deviceInfo.GetRIDA()
     end if
     return props
   end function
@@ -911,6 +941,10 @@ function muxAnalytics() as Object
   end function
 
   ' called once per event
+  ' Note - when a number that _should_ be an integer is copied over,
+  ' we force it into that format to help FormatJson do its job correctly
+  ' later. Aslo, timestamps need to be `FormatJson`d immediately to
+  ' try to make sure those don't get into scientific notation
   prototype._getDynamicProperties = function() as Object
     props = {}
     if m.video <> Invalid
@@ -920,17 +954,17 @@ function muxAnalytics() as Object
         props.player_is_paused = "false"
       end if
       if m.video.timeToStartStreaming <> Invalid AND m.video.timeToStartStreaming <> 0
-        props.player_time_to_first_frame = m.video.timeToStartStreaming * 1000
+        props.player_time_to_first_frame = Int(m.video.timeToStartStreaming * 1000)
       end if
     end if
     if m._playerSequence <> Invalid AND m._playerSequence <> 0
-      props.player_sequence_number = m._playerSequence
+      props.player_sequence_number = Int(m._playerSequence)
     end if
     if m._playerViewCount <> Invalid AND m._playerViewCount <> 0
-      props.player_view_count = m._playerViewCount
+      props.player_view_count = Int(m._playerViewCount)
     end if
     if m._viewSequence <> Invalid AND m._viewSequence <> 0
-      props.view_sequence_number = m._viewSequence
+      props.view_sequence_number = Int(m._viewSequence)
     end if
     if m._viewID <> Invalid AND m._viewID <> ""
       props.view_id = m._viewID
@@ -942,20 +976,20 @@ function muxAnalytics() as Object
       props.view_start = FormatJson(m._viewStartTimestamp)
     end if
     if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
-      props.view_time_to_first_frame = m._viewTimeToFirstFrame
+      props.view_time_to_first_frame = Int(m._viewTimeToFirstFrame)
     end if
     if m._contentPlaybackTime <> Invalid AND m._contentPlaybackTime <> 0
-      props.view_content_playback_time = m._contentPlaybackTime
-      props.view_total_content_playback_time = m._contentPlaybackTime
+      props.view_content_playback_time = Int(m._contentPlaybackTime)
+      props.view_total_content_playback_time = Int(m._contentPlaybackTime)
     end if
     if m._viewWatchTime <> Invalid AND m._viewWatchTime <> 0
-      props.view_watch_time = m._viewWatchTime
+      props.view_watch_time = Int(m._viewWatchTime)
     end if
     if m._viewRebufferCount <> Invalid
-      props.view_rebuffer_count = m._viewRebufferCount
+      props.view_rebuffer_count = Int(m._viewRebufferCount)
     end if
     if m._viewRebufferDuration <> Invalid
-      props.view_rebuffer_duration = m._viewRebufferDuration
+      props.view_rebuffer_duration = Int(m._viewRebufferDuration)
     end if
     if m._viewRebufferPercentage <> Invalid
       props.view_rebuffer_percentage = m._viewRebufferPercentage
@@ -964,30 +998,32 @@ function muxAnalytics() as Object
       props.view_rebuffer_frequency = m._viewRebufferFrequency!
     end if
     if m._viewSeekCount <> Invalid
-      props.view_seek_count = m._viewSeekCount
+      props.view_seek_count = Int(m._viewSeekCount)
     end if
     if m._viewSeekDuration <> Invalid
-      props.view_seek_duration = m._viewSeekDuration
+      props.view_seek_duration = Int(m._viewSeekDuration)
     end if
     if m._viewAdPlayedCount <> Invalid
-      props.view_ad_played_count = m._viewAdPlayedCount
+      props.view_ad_played_count = Int(m._viewAdPlayedCount)
     end if
-    if m._viewPrerollPlayedCount <> Invalid
-      props.view_preroll_played = m._viewPrerollPlayedCount
+    if m._viewPrerollPlayedCount <> Invalid AND m._viewPrerollPlayedCount > 0
+      props.view_preroll_played = "true"
+    else
+      props.view_preroll_played = "false"
     end if
     if m._videoSourceFormat <> Invalid
       props.video_source_format = m._videoSourceFormat
     end if
     if m._videoSourceDuration <> Invalid
-      props.video_source_duration = m._videoSourceDuration
+      props.video_source_duration = Int(m._videoSourceDuration)
     end if
     if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
       if type(m._configProperties.player_init_time) = "roString"
         playerInitTime = ParseJSON(m._configProperties.player_init_time)
         if playerInitTime > 0
-          props.player_startup_time =  m._startTimestamp - playerInitTime
+          props.player_startup_time = Int(m._startTimestamp - playerInitTime)
           if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
-            props.view_aggregate_startup_time = m._viewTimeToFirstFrame + (m._startTimestamp - playerInitTime)
+            props.view_aggregate_startup_time = Int(m._viewTimeToFirstFrame + (m._startTimestamp - playerInitTime))
           end if
         end if
       end if
@@ -1300,23 +1336,114 @@ function muxAnalytics() as Object
   }
 
   prototype._subsequentWords = {
-    "ad": "ad", "aggregate": "ag", "api": "ap", "application": "al", "audio": "ao", "architecture": "ar",
-    "asset": "as", "autoplay": "au", "break": "br", "code": "cd", "category": "cg", "config": "cn",
-    "count": "co", "complete": "cp", "content": "ct", "current": "cu", "country": "cy", "downscaling": "dg",
-    "domain": "dm", "cdn": "dn", "downscale": "do", "duration": "du", "device": "dv", "encoding": "ec",
-    "end": "en", "engine": "eg", "embed": "em", "error": "er", "events": "ev", "expires": "ex", "first": "fi",
-    "family": "fm", "format": "ft", "frequency": "fq", "frame": "fr", "fullscreen": "fs", "host": "ho",
-    "hostname": "hn", "height": "ht", "id": "id", "init": "ii", "instance": "in", "ip": "ip", "is": "is",
-    "key": "ke", "language": "la", "live": "li", "load": "lo", "max": "ma", "message": "me", "mime": "mi",
-    "midroll": "ml", "manufacturer": "mn", "model": "mo", "mux": "mx", "name": "nm",  "number": "no",
-    "on": "on", "os": "os", "paused": "pa", "playback": "pb", "producer": "pd", "percentage": "pe",
-    "played": "pf", "playhead": "ph", "plugin": "pi", "preroll": "pl", "poster": "po", "preload": "pr",
-    "property": "py", "rate": "ra", "requested": "rd", "rebuffer": "re", "ratio": "ro", "request": "rq",
-    "requests": "rs", "sample": "sa", "session": "se", "seek": "sk", "stream": "sm", "source": "so",
-    "sequence": "sq", "series": "sr", "start": "st", "startup": "su", "server": "sv", "software": "sw",
-    "subtitle": "sb", "tag": "ta", "tech": "tc", "time": "ti", "total": "tl", "to": "to", "title": "tt",
-    "type": "ty","track": "tr", "upscaling": "ug", "upscale": "up", "url": "ur", "user": "us", "variant": "va",
-    "viewed": "vd", "video": "vi", "version": "ve", "view": "vw", "viewer": "vr", "width": "wd", "watch": "wa",
+    "ad": "ad",
+    "aggregate": "ag",
+    "api": "ap",
+    "application": "al",
+    "audio": "ao",
+    "architecture": "ar",
+    "asset": "as",
+    "autoplay": "au",
+    "break": "br",
+    "code": "cd",
+    "category": "cg",
+    "config": "cn",
+    "count": "co",
+    "complete": "cp",
+    "connection": "cx",
+    "content": "ct",
+    "current": "cu",
+    "country": "cy",
+    "downscaling": "dg",
+    "domain": "dm",
+    "cdn": "dn",
+    "downscale": "do",
+    "duration": "du",
+    "device": "dv",
+    "encoding": "ec",
+    "end": "en",
+    "engine": "eg",
+    "embed": "em",
+    "error": "er",
+    "events": "ev",
+    "expires": "ex",
+    "first": "fi",
+    "family": "fm",
+    "format": "ft",
+    "frequency": "fq",
+    "frame": "fr",
+    "fullscreen": "fs",
+    "host": "ho",
+    "hostname": "hn",
+    "height": "ht",
+    "id": "id",
+    "init": "ii",
+    "instance": "in",
+    "ip": "ip",
+    "is": "is",
+    "key": "ke",
+    "language": "la",
+    "live": "li",
+    "load": "lo",
+    "max": "ma",
+    "message": "me",
+    "mime": "mi",
+    "midroll": "ml",
+    "manufacturer": "mn",
+    "model": "mo",
+    "mux": "mx",
+    "name": "nm",
+    "number": "no",
+    "on": "on",
+    "os": "os",
+    "paused": "pa",
+    "playback": "pb",
+    "producer": "pd",
+    "percentage": "pe",
+    "played": "pf",
+    "playhead": "ph",
+    "plugin": "pi",
+    "preroll": "pl",
+    "poster": "po",
+    "preload": "pr",
+    "property": "py",
+    "rate": "ra",
+    "requested": "rd",
+    "rebuffer": "re",
+    "ratio": "ro",
+    "request": "rq",
+    "requests": "rs",
+    "sample": "sa",
+    "session": "se",
+    "seek": "sk",
+    "stream": "sm",
+    "source": "so",
+    "sequence": "sq",
+    "series": "sr",
+    "start": "st",
+    "startup": "su",
+    "server": "sv",
+    "software": "sw",
+    "subtitle": "sb",
+    "tag": "ta",
+    "tech": "tc",
+    "time": "ti",
+    "total": "tl",
+    "to": "to",
+    "title": "tt",
+    "type": "ty","track": "tr",
+    "upscaling": "ug",
+    "upscale": "up",
+    "url": "ur",
+    "user": "us",
+    "variant": "va",
+    "viewed": "vd",
+    "video": "vi",
+    "version": "ve",
+    "view": "vw",
+    "viewer": "vr",
+    "width": "wd",
+    "watch": "wa",
     "waiting": "wt"
   }
 
