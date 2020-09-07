@@ -135,6 +135,7 @@ gulp.task('closeApp', function () {
 
 gulp.task('replace', ['build_sample_app', 'cleanup'], function () {
   gulp.src(['build/libs/mux-analytics.brs'])
+    .pipe(replace('mux_viewer_id', 'mvrid'))
     .pipe(replace('player_software_name', 'pswnm'))
     .pipe(replace('player_software_version', 'pswve'))
     .pipe(replace('player_model_number', 'pmono'))
@@ -306,4 +307,3 @@ const expectedWordsByMin = {
   'wa': 'watch',
   'wt': 'waiting'
 };
-
