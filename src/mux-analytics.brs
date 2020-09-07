@@ -992,10 +992,10 @@ function muxAnalytics() as Object
       props.view_rebuffer_duration = Int(m._viewRebufferDuration)
     end if
     if m._viewRebufferPercentage <> Invalid
-      props.view_rebuffer_percentage = FormatJson(m._viewRebufferPercentage)
+      props.view_rebuffer_percentage = m._viewRebufferPercentage
     end if
     if m._viewRebufferFrequency! <> Invalid
-      props.view_rebuffer_frequency = FormatJson(m._viewRebufferFrequency!)
+      props.view_rebuffer_frequency = m._viewRebufferFrequency!
     end if
     if m._viewSeekCount <> Invalid
       props.view_seek_count = Int(m._viewSeekCount)
