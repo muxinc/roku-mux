@@ -1028,6 +1028,9 @@ function muxAnalytics() as Object
         end if
       end if
     end if
+    if m.video.position <> Invalid
+      props.player_playhead_time = Int(m.video.position * 1000)
+    end if
 
     return props
   end function
