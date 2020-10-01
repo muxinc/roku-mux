@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "1.0.0"
+  m.MUX_SDK_VERSION = "1.0.1"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -1028,8 +1028,10 @@ function muxAnalytics() as Object
         end if
       end if
     end if
-    if m.video.position <> Invalid
-      props.player_playhead_time = Int(m.video.position * 1000)
+    if m.video <> Invalid
+      if m.video.position <> Invalid
+        props.player_playhead_time = Int(m.video.position * 1000)
+      end if
     end if
 
     return props
