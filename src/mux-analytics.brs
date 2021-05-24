@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "1.0.1"
+  m.MUX_SDK_VERSION = "1.0.2"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -807,9 +807,10 @@ function muxAnalytics() as Object
     props.player_software_version = firmwareVersion
     props.viewer_application_name = appInfo.GetTitle()
     props.viewer_application_version = appInfo.GetVersion()
-    props.viewer_device_name = deviceInfo.GetModel()
+    props.viewer_device_name = deviceInfo.GetModelDisplayName()
     props.viewer_device_category = "tv"
     props.viewer_device_manufacturer = deviceInfo.GetModelDetails()["VendorName"]
+    props.viewer_device_model = deviceInfo.GetModel()
     props.viewer_os_family = "Roku OS"
     props.viewer_os_version = firmwareVersion
     props.viewer_connection_type = _getConnectionType(deviceInfo)
