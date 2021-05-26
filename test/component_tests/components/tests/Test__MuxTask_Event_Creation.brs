@@ -43,6 +43,9 @@ function _createDeviceInfo() as Object
     GetModel: function() as String
       return "r1"
     end function
+    GetModelDisplayName: function() as String
+      return "Roku Express"
+    end function
     GetCountryCode: function() as String
       return "us"
     end function

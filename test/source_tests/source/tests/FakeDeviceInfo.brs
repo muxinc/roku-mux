@@ -4,6 +4,7 @@ function FakeDeviceInfo() as Object
   prototype._GetVersionValueToReturn = "048.00E04143A"
   prototype._GetVideoModeToReturn = "1080p30"
   prototype._GetModelValueToReturn = "3710X"
+  prototype._GetModelDisplayNameValueToReturn = "Roku Express Plus"
   prototype._GetCountryCodeToReturn = "mx"
   prototype._GetLocaleToReturn = "mx"
   prototype._GetDisplaySizeToReturn = {w:4, h:3}
@@ -19,6 +20,9 @@ function FakeDeviceInfo() as Object
   end function
   prototype.GetModel = function() as String
     return m._GetModelValueToReturn
+  end function
+  prototype.GetModelDisplayName = function() as String
+    return m._GetModelDisplayNameValueToReturn
   end function
   prototype.GetCurrentLocale = function() as String
     return m._GetLocaleToReturn
