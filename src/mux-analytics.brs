@@ -856,16 +856,16 @@ function muxAnalytics() as Object
   prototype._getVideoContentProperties = function(content as Object) as Object
     props = {}
     if content <> Invalid
-      if content.title <> Invalid AND content.title <> ""
+      if content.title <> Invalid AND (type(content.title) = "String" OR type(content.title) = "roString") AND content.title <> ""
         props.video_title = content.title
       end if
-      if content.TitleSeason <> Invalid AND content.TitleSeason <> ""
+      if content.TitleSeason <> Invalid AND (type(content.TitleSeason) = "String" OR type(content.TitleSeason) = "roString") AND content.TitleSeason <> ""
         props.video_series = content.TitleSeason
       end if
-      if content.Director <> Invalid AND content.Director <> ""
+      if content.Director <> Invalid AND (type(content.Director) = "String" OR type(content.Director) = "roString") AND content.Director <> ""
         props.video_producer = content.Director
       end if
-      if content.video_id <> Invalid AND content.video_id <> ""
+      if content.video_id <> Invalid AND (type(content.video_id) = "String" OR type(content.video_id) = "roString") AND content.video_id <> ""
         props.video_id = content.video_id
       else
         props.video_id = m._generateVideoId(content.URL)
@@ -1303,7 +1303,9 @@ function muxAnalytics() as Object
     if m.debugEvents = "full"
       tot = tot + "{"
       for each prop in event
-        tot = tot + prop + ":" + event[prop].toStr() + ", "
+        if event[prop] <> Invalid
+          tot = tot + prop + ":" + event[prop].toStr() + ", "
+        end if
       end for
       tot = Left(tot, len(tot) - 2)
       tot = tot + "} "
