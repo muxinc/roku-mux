@@ -1,6 +1,6 @@
 {
   "name": "roku-mux",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Mux SDK for Roku",
   "main": "none",
   "directories": {
