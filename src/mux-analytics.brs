@@ -894,7 +894,7 @@ function muxAnalytics() as Object
       props.video_source_hostname = m._getHostname(content.URL)
       props.video_source_domain = m._getDomain(content.URL)
 
-      if content.StreamFormat <> Invalid AND (type(content.Director) = "String" OR type(content.Director) = "roString") AND content.StreamFormat <> "(null)"
+      if content.StreamFormat <> Invalid AND (type(content.StreamFormat) = "String" OR type(content.StreamFormat) = "roString") AND content.StreamFormat <> "(null)"
         props.video_source_mime_type = m._convertStreamFormat(content.StreamFormat)
       end if
 
