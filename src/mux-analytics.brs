@@ -367,6 +367,7 @@ function muxAnalytics() as Object
           end if
         end if
       end if
+    end if
     else if videoState = "paused"
       m._addEventToQueue(m._createEvent("pause"))
     else if videoState = "playing"
