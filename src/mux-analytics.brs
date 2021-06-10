@@ -1098,27 +1098,27 @@ function muxAnalytics() as Object
 
   prototype._convertStreamFormat = function(format as String) as String
     if format = "mp4"
-      "video/mp4"
+      return "video/mp4"
     else if format = "wma"
-      "video/x-ms-wma"
+      return "video/x-ms-wma"
     else if format = "mp3"
-      "audio/mpeg"
+      return "audio/mpeg"
     else if format = "hls"
-      "application/x-mpegurl"
+      return "application/x-mpegurl"
     else if format = "ism"
-      "application/vnd.ms-sstr+xml"
+      return "application/vnd.ms-sstr+xml"
     else if format = "dash"
-      "application/dash+xml"
+      return "application/dash+xml"
     else if format = "mkv"
-      "video/x-matroska"
+      return "video/x-matroska"
     else if format = "mka"
-      "audio/x-matroska"
+      return "audio/x-matroska"
     else if format = "mks"
-      "video/x-matroska"
+      return "video/x-matroska"
     else if format = "wmv"
-      "video/x-ms-wmv"
+      return "video/x-ms-wmv"
     else
-      format
+      return format
     end if
   end function
 
