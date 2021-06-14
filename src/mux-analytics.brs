@@ -1175,10 +1175,14 @@ function muxAnalytics() as Object
         nextPart = keyParts[i]
         if m._subsequentWords[nextPart] <> Invalid
           newKey = newKey + m._subsequentWords[nextPart]
-        else
+        else if nextPart.len() > 0 AND nextPart.toInt() > 0 AND nextPart.toInt() = Int(nextPart.toInt())
           newKey = newKey + nextPart
+        else
+          if newKey.right(1) <> "_" then newKey = newKey + "_"
+          newKey = newKey + nextPart + "_"
         end if
       end for
+      if newKey.right(1) = "_" then newKey = newKey.left(newKey.Len() - 1)
       result[newKey] = src[key]
     end for
     return result
@@ -1328,6 +1332,7 @@ function muxAnalytics() as Object
   prototype._firstWords = {
     "property": "a",
     "beacon": "b",
+    "custom": "c",
     "ad": "d",
     "event": "e",
     "experiment": "f",
@@ -1439,7 +1444,8 @@ function muxAnalytics() as Object
     "total": "tl",
     "to": "to",
     "title": "tt",
-    "type": "ty","track": "tr",
+    "type": "ty",
+    "track": "tr",
     "upscaling": "ug",
     "upscale": "up",
     "url": "ur",
