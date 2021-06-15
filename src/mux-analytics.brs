@@ -1176,24 +1176,20 @@ function muxAnalytics() as Object
 
       for i = 1 To s - 1  Step 1
         nextPart = keyParts[i]
+
         if m._subsequentWords[nextPart] <> Invalid
           newKey = newKey + m._subsequentWords[nextPart]
         else if nextPart.len() > 0 AND nextPart.toInt() > 0 AND nextPart.toInt() = Int(nextPart.toInt())
           ' Make sure the value is an integer, not decimal
           newKey = newKey + nextPart
         else
-          ' Only add the '_' if it hadn't already been added to the end of the string,
-          ' i.e. there were two unexpected words in a row
-          if newKey.right(1) <> "_" then newKey = newKey + "_"
-          newKey = newKey + nextPart + "_"
+          newKey = newKey + "_" + nextPart + "_"
         end if
       end for
 
-      ' Remove the trailing '_', if it exists
-      if newKey.right(1) = "_" then newKey = newKey.left(newKey.Len() - 1)
       result[newKey] = src[key]
     end for
-    
+
     return result
   end function
 
