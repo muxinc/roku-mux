@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "1.0.3"
+  m.MUX_SDK_VERSION = "1.1.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -355,13 +355,15 @@ function muxAnalytics() as Object
     m._Flag_isPaused = (videoState = "paused")
     if videoState = "buffering"
       m._checkForSeek("buffering")
-      if m._Flag_atLeastOnePlayEventForContent = true
-        m._addEventToQueue(m._createEvent("rebufferstart"))
-        m._Flag_RebufferingStarted = true
-        if m._viewRebufferCount <> Invalid
-          m._viewRebufferCount++
-          if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
-            m._viewRebufferFrequency! = m._viewRebufferCount / m._viewWatchTime
+      if m._Flag_isSeeking = false
+        if m._Flag_atLeastOnePlayEventForContent = true
+          m._addEventToQueue(m._createEvent("rebufferstart"))
+          m._Flag_RebufferingStarted = true
+          if m._viewRebufferCount <> Invalid
+            m._viewRebufferCount++
+            if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
+              m._viewRebufferFrequency! = m._viewRebufferCount / m._viewWatchTime
+            end if
           end if
         end if
       end if
@@ -891,10 +893,8 @@ function muxAnalytics() as Object
       props.video_source_hostname = m._getHostname(content.URL)
       props.video_source_domain = m._getDomain(content.URL)
 
-      if content.StreamFormat <> Invalid AND content.StreamFormat <> "(null)"
-        props.video_source_mime_type = content.StreamFormat
-      else
-        props.video_source_mime_type = m._getStreamFormat(content.URL)
+      if content.StreamFormat <> Invalid AND (type(content.StreamFormat) = "String" OR type(content.StreamFormat) = "roString") AND content.StreamFormat <> "(null)"
+        props.video_source_mime_type = m._convertStreamFormat(content.StreamFormat)
       end if
 
       m._videoSourceFormat = m._getVideoFormat(content.URL)
@@ -1095,31 +1095,30 @@ function muxAnalytics() as Object
     return hostAndPath
   end function
 
-  prototype._getStreamFormat = function(url as String) as String
-    ismRegex = CreateObject("roRegex", "\.isml?\/manifest", "i")
-    if ismRegex.IsMatch(url)
-      return "ism"
+  prototype._convertStreamFormat = function(format as String) as String
+    if format = "mp4"
+      return "video/mp4"
+    else if format = "wma"
+      return "video/x-ms-wma"
+    else if format = "mp3"
+      return "audio/mpeg"
+    else if format = "hls"
+      return "application/x-mpegurl"
+    else if format = "ism"
+      return "application/vnd.ms-sstr+xml"
+    else if format = "dash"
+      return "application/dash+xml"
+    else if format = "mkv"
+      return "video/x-matroska"
+    else if format = "mka"
+      return "audio/x-matroska"
+    else if format = "mks"
+      return "video/x-matroska"
+    else if format = "wmv"
+      return "video/x-ms-wmv"
+    else
+      return format
     end if
-
-    hlsRegex = CreateObject("roRegex", "\.m3u8", "i")
-    if hlsRegex.IsMatch(url)
-      return "hls"
-    end if
-
-    dashRegex = CreateObject("roRegex", "\.mpd", "i")
-    if dashRegex.IsMatch(url)
-      return "dash"
-    end if
-    ''
-    formatRegex = CreateObject("roRegex", "\*?\.([^\.]*?)(\?|\/$|$|#).*", "i")
-    if formatRegex <> Invalid
-      extension = formatRegex.Match(url)
-      if extension <> Invalid AND extension.count() > 1
-        return extension[1]
-      end if
-    end if
-
-    return "unknown"
   end function
 
   prototype._getVideoFormat = function(url as String) as String
