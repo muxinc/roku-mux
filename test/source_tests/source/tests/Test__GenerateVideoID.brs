@@ -13,8 +13,6 @@ Function TestSuite__GenerateVideoID() as Object
   this.addTest("Get HostnameAndPath [6]", TestCase__MuxAnalytics_GetHostnameAndPath_6)
   this.addTest("Get HostnameAndPath [7]", TestCase__MuxAnalytics_GetHostnameAndPath_7)
   this.addTest("Get HostnameAndPath [7]", TestCase__MuxAnalytics_GetHostnameAndPath_8)
-  this.addTest("Get Generate Video ID [1]", TestCase__MuxAnalytics_GenerateVideoID_1)
-  this.addTest("Get Generate Video ID [2]", TestCase__MuxAnalytics_GenerateVideoID_2)
 
   return this
 End Function
@@ -92,20 +90,3 @@ Function TestCase__MuxAnalytics_GetHostnameAndPath_8() as String
   ' END
   return m.assertEqual(result, "")
 End Function
-
-Function TestCase__MuxAnalytics_GenerateVideoID_1() as String
-  ' GIVEN
-  ' WHEN
-  result = m.SUT._generateVideoId("http://akami.com/this/should/be/included/#test=https://somethingelse")
-  ' END
-  return m.assertEqual(result, "YWthbWkuY29tL3RoaXMvc2hvdWxkL2JlL2luY2x1ZGVkLw")
-End Function
-
-Function TestCase__MuxAnalytics_GenerateVideoID_2() as String
-  ' GIVEN
-  ' WHEN
-  result = m.SUT._generateVideoId("")
-  ' END
-  return m.assertEqual(result, "")
-End Function
-
