@@ -95,7 +95,7 @@ Function TestCase__MuxAnalytics_Minification_minifies_unexpected_word() as Strin
   ' WHEN
   result = m.SUT._minify(body)
   ' THEN
-  return m.assertEqual("sjabberwockyti", result.keys()[0])
+  return m.assertEqual("s_jabberwocky_ti", result.keys()[0])
 end function
 
 Function TestCase__MuxAnalytics_Minification_minifies_unexpected_words() as String
@@ -105,7 +105,7 @@ Function TestCase__MuxAnalytics_Minification_minifies_unexpected_words() as Stri
   ' WHEN
   result = m.SUT._minify(body)
   ' THEN
-  return m.assertEqual("gimblejabberwockygyre", result.keys()[0])
+  return m.assertEqual("_gimble__jabberwocky__gyre_", result.keys()[0])
 end function
 
 Function TestCase__MuxAnalytics_Minification_minifies_unexpected_words_2() as String
@@ -115,7 +115,7 @@ Function TestCase__MuxAnalytics_Minification_minifies_unexpected_words_2() as St
   ' WHEN
   result = m.SUT._minify(body)
   ' THEN
-  return m.assertEqual({gimblejabberwockygyre: 44}, result)
+  return m.assertEqual({_gimble__jabberwocky__gyre_: 44}, result)
 end function
 
 Function TestCase__MuxAnalytics_Minification_minifies_nothing() as String
@@ -155,7 +155,7 @@ Function TestCase__MuxAnalytics_Minification_minifies_terrible_property() as Str
   ' WHEN
   result = m.SUT._minify(body)
   ' THEN
-  return m.assertEqual(result.keys()[0], "end")
+  return m.assertEqual(result.keys()[0], "_end_")
 end function
 
 Function TestCase__MuxAnalytics_Minification_minifies_terrible_property_2() as String
@@ -175,7 +175,7 @@ Function TestCase__MuxAnalytics_Minification_minifies_terrible_property_3() as S
   ' WHEN
   result = m.SUT._minify(body)
   ' THEN
-  return m.assertEqual(result.keys()[0], "farquar")
+  return m.assertEqual(result.keys()[0], "_farquar_")
 end function
 
 Function TestCase__MuxAnalytics_Minification_minifies_terrible_property_4() as String
@@ -185,7 +185,7 @@ Function TestCase__MuxAnalytics_Minification_minifies_terrible_property_4() as S
   ' WHEN
   result = m.SUT._minify(body)
   ' THEN
-  return m.assertEqual(result.keys()[0], "")
+  return m.assertEqual(result.keys()[0], "__")
 end function
 
 Function TestCase__MuxAnalytics_Minification_minifies_terrible_property_5() as String
@@ -195,7 +195,7 @@ Function TestCase__MuxAnalytics_Minification_minifies_terrible_property_5() as S
   ' WHEN
   result = m.SUT._minify(body)
   ' THEN
-  return m.assertEqual("omg", result.pp)
+  return m.assertEqual("omg", result._p__p_)
 end function
 
 Function TestCase__MuxAnalytics_Minification_minifies_video_source_format() as String
