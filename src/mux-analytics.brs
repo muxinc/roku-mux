@@ -1158,10 +1158,12 @@ function muxAnalytics() as Object
 
   prototype._minify = function(src as Object) as Object
     result = {}
+
     for each key in src
       keyParts = key.split("_")
       newKey = ""
       s = keyParts.count()
+
       if s > 0
         firstPart = keyParts[0]
         if m._firstWords[firstPart] <> Invalid
@@ -1170,16 +1172,23 @@ function muxAnalytics() as Object
           newKey = firstPart
         end if
       end if
+
       for i = 1 To s - 1  Step 1
         nextPart = keyParts[i]
+
         if m._subsequentWords[nextPart] <> Invalid
           newKey = newKey + m._subsequentWords[nextPart]
-        else
+        else if nextPart.len() > 0 AND nextPart.toInt() > 0 AND nextPart.toInt() = Int(nextPart.toInt())
+          ' Make sure the value is an integer, not decimal
           newKey = newKey + nextPart
+        else
+          newKey = newKey + "_" + nextPart + "_"
         end if
       end for
+
       result[newKey] = src[key]
     end for
+
     return result
   end function
 
@@ -1327,6 +1336,7 @@ function muxAnalytics() as Object
   prototype._firstWords = {
     "property": "a",
     "beacon": "b",
+    "custom": "c",
     "ad": "d",
     "event": "e",
     "experiment": "f",
@@ -1438,7 +1448,8 @@ function muxAnalytics() as Object
     "total": "tl",
     "to": "to",
     "title": "tt",
-    "type": "ty","track": "tr",
+    "type": "ty",
+    "track": "tr",
     "upscaling": "ug",
     "upscale": "up",
     "url": "ur",
