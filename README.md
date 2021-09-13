@@ -12,11 +12,19 @@ This is the single source for the mux-analytics SDK for Roku.
 
 ### To Run Sample App ###
 
-set ip of box as env variable.
+To simply run the sample app on a physical device, set ip of box as env variable.
 
 `export ROKU_DEV_TARGET=<your ip>`
 
 `gulp install`
+
+- or -
+
+To remote debug the sample app on a physical device from within VS Code, be sure to install the [BrightScript Language](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript) VS Code extension.
+
+You can configure the target device host and password using an `.env` file (make a copy of the `sample.env` file).  Leaving the defaults will cause the extension to prompt for input when running the debugger.  You can also hardcode the values in the `.env` file.
+
+After that, launch the "BrightScript Debug: Launch" configuration from the "Run and Debug" section in VS Code.
 
 ### Configuration ###
 
