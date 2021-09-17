@@ -1021,10 +1021,12 @@ function muxAnalytics() as Object
     if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
       if type(m._configProperties.player_init_time) = "roString"
         playerInitTime = ParseJSON(m._configProperties.player_init_time)
-        if playerInitTime > 0
-          props.player_startup_time = Int(m._startTimestamp - playerInitTime)
-          if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
-            props.view_aggregate_startup_time = Int(m._viewTimeToFirstFrame + (m._startTimestamp - playerInitTime))
+        if (playerInitTime <> invalid)
+          if (LCase(Type(playerInitTime)) = "rointeger") and (playerInitTime > 0)
+            props.player_startup_time = Int(m._startTimestamp - playerInitTime)
+            if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
+              props.view_aggregate_startup_time = Int(m._viewTimeToFirstFrame + (m._startTimestamp - playerInitTime))
+            end if
           end if
         end if
       end if
