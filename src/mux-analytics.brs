@@ -1036,6 +1036,21 @@ function muxAnalytics() as Object
         props.player_playhead_time = Int(m.video.position * 1000)
       end if
     end if
+    if m.video <> Invalid
+      if m.video.streamingSegment <> Invalid AND m.video.streamingSegment.segType = 2
+        print "===Streaming Segment==="
+        print m.video.streamingSegment
+
+        STOP
+      end if
+
+      if m.video.downloadedSegment <> Invalid AND m.video.downloadedSegment.segType = 2
+        print "===Downloaded Segment==="
+        print m.video.downloadedSegment
+        
+        STOP
+      end if
+    end if
 
     return props
   end function
