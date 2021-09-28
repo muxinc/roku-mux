@@ -60,6 +60,7 @@ function runBeaconLoop()
     m.top.video.ObserveField("state", m.messagePort)
     m.top.video.ObserveField("content", m.messagePort)
     m.top.video.ObserveField("control", m.messagePort)
+    m.top.video.ObserveField("streamingSegment", m.messagePort)
   end if
 
   if m.top.view <> Invalid AND m.top.view <> ""
@@ -114,6 +115,8 @@ function runBeaconLoop()
           if msgData <> Invalid AND type(msgData) = "roString"
             m.mxa.videoStateChangeHandler(msgData)
           end if
+        else if field = "streamingSegment"
+          m.mxa.videoRenditionHandler(msg.getData())
         else if field = "rafEvent"
           m.mxa.rafEventHandler(msg)
         else if field = "fire"
@@ -317,6 +320,7 @@ function muxAnalytics() as Object
     m._Flag_isSeeking = false
     m._Flag_lastReportedPosition = 0
     m._Flag_FailedAdsErrorSet = false
+    m._Flag_lastReportedSourceBitrate = Invalid
 
     ' kick off analytics
     date = m._getDateTime()
@@ -411,6 +415,29 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage}))
     end if
     m._Flag_lastVideoState = videoState
+  end function
+
+  prototype.videoRenditionHandler = function(segment as Object)
+    if m.video = Invalid OR m.video.content = Invalid OR NOT m._isStreamFormatValid(m.video.content)
+      return None
+    end if
+
+    eventData = {}
+    
+    if m.video.content.StreamFormat = "hls"
+      eventData.video_source_bitrate = segment.segBitrateBps
+      eventData.video_source_width = segment.width
+      eventData.video_source_height = segment.height
+    else if m.video.content.StreamFormat = "dash" AND segment.segType = 2
+      eventData.video_source_bitrate = segment.segBitrateBps
+      eventData.video_source_width = segment.width
+      eventData.video_source_height = segment.height
+    end if
+
+    if eventData.video_source_bitrate <> Invalid AND eventData.video_source_bitrate <> 0 AND eventData.video_source_bitrate <> m._Flag_lastReportedSourceBitrate
+      m._Flag_lastReportedSourceBitrate = eventData.video_source_bitrate
+      m._addEventToQueue(m._createEvent("renditionchange", eventData))
+    end if
   end function
 
   prototype.videoViewChangeHandler = function(view as String)
@@ -854,6 +881,14 @@ function muxAnalytics() as Object
     return props
   end function
 
+  prototype._isStreamFormatValid = function(content as Object) as Boolean
+    if content.StreamFormat <> Invalid AND (type(content.StreamFormat) = "String" OR type(content.StreamFormat) = "roString") AND content.StreamFormat <> "(null)"
+      return True
+    else
+      return False
+    end if
+  end function
+
   ' Set called per video content'
   prototype._getVideoContentProperties = function(content as Object) as Object
     props = {}
@@ -893,7 +928,7 @@ function muxAnalytics() as Object
       props.video_source_hostname = m._getHostname(content.URL)
       props.video_source_domain = m._getDomain(content.URL)
 
-      if content.StreamFormat <> Invalid AND (type(content.StreamFormat) = "String" OR type(content.StreamFormat) = "roString") AND content.StreamFormat <> "(null)"
+      if m._isStreamFormatValid(content)
         props.video_source_mime_type = m._convertStreamFormat(content.StreamFormat)
       end if
 
@@ -1034,21 +1069,6 @@ function muxAnalytics() as Object
     if m.video <> Invalid
       if m.video.position <> Invalid
         props.player_playhead_time = Int(m.video.position * 1000)
-      end if
-    end if
-    if m.video <> Invalid
-      if m.video.streamingSegment <> Invalid AND m.video.streamingSegment.segType = 2
-        print "===Streaming Segment==="
-        print m.video.streamingSegment
-
-        STOP
-      end if
-
-      if m.video.downloadedSegment <> Invalid AND m.video.downloadedSegment.segType = 2
-        print "===Downloaded Segment==="
-        print m.video.downloadedSegment
-        
-        STOP
       end if
     end if
 
