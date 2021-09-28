@@ -63,32 +63,46 @@ function playContent()
     ErrorBeforePlayback(contentInfo)
   else if selectionId = "playbackerror"
     contentNode.URL= "http://dash.akamaized.net/dash264/TestCasesIOP33/MPDChaining/fallback_chain/1/manifest_fallback_MPDChaining.mpd"
-    contentnode.StreamFormat = "dash"
+    contentNode.StreamFormat = "dash"
     contentInfo.contentId = "Elephants Dream"
     contentInfo.length = 9000
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
   else if selectionId = "hlsnoads"
-    contentnode.URL = "https://content.jwplatform.com/manifests/yp34SRmf.m3u8"
-    contentnode.StreamFormat = "hls"
+    contentNode.URL = "https://content.jwplatform.com/manifests/yp34SRmf.m3u8"
+    contentNode.StreamFormat = "hls"
     contentInfo.length = 25
     contentInfo.contentId = "HLS Content"
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
   else if selectionId = "dashnoads"
-    contentnode.URL = "http://rdmedia.bbc.co.uk/dash/ondemand/bbb/2/client_manifest-common_init.mpd"
-    contentnode.StreamFormat = "dash"
+    contentNode.URL = "http://rdmedia.bbc.co.uk/dash/ondemand/bbb/2/client_manifest-common_init.mpd"
+    contentNode.StreamFormat = "dash"
     contentNode.length = 572
     contentInfo.length = 568
     contentInfo.contentId = "BIG BUCK BUNNY"
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
   else if selectionId = "live"
-    contentnode.URL = "http://dash.akamaized.net/dash264/TestCasesUHD/2b/2/MultiRate.mpd"
-    contentnode.StreamFormat = "dash"
-    contentnode.LIVE = true
+    contentNode.URL = "http://dash.akamaized.net/dash264/TestCasesUHD/2b/2/MultiRate.mpd"
+    contentNode.StreamFormat = "dash"
+    contentNode.LIVE = true
     contentInfo.length = 596
     contentInfo.contentId = "BIG BUCK BUNNY"
+    m.top.video.content = contentNode
+    PlayContentOnlyNoAds(contentInfo)
+  else if selectionId = "hlssample"
+    contentNode.URL = "https://content.jwplatform.com/manifests/yp34SRmf.m3u8"
+    contentNode.StreamFormat = "hls"
+    contentInfo.contentId = "HLS Sample"
+    contentInfo.length = 25
+    m.top.video.content = contentNode
+    PlayContentOnlyNoAds(contentInfo)
+  else if selectionId = "mpdsample"
+    contentNode.URL = "http://dash.akamaized.net/dash264/TestCasesIOP33/MPDChaining/fallback_chain/1/manifest_fallback_MPDChaining.mpd"
+    contentNode.StreamFormat = "dash"
+    contentInfo.contentId = "MPD Sample"
+    contentInfo.length = 732
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
   end if
@@ -106,6 +120,7 @@ function PlayContentOnlyNoAds(contentInfo as Object)
   port = createObject("roMessagePort")
   video.observeField("position", port)
   video.observeField("state", port)
+  video.observeField("videoFormat", port)
   while keepPlaying
     msg = wait(0, port)
     msgType = type(msg)
