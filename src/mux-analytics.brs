@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "1.1.1"
+  m.MUX_SDK_VERSION = "1.2.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -869,8 +869,6 @@ function muxAnalytics() as Object
       end if
       if content.video_id <> Invalid AND (type(content.video_id) = "String" OR type(content.video_id) = "roString") AND content.video_id <> ""
         props.video_id = content.video_id
-      else
-        props.video_id = m._generateVideoId(content.URL)
       end if
       if content.ContentType <> Invalid
         if type(content.ContentType) = "roInt"
@@ -1147,15 +1145,6 @@ function muxAnalytics() as Object
       return cookie.Read("UserRegistrationToken")
     end if
     return Invalid
-  end function
-
-  prototype._generateVideoId= function(src as String) as String
-    hostAndPath = m._getHostnameAndPath(src)
-    byteArray = _createByteArray()
-    byteArray.FromAsciiString(hostAndPath)
-    bigString = byteArray.ToBase64String()
-    smallString = bigString.split("=")[0]
-    return smallString
   end function
 
   prototype._minify = function(src as Object) as Object
