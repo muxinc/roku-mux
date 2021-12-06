@@ -208,7 +208,7 @@ function _getConnectionType(deviceInfo as Object)
     return "wifi"
   end if
   if connectionType = "WiredConnection"
-    return "ethernet"
+    return "wired"
   end if
 
   return "none"
