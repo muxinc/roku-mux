@@ -22,14 +22,16 @@ end function
 
 function setupContent()
   m.contentList = [
-  {title: "Content Only, No Ads", selectionID: "none"},
-  {title: "Full RAF Integration", selectionID: "standard"},
-  {title: "Custom Ad Parsing", selectionID: "nonstandard"},
-  {title: "Stitched Ad", selectionID: "stitched"},
-  {title: "Error before playback", selectionID: "preplaybackerror"},
-  {title: "Error during playback", selectionID: "playbackerror"},
-  {title: "HLS stream no ads", selectionID: "hlsnoads"},
-  {title: "DASH stream no ads", selectionID: "dashnoads"}
+    {title: "Content Only, No Ads", selectionID: "none"},
+    {title: "Full RAF Integration", selectionID: "standard"},
+    {title: "Custom Ad Parsing", selectionID: "nonstandard"},
+    {title: "Stitched Ad", selectionID: "stitched"},
+    {title: "Error before playback", selectionID: "preplaybackerror"},
+    {title: "Error during playback", selectionID: "playbackerror"},
+    {title: "HLS stream no ads", selectionID: "hlsnoads"},
+    {title: "DASH stream no ads", selectionID: "dashnoads"},
+    {title: "HLS sample", selectionID: "hlssample"},
+    {title: "MPD sample", selectionID: "mpdsample"},
   ]
 
   listContent = createObject("roSGNode","ContentNode")
