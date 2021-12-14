@@ -1,10 +1,10 @@
 package main
 
-// TODO linting!
-// TODO env var / properties
+// TODO do the tests actually run? did they ever? what's missing?
 
 import (
 	"archive/zip"
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -144,9 +144,9 @@ var firstWordsByMin = map[string]string{
 	"wt": "waiting",
   }
 
-const env_roku_ip = "192.168.2.233"
-const env_roku_user = "rokudev"
-const env_roku_pass = "rokudev"
+var env_roku_ip = "192.168.2.233"
+var env_roku_user = "rokudev"
+var env_roku_pass = "rokudev"
 
 const out_dir_name = "out"
 const app_name = "mux"
@@ -478,119 +478,148 @@ func rokutasks(r *runner) {
 	})
 
 	r.AddTask("lint", task{
-		depends: []string{},
+		depends: []string{"build_src"},
 		main: func() error {
-			return nil
+			// This relies on the rokucommunity/bslint being installed
+			// Should be installable via "npm install" in roku-mux root
+			_, err := run("npx", "bslint", "--rootDir", "build")
+			return err
 		},
 	})
-// gulp.task("lint", function () {
-//   var bsLintVersion = "bslint --version"
-//   exec(bsLintVersion, {}, function(err, stdout, stderr) {
-//     err && console.log("missing linter see https://github.com/sky-uk/bslint")
-//     stdout && exec("bslint -l", {}, function(err, stdout, stderr) {
-//       console.log("******************************************************************************")
-//       console.log("If you are seeing an error of the type: \"No manifest file found\" that is ok")
-//       console.log("The reason behind this is due to the manifest being located within the sampleapp_source")
-//       console.log("as the scope of this project a bit different than a regular ROKU application")
-//       console.log("******************************************************************************")
-//       console.log(stdout)
-//     })
-//   })
-// })
 
-r.AddTask("build_test_source", task{
-	depends: []string{"build_sample_app", "clean"},
-	main: func() error {
-		return copyFiles("", build_dir_name, "test/source_tests/**")
-	},
-})
+	r.AddTask("build_test_source", task{
+		depends: []string{"build_sample_app", "clean"},
+		main: func() error {
+			return copyFiles("", build_dir_name, "test/source_tests/**")
+		},
+	})
 
-r.AddTask("build_test_components", task{
-	depends: []string{"build_sample_app", "clean"},
-	main: func() error {
-		return copyFiles("", build_dir_name, "test/component_tests/**")
-	},
-})
+	r.AddTask("build_test_components", task{
+		depends: []string{"build_sample_app", "clean"},
+		main: func() error {
+			return copyFiles("", build_dir_name, "test/component_tests/**")
+		},
+	})
 
-r.AddTask("add_test_framework", task{
-	depends: []string{"clean", "build_sample_app", "build_test_source"},
-	main: func() error {
-		return copyFiles("test", build_dir_name + "/source", "test/testFramework/*")
-	},
-})
+	r.AddTask("add_test_framework", task{
+		depends: []string{"clean", "build_sample_app", "build_test_source"},
+		main: func() error {
+			return copyFiles("test", build_dir_name + "/source", "test/testFramework/*")
+		},
+	})
 
-r.AddTask("add_mux_library_to_test", task{
-	depends: []string{"clean", "build_sample_app", "build_test_source"},
-	main: func() error {
-		return copyFiles("", build_dir_name + "/source", "src/mux-analytics.brs")
-	},
-})
+	r.AddTask("add_mux_library_to_test", task{
+		depends: []string{"clean", "build_sample_app", "build_test_source"},
+		main: func() error {
+			return copyFiles("", build_dir_name + "/source", "src/mux-analytics.brs")
+		},
+	})
 
-r.AddTask("package_test", task{
-	depends: []string{"build_sample_app", "build_test_source", "add_test_framework","add_mux_library_to_test"},
-	main: func() error {
-		return zipFiles("build", "out/"+app_name+"-tests.zip", "build/**")
-	},
-})
+	r.AddTask("package_test", task{
+		depends: []string{"build_sample_app", "build_test_source", "add_test_framework","add_mux_library_to_test"},
+		main: func() error {
+			return zipFiles("build", "out/"+app_name+"-tests.zip", "build/**")
+		},
+	})
 
-r.AddTask("package", task{
-	depends: []string{"build_sample_app", "build_components", "build_src", "clean"},
-	main: func() error {
-		return zipFiles("build", "out/"+app_name+".zip", "build/**")
-	},
-})
+	r.AddTask("package", task{
+		depends: []string{"build_sample_app", "build_components", "build_src", "clean"},
+		main: func() error {
+			return zipFiles("build", "out/"+app_name+".zip", "build/**")
+		},
+	})
 
-r.AddTask("closeApp", task{
-	main: func() error {
-		_, err := run("curl", "-d", "''", "http://" + env_roku_ip + ":8060/keypress/home")
-		return err
-	},
-})
-
-r.AddTask("replace", task{
-	depends: []string{"build_sample_app", "clean"},
-	main: func() error {
-		mappings := make(map[string]string)
-
-		mappings["mux_viewer_id"] = "mvrid"
-		mappings["player_software_name"] = "pswnm"
-		mappings["player_software_version"] = "pswve"
-		mappings["player_model_number"] = "pmono"
-		mappings["player_mux_plugin_name"] = "pmxpinm"
-		mappings["player_mux_plugin_version"] = "pmxpive"
-		mappings["player_language_code"] = "placd"
-		mappings["player_width"] = "pwd"
-		mappings["player_height"] = "pht"
-		mappings["player_error_code"] = "percd"
-		mappings["player_error_message"] = "perme"
-		mappings["player_is_fullscreen"] = "pisfs"
-		mappings["player_is_paused"] = "pispa"
-		mappings["video_source_url"] = "vsour"
-		mappings["video_source_hostname"] = "vsohn"
-		mappings["video_source_domain"] = "vsodm"
-		mappings["video_source_format"] = "vsoft"
-		mappings["video_source_duration"] = "vsodu"
-		mappings["video_source_is_live"] = "vsoisli"
-		mappings["video_source_width"] = "vsowd"
-		mappings["video_source_height"] = "vsoht"
-		mappings["video_title"] = "vtt"
-		mappings["video_series"] = "vsr"
-		mappings["video_producer"] = "vpd"
-		mappings["video_content_type"] = "vctty"
-		mappings["video_id"] = "vid"
-		mappings["viewer_user_id"] = "uusid"
-		mappings["view_time_to_first_frame"] = "xtitofifr"
-
-		in, err := loadFileAsString("build/libs/mux-analytics.brs")
-		if err != nil {
+	r.AddTask("closeApp", task{
+		main: func() error {
+			_, err := run("curl", "-d", "''", "http://" + env_roku_ip + ":8060/keypress/home")
 			return err
+		},
+	})
+
+	r.AddTask("replace", task{
+		depends: []string{"build_sample_app", "clean"},
+		main: func() error {
+			mappings := make(map[string]string)
+
+			mappings["mux_viewer_id"] = "mvrid"
+			mappings["player_software_name"] = "pswnm"
+			mappings["player_software_version"] = "pswve"
+			mappings["player_model_number"] = "pmono"
+			mappings["player_mux_plugin_name"] = "pmxpinm"
+			mappings["player_mux_plugin_version"] = "pmxpive"
+			mappings["player_language_code"] = "placd"
+			mappings["player_width"] = "pwd"
+			mappings["player_height"] = "pht"
+			mappings["player_error_code"] = "percd"
+			mappings["player_error_message"] = "perme"
+			mappings["player_is_fullscreen"] = "pisfs"
+			mappings["player_is_paused"] = "pispa"
+			mappings["video_source_url"] = "vsour"
+			mappings["video_source_hostname"] = "vsohn"
+			mappings["video_source_domain"] = "vsodm"
+			mappings["video_source_format"] = "vsoft"
+			mappings["video_source_duration"] = "vsodu"
+			mappings["video_source_is_live"] = "vsoisli"
+			mappings["video_source_width"] = "vsowd"
+			mappings["video_source_height"] = "vsoht"
+			mappings["video_title"] = "vtt"
+			mappings["video_series"] = "vsr"
+			mappings["video_producer"] = "vpd"
+			mappings["video_content_type"] = "vctty"
+			mappings["video_id"] = "vid"
+			mappings["viewer_user_id"] = "uusid"
+			mappings["view_time_to_first_frame"] = "xtitofifr"
+
+			in, err := loadFileAsString("build/libs/mux-analytics.brs")
+			if err != nil {
+				return err
+			}
+
+			modified := replace(in, mappings)
+
+			return saveStringToFile(modified, "build/libs/mux-analytics.brs")
+		},
+	})
+}
+
+func loadProperties(path string) map[string]string {
+	props := make(map[string]string)
+
+	f, err := os.Open(path)
+    if err != nil {
+		log.Println("No properties file at", path)
+        return props
+    }
+    defer f.Close()
+
+    scanner := bufio.NewScanner(f)
+	scanner.Split(bufio.ScanLines)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "#") {
+			index := strings.Index(line, "=")
+			if index >= 0 {
+				props[line[:index]] = line[index + 1:]
+			}
 		}
+	}
 
-		modified := replace(in, mappings)
+    return props
+}
 
-		return saveStringToFile(modified, "build/libs/mux-analytics.brs")
-	},
-})
+func fromEnvVarOrProperties(key string, props map[string]string) string {
+	v := os.Getenv(key)
+	_, exists := props[key]
+	if exists {
+		v = props[key]
+	}
+
+	if v == "" {
+		log.Fatal("Must set environment variable or property (in local.properties) "+key)
+	}
+
+	return v
 }
 
 func main() {
@@ -604,6 +633,12 @@ func main() {
 		fmt.Println("USAGE: test_runner [taskname]")
 		return
 	}
+
+	props := loadProperties("local.properties")
+
+	env_roku_ip = fromEnvVarOrProperties("ROKU_IP", props)
+	env_roku_user = fromEnvVarOrProperties("ROKU_USER", props)
+	env_roku_pass = fromEnvVarOrProperties("ROKU_PASSWORD", props)
 
 	err := r.Run(os.Args[1])
 

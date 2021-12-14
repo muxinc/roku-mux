@@ -1,42 +1,28 @@
 {
   "name": "roku-mux",
-  "version": "1.1.0",
-  "description": "Mux SDK for Roku",
-  "main": "none",
+  "version": "1.0.0",
+  "description": "mux analytics. SDK and Sample Application for testing.",
+  "main": "gulpfile.js",
   "directories": {
+    "doc": "docs",
     "test": "test"
   },
   "scripts": {
-    "preinstall": "npx npm-force-resolutions",
-    "test": "test"
-  },
-  "resolutions": {
-    "graceful-fs": "^4.2.4"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@gihub.com:muxinc/roku-mux.git"
+    "url": "git+https://github.com/muxinc/roku-mux.git"
   },
-  "keywords": [
-    "mux",
-    "analytics",
-    "reporting",
-    "brightscript"
-  ],
-  "author": "Mux, Inc.",
+  "keywords": [],
+  "author": "",
   "license": "ISC",
-  "homepage": "https://docs.mux.com/docs/integration-guide-roku",
-  "dependencies": {
-    "del": "^3.0.0",
-    "gulp": "^3.9.1",
-    "gulp-clean": "^0.4.0",
-    "gulp-rename": "^1.2.2",
-    "gulp-zip": "^3.2.0",
-    "natives": "^1.1.6",
-    "replace": "^0.3.0",
-    "yargs": "^11.1.0"
+  "bugs": {
+    "url": "https://github.com/muxinc/roku-mux/issues"
   },
-  "devDependencies": {
-    "gulp-replace": "^0.6.1"
+  "homepage": "https://github.com/muxinc/roku-mux#readme",
+  "dependencies": {
+    "@rokucommunity/bslint": "^0.6.0",
+    "brighterscript": "^0.41.5"
   }
 }
