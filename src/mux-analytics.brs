@@ -1151,33 +1151,39 @@ function muxAnalytics() as Object
     result = {}
 
     for each key in src
-      keyParts = key.split("_")
-      newKey = ""
-      s = keyParts.count()
+      if key = "_"
+        result["__"] = src[key]
+      else 
+        keyParts = key.split("_")
+        newKey = ""
+        s = keyParts.count()
 
-      if s > 0
-        firstPart = keyParts[0]
-        if m._firstWords[firstPart] <> Invalid
-          newKey = m._firstWords[firstPart]
-        else
-          newKey = firstPart
+        if s > 0
+          firstPart = keyParts[0]
+          if m._firstWords[firstPart] <> Invalid
+            newKey = m._firstWords[firstPart]
+          else if firstPart <> ""
+            newKey = "_" + firstPart + "_"
+          end if
         end if
-      end if
 
-      for i = 1 To s - 1  Step 1
-        nextPart = keyParts[i]
+        for i = 1 To s - 1  Step 1
+          nextPart = keyParts[i]
 
-        if m._subsequentWords[nextPart] <> Invalid
-          newKey = newKey + m._subsequentWords[nextPart]
-        else if nextPart.len() > 0 AND nextPart.toInt() > 0 AND nextPart.toInt() = Int(nextPart.toInt())
-          ' Make sure the value is an integer, not decimal
-          newKey = newKey + nextPart
-        else
-          newKey = newKey + "_" + nextPart + "_"
-        end if
-      end for
+          if nextPart <> ""
+            if m._subsequentWords[nextPart] <> Invalid
+              newKey = newKey + m._subsequentWords[nextPart]
+            else if nextPart.len() > 0 AND nextPart.toInt() > 0 AND nextPart.toInt() = Int(nextPart.toInt())
+              ' Make sure the value is an integer, not decimal
+              newKey = newKey + nextPart
+            else
+              newKey = newKey + "_" + nextPart + "_"
+            end if
+          endif
+        end for
 
-      result[newKey] = src[key]
+        result[newKey] = src[key]
+      endif
     end for
 
     return result

@@ -20,7 +20,7 @@ sub RunUserInterface(args)
       Runner.Logger.SetVerbosity(3)
       Runner.Logger.SetEcho(true)
       Runner.Logger.SetJUnit(false)
-      Runner.SetFailFast(false)
+      Runner.SetFailFast(true)
       
       Runner.Run()
   end if

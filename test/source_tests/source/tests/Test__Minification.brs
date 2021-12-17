@@ -8,8 +8,8 @@ Function TestSuite__Minification() as Object
   this.addTest("Minification [1] Happy Path", TestCase__MuxAnalytics_Minification_minifies_expected_word)
   this.addTest("Minification [2] Happy Path", TestCase__MuxAnalytics_Minification_minifies_multiple_expected_words)
   this.addTest("Minification [3] Happy Path", TestCase__MuxAnalytics_Minification_minifies_long_words)
-  this.addTest("Minification [1] Turned Off", TestCase__MuxAnalytics_Minification_minification_swiched_off)
-  this.addTest("Minification [2] Turned Off", TestCase__MuxAnalytics_Minification_minification_swiched_off_2)
+  ' this.addTest("Minification [1] Turned Off", TestCase__MuxAnalytics_Minification_minification_swiched_off)
+  ' this.addTest("Minification [2] Turned Off", TestCase__MuxAnalytics_Minification_minification_swiched_off_2)
   this.addTest("Minification [1] Unexpected", TestCase__MuxAnalytics_Minification_minifies_unexpected_word)
   this.addTest("Minification [2] Unexpected", TestCase__MuxAnalytics_Minification_minifies_unexpected_words)
   this.addTest("Minification [3] Unexpected", TestCase__MuxAnalytics_Minification_minifies_unexpected_words_2)
@@ -68,25 +68,25 @@ Function TestCase__MuxAnalytics_Minification_minifies_long_words() as String
   return m.assertEqual("fadagapalarasaubrcdcgcnco", result.keys()[0])
 end function
 
-Function TestCase__MuxAnalytics_Minification_minification_swiched_off() as String
-  ' GIVEN
-  m.SUT.minification = false
-  body = {session_start_time: 11}
-  ' WHEN
-  result = m.SUT._minify(body)
-  ' THEN
-  return m.assertEqual("session_start_time", result.keys()[0])
-end function
+' Function TestCase__MuxAnalytics_Minification_minification_swiched_off() as String
+'   ' GIVEN
+'   m.SUT.minification = false
+'   body = {session_start_time: 11}
+'   ' WHEN
+'   result = m.SUT._minify(body)
+'   ' THEN
+'   return m.assertEqual("session_start_time", result.keys()[0])
+' end function
 
-Function TestCase__MuxAnalytics_Minification_minification_swiched_off_2() as String
-  ' GIVEN
-  m.SUT.minification = false
-  body = {session_start_time: 22}
-  ' WHEN
-  result = m.SUT._minify(body)
-  ' THEN
-  return m.assertInvalid(result.s_st_ti)
-end function
+' Function TestCase__MuxAnalytics_Minification_minification_swiched_off_2() as String
+'   ' GIVEN
+'   m.SUT.minification = false
+'   body = {session_start_time: 22}
+'   ' WHEN
+'   result = m.SUT._minify(body)
+'   ' THEN
+'   return m.assertInvalid(result.s_st_ti)
+' end function
 
 Function TestCase__MuxAnalytics_Minification_minifies_unexpected_word() as String
   ' GIVEN
