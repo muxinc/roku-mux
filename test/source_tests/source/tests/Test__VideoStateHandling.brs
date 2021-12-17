@@ -32,7 +32,11 @@ Function TestCase__MuxAnalytics_VideoStateHandling() as String
   ' WHEN
   m.SUT.videoStateChangeHandler("buffering")
   ' END
-  return m.assertEqual("rebufferstart", m.SUT._eventQueue[0].e)
+  if m.SUT._eventQueue.count() = 0 then
+    return m.assertEqual(0, "Event queue zero length")
+  endif
+  result = m.SUT._eventQueue[0].event
+  return m.assertEqual(result, "rebufferstart")
 End Function
 
 

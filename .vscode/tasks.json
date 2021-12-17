@@ -2,18 +2,19 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"type": "gulp",
-			"task": "build_src",
+			"type": "shell",
+			"command": "./test_runner build_src",
 			"group": "build",
 			"problemMatcher": [],
-			"label": "gulp: build_src"
+			"label": "muxroku-prelaunch"
 		},
 		{
-			"type": "gulp",
+			"type": "shell",
+			"command": "./test_runner clean",
 			"task": "cleanup",
 			"group": "build",
 			"problemMatcher": [],
-			"label": "gulp: cleanup"
+			"label": "muxroku-cleanup"
 		}
 	]
 }

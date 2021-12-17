@@ -9,8 +9,8 @@
       "request": "launch",
       "name": "BrightScript Debug: Launch",
       "stopOnEntry": false,
-      "envFile": "${workspaceFolder}/.env",
-      "host": "${env:ROKU_HOST}",
+      "envFile": "${workspaceFolder}/local.properties",
+      "host": "${env:ROKU_IP}",
       "password": "${env:ROKU_PASSWORD}",
       "rootDir": "${workspaceFolder}/build",
       "files": [
@@ -23,8 +23,8 @@
       ],
       "enableDebuggerAutoRecovery": false,
       "stopDebuggerOnAppExit": false,
-      "preLaunchTask": "gulp: build_src",
-      "postDebugTask": "gulp: cleanup"
+      // "preLaunchTask": "muxroku-prelaunch",
+      // "postDebugTask": "muxroku-cleanup"
     }
   ]
 }

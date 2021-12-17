@@ -418,10 +418,6 @@ func rokutasks(r *runner) {
 		depends: []string{"closeApp", "clean", "build_sample_app", "build_components", "package", "deploy"}, 
 	})
 
-	r.AddTask("test", task{
-		depends: []string{"closeApp", "clean", "build_test_source", "add_test_framework", "add_mux_library_to_test", "package_test", "deploy_test"}, 
-	})
-
 	r.AddTask("deploy", task{
 		depends: []string{"closeApp", "clean", "build_sample_app","build_components", "package"},
 		main: func() error {
@@ -465,7 +461,7 @@ func rokutasks(r *runner) {
 	})
 
 	r.AddTask("deploy_test", task{
-		depends: []string{"closeApp", "clean", "build_sample_app", "package_test"},
+		depends: []string{"closeApp", "package_test"},
 		main: func() error {
 			_, err := run("curl", "--user", env_roku_user+":"+env_roku_pass, "--digest", "--show-error", 
 				"-F", "mysubmit=Install", 
@@ -473,6 +469,14 @@ func rokutasks(r *runner) {
 				"--output", "/tmp/dev_server_out",
 				"--write-out", "%{http_code}",
 				"http://" +env_roku_ip + "/plugin_install")
+			return err
+		},
+	})
+
+	r.AddTask("test", task{
+		depends: []string{}, 
+		main: func() error {
+			_, err := run("curl", "-d", "", "http://"+env_roku_ip+":8060/launch/dev?RunTests=true")
 			return err
 		},
 	})
@@ -490,9 +494,16 @@ func rokutasks(r *runner) {
 	r.AddTask("build_test_source", task{
 		depends: []string{"build_sample_app", "clean"},
 		main: func() error {
-			return copyFiles("", build_dir_name, "test/source_tests/**")
+			return copyFiles("test/source_tests/", build_dir_name, "test/source_tests/source/**")
 		},
 	})
+
+	// r.AddTask("build_test_replace_main", task{
+	// 	depends: []string{"build_sample_app", "clean"},
+	// 	main: func() error {
+	// 		return copyFiles("test/source_tests/source", build_dir_name + "/source", "test/source_tests/source/main.brs")
+	// 	},
+	// })
 
 	r.AddTask("build_test_components", task{
 		depends: []string{"build_sample_app", "clean"},
@@ -511,12 +522,12 @@ func rokutasks(r *runner) {
 	r.AddTask("add_mux_library_to_test", task{
 		depends: []string{"clean", "build_sample_app", "build_test_source"},
 		main: func() error {
-			return copyFiles("", build_dir_name + "/source", "src/mux-analytics.brs")
+			return copyFiles("src", build_dir_name + "/libs", "src/mux-analytics.brs")
 		},
 	})
 
 	r.AddTask("package_test", task{
-		depends: []string{"build_sample_app", "build_test_source", "add_test_framework","add_mux_library_to_test"},
+		depends: []string{"build_sample_app", "build_components", "build_test_components", "build_test_source", "add_test_framework", "add_mux_library_to_test"},
 		main: func() error {
 			return zipFiles("build", "out/"+app_name+"-tests.zip", "build/**")
 		},

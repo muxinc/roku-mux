@@ -1,8 +1,27 @@
 'Channel entry point
 sub RunUserInterface(args)
-  Runner = TestRunner()
-  Runner.logger.SetVerbosity(1)
-  Runner.logger.SetEcho(true)
-  Runner.SetFailFast(true)
-  Runner.Run()
+  if args.RunTests = "true" and type(TestRunner) = "Function" then
+      Runner = TestRunner()
+
+      Runner.SetFunctions([
+        TestSuite__Init
+        TestSuite__GenerateVideoID
+        TestSuite__GetBeaconUrl
+        TestSuite__GetDynamicProperties
+        TestSuite__GetSessionProperties
+        TestSuite__Minification
+        TestSuite__RAFHandling
+        TestSuite__URL_Utils
+        TestSuite__VideoStateHandling
+        TestSuite__ViewRobustness
+    
+      ])
+
+      Runner.Logger.SetVerbosity(3)
+      Runner.Logger.SetEcho(true)
+      Runner.Logger.SetJUnit(false)
+      Runner.SetFailFast(false)
+      
+      Runner.Run()
+  end if
 end sub
