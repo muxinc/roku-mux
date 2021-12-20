@@ -15,6 +15,17 @@ Sub VideoStateHandling_SetUp()
   m.SUT = MuxAnalytics()
   m.SUT.heartbeatTimer = FakeTimer()
   m.SUT.video = FakeVideo()
+  
+  m.fakeTimer = FakeTimer()
+  m.fakeAppInfo = FakeAppInfo()
+  m.fakeAppConfig = {
+    SEEK_THRESHOLD: 1500,
+  }
+  m.fakeCustomerConfig = {
+    property_key: "UNIT_TEST_PROPERTY_KEY"
+  }
+
+  m.SUT.init(m.fakeAppInfo, m.fakeAppConfig, m.fakeCustomerConfig, m.fakeTimer, m.fakeTimer)
 End Sub
 
 Sub VideoStateHandling_TearDown()
