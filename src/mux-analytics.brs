@@ -365,8 +365,8 @@ function muxAnalytics() as Object
         m._viewSeekStartTimeStamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
         if m._viewSeekCount <> Invalid
           m._viewSeekCount++
-          m._Flag_isSeeking = true
         end if
+        m._Flag_isSeeking = true
       end if
     end if
 
