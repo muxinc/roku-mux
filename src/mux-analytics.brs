@@ -352,9 +352,27 @@ function muxAnalytics() as Object
   end function
 
   prototype.videoStateChangeHandler = function(videoState as String)
+    previouslyLastReportedPosition = m._Flag_lastReportedPosition
+    positionNow = m.video.position
+    m._Flag_lastReportedPosition = positionNow
+
+    ' Need to actually infer seek all the way out here
+    if m._Flag_isSeeking <> true
+      ' If we've gone backwards at all or forwards by more than the threshold
+      if (positionNow < previouslyLastReportedPosition) OR (positionNow > (previouslyLastReportedPosition + m._seekThreshold))
+        m._addEventToQueue(m._createEvent("seeking"))
+        date = m._getDateTime()
+        m._viewSeekStartTimeStamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
+        if m._viewSeekCount <> Invalid
+          m._viewSeekCount++
+          m._Flag_isSeeking = true
+        end if
+      end if
+    end if
+
     m._Flag_isPaused = (videoState = "paused")
+
     if videoState = "buffering"
-      m._checkForSeek("buffering")
       if m._Flag_isSeeking = false
         if m._Flag_atLeastOnePlayEventForContent = true
           m._addEventToQueue(m._createEvent("rebufferstart"))
@@ -371,7 +389,26 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("pause"))
     else if videoState = "playing"
       m._videoProperties = m._getVideoProperties(m.video)
-      m._checkForSeek("playing")
+      
+      if m._Flag_isSeeking = true
+        date = m._getDateTime()
+        now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+        seekStartTs = 0#
+        if m._viewSeekStartTimeStamp <> Invalid
+          seekStartTs = m._viewSeekStartTimeStamp
+        end if
+        if m._viewSeekDuration <> Invalid
+          m._viewSeekDuration = m._viewSeekDuration + (now - seekStartTs)
+        end if
+        m._addEventToQueue(m._createEvent("seeked"))
+        m._Flag_isSeeking = false
+
+        ' We will emit the play from paused states further down if needed
+        if m._Flag_lastVideoState <> "paused"
+          m._addEventToQueue(m._createEvent("play"))
+        end if
+      end if
+
       if m._Flag_atLeastOnePlayEventForContent = false
         if m._viewTimeToFirstFrame = Invalid
           if m._viewStartTimestamp <> Invalid AND m._viewStartTimestamp <> 0
@@ -543,12 +580,10 @@ function muxAnalytics() as Object
 
   prototype._updateLastReportedPositionFlag = function() as Void
     if m.video.position = m._Flag_lastReportedPosition then return
-    if m.video.state <> "playing" AND m.video.state <> "buffering" then return
     m._Flag_lastReportedPosition = m.video.position
   end function
 
   prototype._updateContentPlaybackTime = function() as Void
-    if m._Flag_isInAdBreak = true then return
     if m.video.position <= m._Flag_lastReportedPosition then return
     if m.video.state <> "playing" then return
     if m._contentPlaybackTime = Invalid then return
@@ -709,36 +744,6 @@ function muxAnalytics() as Object
       m._viewPrerollPlayedCount = Invalid
       m._videoSourceFormat = Invalid
       m._videoSourceDuration = Invalid
-    end if
-  end function
-
-  prototype._checkForSeek = function(state) as Void
-    if state = "buffering"
-      if m._Flag_isSeeking <> true
-        if m.video.position > (m._Flag_lastReportedPosition + m._seekThreshold) OR m.video.position < m._Flag_lastReportedPosition
-          m._addEventToQueue(m._createEvent("seeking"))
-          date = m._getDateTime()
-          m._viewSeekStartTimeStamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
-          if m._viewSeekCount <> Invalid
-            m._viewSeekCount++
-            m._Flag_isSeeking = true
-          end if
-        end if
-      end if
-    else if state = "playing"
-      if m._Flag_isSeeking = true
-        date = m._getDateTime()
-        now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
-        seekStartTs = 0#
-        if m._viewSeekStartTimeStamp <> Invalid
-          seekStartTs = m._viewSeekStartTimeStamp
-        end if
-        if m._viewSeekDuration <> Invalid
-          m._viewSeekDuration = m._viewSeekDuration + (now - seekStartTs)
-        end if
-        m._addEventToQueue(m._createEvent("seeked"))
-        m._Flag_isSeeking = false
-      end if
     end if
   end function
 
