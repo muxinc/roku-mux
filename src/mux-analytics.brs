@@ -360,6 +360,9 @@ function muxAnalytics() as Object
     if m._Flag_isSeeking <> true
       ' If we've gone backwards at all or forwards by more than the threshold
       if (positionNow < previouslyLastReportedPosition) OR (positionNow > (previouslyLastReportedPosition + m._seekThreshold))
+        if videoState = "buffering"
+          m._addEventToQueue(m._createEvent("pause"))
+        end if
         m._addEventToQueue(m._createEvent("seeking"))
         date = m._getDateTime()
         m._viewSeekStartTimeStamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
@@ -373,15 +376,13 @@ function muxAnalytics() as Object
     m._Flag_isPaused = (videoState = "paused")
 
     if videoState = "buffering"
-      if m._Flag_isSeeking = false
-        if m._Flag_atLeastOnePlayEventForContent = true
-          m._addEventToQueue(m._createEvent("rebufferstart"))
-          m._Flag_RebufferingStarted = true
-          if m._viewRebufferCount <> Invalid
-            m._viewRebufferCount++
-            if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
-              m._viewRebufferFrequency! = m._viewRebufferCount / m._viewWatchTime
-            end if
+      if m._Flag_atLeastOnePlayEventForContent = true
+        m._addEventToQueue(m._createEvent("rebufferstart"))
+        m._Flag_RebufferingStarted = true
+        if m._viewRebufferCount <> Invalid
+          m._viewRebufferCount++
+          if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
+            m._viewRebufferFrequency! = m._viewRebufferCount / m._viewWatchTime
           end if
         end if
       end if
@@ -389,6 +390,13 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("pause"))
     else if videoState = "playing"
       m._videoProperties = m._getVideoProperties(m.video)
+
+      if m._Flag_lastVideoState = "buffering"
+        if m._Flag_RebufferingStarted = true
+          m._addEventToQueue(m._createEvent("rebufferend"))
+          m._Flag_RebufferingStarted = false
+        end if
+      end if
       
       if m._Flag_isSeeking = true
         date = m._getDateTime()
@@ -416,12 +424,6 @@ function muxAnalytics() as Object
             now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
             m._viewTimeToFirstFrame = now - m._viewStartTimestamp
           end if
-        end if
-      end if
-      if m._Flag_lastVideoState = "buffering"
-        if m._Flag_RebufferingStarted = true
-          m._addEventToQueue(m._createEvent("rebufferend"))
-          m._Flag_RebufferingStarted = false
         end if
       end if
       if m._Flag_lastVideoState = "paused"
