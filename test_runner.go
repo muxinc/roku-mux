@@ -1,7 +1,5 @@
 package main
 
-// TODO do the tests actually run? did they ever? what's missing?
-
 import (
 	"archive/zip"
 	"bufio"
@@ -14,9 +12,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 import "github.com/bmatcuk/doublestar/v4"
+
+import "github.com/reiver/go-telnet"
 
 var firstWordsByMin = map[string]string{
 	"a": "property", // account
@@ -469,14 +470,49 @@ func rokutasks(r *runner) {
 				"--output", "/tmp/dev_server_out",
 				"--write-out", "%{http_code}",
 				"http://" +env_roku_ip + "/plugin_install")
+
 			return err
 		},
 	})
 
 	r.AddTask("test", task{
-		depends: []string{}, 
+		depends: []string{"deploy_test"}, 
 		main: func() error {
+			// This sleep is necessary for the device to "recover" to normal after app install
+			// If you remove it the test output retrieval goes wrong
+			time.Sleep(5 * time.Second)
+
+			waitFor := make(chan *telnet.Conn, 0)
+			caller := NewTelnetClient()
+			go func() {
+				conn, err := telnet.DialTo(env_roku_ip+":8085")
+				if err != nil {
+					log.Println(err.Error())
+					waitFor <- nil
+				} else {
+					waitFor <- conn
+
+					client := &telnet.Client{Caller:caller}
+					err = client.Call(conn)
+					if err != nil {
+						return
+					}
+				}
+			} ()			
+
+			conn := <- waitFor
+			if conn == nil {
+				return errors.New("Failed to telnet to device")
+			}
+
+			defer conn.Close()
+
+			caller.DiscardUntilPause()
+			
 			_, err := run("curl", "-d", "", "http://"+env_roku_ip+":8060/launch/dev?RunTests=true")
+
+			caller.OutputToLogUntilPause()
+
 			return err
 		},
 	})
@@ -633,8 +669,75 @@ func fromEnvVarOrProperties(key string, props map[string]string) string {
 	return v
 }
 
+type ourClient struct {
+	lines chan string
+	pauses chan bool
+}
+
+func NewTelnetClient() *ourClient {
+	return &ourClient{
+		lines: make(chan string, 0),
+		pauses: make(chan bool, 0),
+	}
+}
+
+func (oc *ourClient) DiscardUntilPause() {
+	for {
+		select {
+		case <- oc.lines:
+			continue
+		case <- oc.pauses:
+			return
+		}
+	}
+}
+
+func (oc *ourClient) OutputToLogUntilPause() {
+	for {
+		select {
+		case line := <- oc.lines:
+			log.Println(line)
+		case <- oc.pauses:
+			return
+		}
+	}
+}
+
+func (oc *ourClient) CallTELNET(ctx telnet.Context, w telnet.Writer, r telnet.Reader) {
+	innerLines := make(chan string, 0)
+	go func() {
+		reader := bufio.NewReader(r)
+		for {
+			line, err := reader.ReadString('\n')
+			if err != nil {
+				close(innerLines)
+				return
+			}
+	
+			innerLines <- line
+		}
+	} ()
+	
+	paused := false
+	for {
+		select {
+		case line, ok := <- innerLines:
+			if !ok {
+				return
+			}
+			oc.lines <- line
+			paused = false
+		case <- time.After(200 * time.Millisecond):
+			if !paused {	
+				oc.pauses <- true
+				paused = true
+			}
+		}
+	}
+}
+
 func main() {
-	fmt.Println("Roku test runner - port of the npm gulp that appears to be broken")
+	fmt.Println("Roku build and test runner")
 
 	r := NewRunner()
 
