@@ -23,8 +23,8 @@
       ],
       "enableDebuggerAutoRecovery": false,
       "stopDebuggerOnAppExit": false,
-      // "preLaunchTask": "muxroku-prelaunch",
-      // "postDebugTask": "muxroku-cleanup"
+      "preLaunchTask": "muxroku-prelaunch",
+      "postDebugTask": "muxroku-cleanup"
     }
   ]
 }
