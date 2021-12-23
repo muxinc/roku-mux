@@ -14,7 +14,7 @@ Then "test_runner" or "test_runner.exe" will be built depending on your platform
 
 Edit local.properties to reflect the setup of your roku device. You can also use environment variables.
 
-Linting requires installing [BSLint](https://github.com/rokucommunity/bslint) and dependencies. (Note this is different from the previously used linter also called BSLint).
+Linting (optional) requires installing [BSLint](https://github.com/rokucommunity/bslint) and dependencies. (Note this is different from the previously used linter also called BSLint).
 
 ### To Run Sample App ###
 
