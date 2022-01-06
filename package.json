@@ -1,27 +1,5 @@
 {
-  "name": "roku-mux",
-  "version": "1.0.1",
-  "description": "mux analytics. SDK and Sample Application for testing.",
-  "directories": {
-    "doc": "docs",
-    "test": "test"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/muxinc/roku-mux.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/muxinc/roku-mux/issues"
-  },
-  "homepage": "https://github.com/muxinc/roku-mux#readme",
   "dependencies": {
-    "@rokucommunity/bslint": "^0.6.0",
-    "brighterscript": "^0.41.5"
+    "bslint": "^5.15.3"
   }
 }

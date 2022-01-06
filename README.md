@@ -2,6 +2,8 @@
 
 mux analytics. SDK and Sample Application for testing.
 
+The version number is found in src/mux-analytics.brs
+
 ### What is this repository for? ###
 
 This is the single source for the mux-analytics SDK for Roku.
