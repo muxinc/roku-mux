@@ -1,8 +1,7 @@
 {
   "name": "roku-mux",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "mux analytics. SDK and Sample Application for testing.",
-  "main": "gulpfile.js",
   "directories": {
     "doc": "docs",
     "test": "test"
