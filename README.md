@@ -2,27 +2,31 @@
 
 mux analytics. SDK and Sample Application for testing.
 
+The version number is found in src/mux-analytics.brs
+
 ### What is this repository for? ###
 
 This is the single source for the mux-analytics SDK for Roku.
 
 ### How do I get set up? ###
 
-`npm install`
+You will need golang to build the tool used to build, run and test. Once you have installed golang run
+`go build`
+Then "test_runner" or "test_runner.exe" will be built depending on your platform.
+
+Edit local.properties to reflect the setup of your roku device. You can also use environment variables.
+
+Linting (optional) requires installing [BSLint](https://github.com/rokucommunity/bslint) and dependencies. (Note this is different from the previously used linter also called BSLint).
 
 ### To Run Sample App ###
 
-To simply run the sample app on a physical device, set ip of box as env variable.
+To simply run the sample app on a physical device, set ip of box in local.properties.
 
-`export ROKU_DEV_TARGET=<your ip>`
-
-`gulp install`
+`./test_runner install`
 
 - or -
 
 To remote debug the sample app on a physical device from within VS Code, be sure to install the [BrightScript Language](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript) VS Code extension.
-
-You can configure the target device host and password using an `.env` file (make a copy of the `sample.env` file).  Leaving the defaults will cause the extension to prompt for input when running the debugger.  You can also hardcode the values in the `.env` file.
 
 After that, launch the "BrightScript Debug: Launch" configuration from the "Run and Debug" section in VS Code.
 
@@ -35,14 +39,15 @@ Please configure mux settings in manifest.
 `mux_debug_events` = none: show nothing, partial: ignores progress events, full: Show all  
 `mux_debug_beacons` = none: show nothing, partial: ignores beacon properties, full: Show everything  
 
-
 ### To Run Unit Tests ###
 
-`gulp test`
+`./test_runner test`
 
 ### To Run Linter ###
 
-`gulp lint`
+`./test_runner lint`
+
+Other useful tasks are defined in the `test_runner.go` file.
 
 ### Who do I talk to? ###
 

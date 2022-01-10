@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "1.2.0"
+  m.MUX_SDK_VERSION = "1.2.1"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -352,18 +352,37 @@ function muxAnalytics() as Object
   end function
 
   prototype.videoStateChangeHandler = function(videoState as String)
+    previouslyLastReportedPosition = m._Flag_lastReportedPosition
+    positionNow = m.video.position
+    m._Flag_lastReportedPosition = positionNow
+
+    ' Need to actually infer seek all the way out here
+    if m._Flag_isSeeking <> true
+      ' If we've gone backwards at all or forwards by more than the threshold
+      if (positionNow < previouslyLastReportedPosition) OR (positionNow > (previouslyLastReportedPosition + m._seekThreshold))
+        if videoState = "buffering"
+          m._addEventToQueue(m._createEvent("pause"))
+        end if
+        m._addEventToQueue(m._createEvent("seeking"))
+        date = m._getDateTime()
+        m._viewSeekStartTimeStamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
+        if m._viewSeekCount <> Invalid
+          m._viewSeekCount++
+        end if
+        m._Flag_isSeeking = true
+      end if
+    end if
+
     m._Flag_isPaused = (videoState = "paused")
+
     if videoState = "buffering"
-      m._checkForSeek("buffering")
-      if m._Flag_isSeeking = false
-        if m._Flag_atLeastOnePlayEventForContent = true
-          m._addEventToQueue(m._createEvent("rebufferstart"))
-          m._Flag_RebufferingStarted = true
-          if m._viewRebufferCount <> Invalid
-            m._viewRebufferCount++
-            if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
-              m._viewRebufferFrequency! = m._viewRebufferCount / m._viewWatchTime
-            end if
+      if m._Flag_atLeastOnePlayEventForContent = true
+        m._addEventToQueue(m._createEvent("rebufferstart"))
+        m._Flag_RebufferingStarted = true
+        if m._viewRebufferCount <> Invalid
+          m._viewRebufferCount++
+          if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
+            m._viewRebufferFrequency! = m._viewRebufferCount / m._viewWatchTime
           end if
         end if
       end if
@@ -371,7 +390,33 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("pause"))
     else if videoState = "playing"
       m._videoProperties = m._getVideoProperties(m.video)
-      m._checkForSeek("playing")
+
+      if m._Flag_lastVideoState = "buffering"
+        if m._Flag_RebufferingStarted = true
+          m._addEventToQueue(m._createEvent("rebufferend"))
+          m._Flag_RebufferingStarted = false
+        end if
+      end if
+      
+      if m._Flag_isSeeking = true
+        date = m._getDateTime()
+        now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+        seekStartTs = 0#
+        if m._viewSeekStartTimeStamp <> Invalid
+          seekStartTs = m._viewSeekStartTimeStamp
+        end if
+        if m._viewSeekDuration <> Invalid
+          m._viewSeekDuration = m._viewSeekDuration + (now - seekStartTs)
+        end if
+        m._addEventToQueue(m._createEvent("seeked"))
+        m._Flag_isSeeking = false
+
+        ' We will emit the play from paused states further down if needed
+        if m._Flag_lastVideoState <> "paused"
+          m._addEventToQueue(m._createEvent("play"))
+        end if
+      end if
+
       if m._Flag_atLeastOnePlayEventForContent = false
         if m._viewTimeToFirstFrame = Invalid
           if m._viewStartTimestamp <> Invalid AND m._viewStartTimestamp <> 0
@@ -379,12 +424,6 @@ function muxAnalytics() as Object
             now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
             m._viewTimeToFirstFrame = now - m._viewStartTimestamp
           end if
-        end if
-      end if
-      if m._Flag_lastVideoState = "buffering"
-        if m._Flag_RebufferingStarted = true
-          m._addEventToQueue(m._createEvent("rebufferend"))
-          m._Flag_RebufferingStarted = false
         end if
       end if
       if m._Flag_lastVideoState = "paused"
@@ -543,12 +582,10 @@ function muxAnalytics() as Object
 
   prototype._updateLastReportedPositionFlag = function() as Void
     if m.video.position = m._Flag_lastReportedPosition then return
-    if m.video.state <> "playing" AND m.video.state <> "buffering" then return
     m._Flag_lastReportedPosition = m.video.position
   end function
 
   prototype._updateContentPlaybackTime = function() as Void
-    if m._Flag_isInAdBreak = true then return
     if m.video.position <= m._Flag_lastReportedPosition then return
     if m.video.state <> "playing" then return
     if m._contentPlaybackTime = Invalid then return
@@ -709,36 +746,6 @@ function muxAnalytics() as Object
       m._viewPrerollPlayedCount = Invalid
       m._videoSourceFormat = Invalid
       m._videoSourceDuration = Invalid
-    end if
-  end function
-
-  prototype._checkForSeek = function(state) as Void
-    if state = "buffering"
-      if m._Flag_isSeeking <> true
-        if m.video.position > (m._Flag_lastReportedPosition + m._seekThreshold) OR m.video.position < m._Flag_lastReportedPosition
-          m._addEventToQueue(m._createEvent("seeking"))
-          date = m._getDateTime()
-          m._viewSeekStartTimeStamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
-          if m._viewSeekCount <> Invalid
-            m._viewSeekCount++
-            m._Flag_isSeeking = true
-          end if
-        end if
-      end if
-    else if state = "playing"
-      if m._Flag_isSeeking = true
-        date = m._getDateTime()
-        now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
-        seekStartTs = 0#
-        if m._viewSeekStartTimeStamp <> Invalid
-          seekStartTs = m._viewSeekStartTimeStamp
-        end if
-        if m._viewSeekDuration <> Invalid
-          m._viewSeekDuration = m._viewSeekDuration + (now - seekStartTs)
-        end if
-        m._addEventToQueue(m._createEvent("seeked"))
-        m._Flag_isSeeking = false
-      end if
     end if
   end function
 
@@ -1151,33 +1158,39 @@ function muxAnalytics() as Object
     result = {}
 
     for each key in src
-      keyParts = key.split("_")
-      newKey = ""
-      s = keyParts.count()
+      if key = "_"
+        result["__"] = src[key]
+      else 
+        keyParts = key.split("_")
+        newKey = ""
+        s = keyParts.count()
 
-      if s > 0
-        firstPart = keyParts[0]
-        if m._firstWords[firstPart] <> Invalid
-          newKey = m._firstWords[firstPart]
-        else
-          newKey = firstPart
+        if s > 0
+          firstPart = keyParts[0]
+          if m._firstWords[firstPart] <> Invalid
+            newKey = m._firstWords[firstPart]
+          else if firstPart <> ""
+            newKey = "_" + firstPart + "_"
+          end if
         end if
-      end if
 
-      for i = 1 To s - 1  Step 1
-        nextPart = keyParts[i]
+        for i = 1 To s - 1  Step 1
+          nextPart = keyParts[i]
 
-        if m._subsequentWords[nextPart] <> Invalid
-          newKey = newKey + m._subsequentWords[nextPart]
-        else if nextPart.len() > 0 AND nextPart.toInt() > 0 AND nextPart.toInt() = Int(nextPart.toInt())
-          ' Make sure the value is an integer, not decimal
-          newKey = newKey + nextPart
-        else
-          newKey = newKey + "_" + nextPart + "_"
-        end if
-      end for
+          if nextPart <> ""
+            if m._subsequentWords[nextPart] <> Invalid
+              newKey = newKey + m._subsequentWords[nextPart]
+            else if nextPart.len() > 0 AND nextPart.toInt() > 0 AND nextPart.toInt() = Int(nextPart.toInt())
+              ' Make sure the value is an integer, not decimal
+              newKey = newKey + nextPart
+            else
+              newKey = newKey + "_" + nextPart + "_"
+            end if
+          endif
+        end for
 
-      result[newKey] = src[key]
+        result[newKey] = src[key]
+      endif
     end for
 
     return result

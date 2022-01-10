@@ -204,7 +204,11 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_3() as String
   ' WHEN
   m.SUT.videoControlChangeHandler("stop")
 
-  result = m.SUT._eventQueue[1].e + m.SUT._eventQueue[2].e + m.SUT._eventQueue[3].e
+  if m.SUT._eventQueue.count() < 4 then
+    return m.assertEqual(0, "Not enough events in eventQueue")
+  endif
+
+  result = m.SUT._eventQueue[1].event + m.SUT._eventQueue[2].event + m.SUT._eventQueue[3].event
   ' THEN
   return m.assertEqual("viewstartplayviewend", result)
 End Function
@@ -268,7 +272,12 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_8() as String
   ' WHEN
   m.SUT.videoControlChangeHandler("play")
   ' THEN
-  result = m.SUT._eventQueue[0].e + m.SUT._eventQueue[1].e
+
+  if m.SUT._eventQueue.count() < 2 then
+    return m.assertEqual(0, "Not enough events in eventQueue")
+  endif
+
+  result = m.SUT._eventQueue[0].event + m.SUT._eventQueue[1].event
   return m.assertEqual("playerreadyviewstart", result)
 End Function
 
@@ -308,7 +317,7 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_end_1() as String
   ' WHEN
   m.SUT.videoControlChangeHandler("stop")
   ' THEN
-  result = m.SUT._eventQueue[1].e + m.SUT._eventQueue[2].e + m.SUT._eventQueue[3].e
+  result = m.SUT._eventQueue[1].event + m.SUT._eventQueue[2].event + m.SUT._eventQueue[3].event
   return m.assertEqual("viewstartplayviewend", result)
 End Function
 
