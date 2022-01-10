@@ -11,6 +11,8 @@ function FakeDeviceInfo() as Object
   prototype._GetChannelClientIdToReturn = ""
   prototype._GetAdvertisingIDToReturn = "bcde8fc1-9f66-5a93-8f8f-07dd3c079425"
   prototype._GetIsRIDADisabledToReturn = true
+  prototype._GetModelDetailsToReturn = {"Vendorname": "MuxRoku", "ModelNumber": "FakeDevice", "VendorUSBName": "MuxUSB", "ScreenSize": "10^84 inches"}
+  prototype._GetConnectionTypeToReturn = "WifiConnection"
 
   prototype.GetVideoMode = function() as String
     return m._GetVideoModeToReturn
@@ -38,6 +40,12 @@ function FakeDeviceInfo() as Object
   end function
   prototype.GetAdvertisingId = function() as String
     return m._GetAdvertisingIDToReturn
+  end function
+  prototype.GetModelDetails = function() as Object
+    return m._GetModelDetailsToReturn
+  end function
+  prototype.GetConnectionType = function() as String
+    return m._GetConnectionTypeToReturn
   end function
   prototype.IsRIDADisabled = function() as Boolean
     return m._GetIsRIDADisabledToReturn

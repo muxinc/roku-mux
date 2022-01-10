@@ -75,7 +75,7 @@ Function TestCase__MuxAnalytics_player_version() as String
   ' WHEN
   sessionProps = m.SUT._getSessionProperites()
   ' THEN
-  return m.assertEqual("7.7.7", sessionProps.player_version)
+  return m.assertEqual("7.7.7", sessionProps.viewer_application_version)
 End Function
 
 Function TestCase__MuxAnalytics_viewer_version() as String
