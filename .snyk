@@ -6,3 +6,6 @@ patch:
   SNYK-JS-LODASH-567746:
     - bslint > lodash:
         patched: '2022-07-26T18:51:43.581Z'
+  SNYK-JS-LODASH-450202:
+    - bslint > lodash:
+        patched: '2022-07-26T19:26:48.834Z'
