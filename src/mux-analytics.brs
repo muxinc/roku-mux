@@ -60,6 +60,7 @@ function runBeaconLoop()
     m.top.video.ObserveField("state", m.messagePort)
     m.top.video.ObserveField("content", m.messagePort)
     m.top.video.ObserveField("control", m.messagePort)
+    m.top.video.ObserveField("licenseStatus", m.messagePort)
   end if
 
   if m.top.view <> Invalid AND m.top.view <> ""
@@ -98,6 +99,7 @@ function runBeaconLoop()
             m.top.video.ObserveField("state", m.messagePort)
             m.top.video.ObserveField("content", m.messagePort)
             m.top.video.ObserveField("control", m.messagePort)
+            m.top.video.ObserveField("licenseStatus", m.messagePort)
           end if
         else if field = "config"
           m.mxa.configChangeHandler(msg.getData())
@@ -107,6 +109,8 @@ function runBeaconLoop()
           m.mxa.videoControlChangeHandler(msg.getData())
         else if field = "content"
           m.mxa.videoContentChangeHandler(msg.getData())
+        else if field = "licenseStatus"
+          m.mxa.drmLicenseStatusChangeHandler(msg.getData())
         else if field = "view"
           m.mxa.videoViewChangeHandler(msg.getData())
         else if field = "state"
@@ -454,6 +458,14 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message: errorMessage, player_error_context: errorContext}))
     end if
     m._Flag_lastVideoState = videoState
+  end function
+
+  prototype.drmLicenseStatusChangeHandler = function(licenseStatus as Object)
+    if licenseStatus <> Invalid
+      if licenseStatus.keysystem <> Invalid
+        m.drmType = licenseStatus.keysystem
+      end if
+    end if
   end function
 
   prototype.videoViewChangeHandler = function(view as String)
@@ -970,6 +982,9 @@ function muxAnalytics() as Object
       if m.video.timeToStartStreaming <> Invalid AND m.video.timeToStartStreaming <> 0
         props.player_time_to_first_frame = Int(m.video.timeToStartStreaming * 1000)
       end if
+    end if
+    if m.drmType <> Invalid 
+      props.view_drm_type = m.drmType
     end if
     if m._playerSequence <> Invalid AND m._playerSequence <> 0
       props.player_sequence_number = Int(m._playerSequence)
