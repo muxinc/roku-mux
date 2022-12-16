@@ -766,6 +766,7 @@ function muxAnalytics() as Object
       m._viewPrerollPlayedCount = Invalid
       m._videoSourceFormat = Invalid
       m._videoSourceDuration = Invalid
+      m.view_drm_type = Invalid
     end if
   end function
 
@@ -985,6 +986,9 @@ function muxAnalytics() as Object
     end if
     if m.drmType <> Invalid 
       props.view_drm_type = m.drmType
+    end if
+    if m.droppedFrames <> Invalid
+      props.view_dropped_frames_count = m.droppedFrames
     end if
     if m._playerSequence <> Invalid AND m._playerSequence <> 0
       props.player_sequence_number = Int(m._playerSequence)
