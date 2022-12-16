@@ -439,6 +439,7 @@ function muxAnalytics() as Object
     else if videoState = "error"
       errorCode = ""
       errorMessage = ""
+      errorContext = ""
       if m.video <> Invalid
         if m.video.errorCode <> Invalid
           errorCode = m.video.errorCode
@@ -446,8 +447,11 @@ function muxAnalytics() as Object
         if m.video.errorMsg <> Invalid
           errorMessage = m.video.errorMsg
         end if
+        if m.video.errorStr <> Invalid
+          errorContext = m.video.errorStr
+        end if
       end if
-      m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage}))
+      m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message: errorMessage, player_error_context: errorContext}))
     end if
     m._Flag_lastVideoState = videoState
   end function
@@ -496,6 +500,7 @@ function muxAnalytics() as Object
   prototype.videoErrorHandler = function(error as Object)
     errorCode = "0"
     errorMessage = "Unknown"
+    errorContext = "No additional information"
     if error <> Invalid
       if error.errorCode <> Invalid
         errorCode = error.errorCode
@@ -506,8 +511,11 @@ function muxAnalytics() as Object
       if error.errorMessage <> Invalid
         errorMessage = error.errorMessage
       end if
+      if error.errorContext <> invalid
+        errorContext = error.errorContext
+      end if 
     end if
-    m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage}))
+    m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage, player_error_context:errorContext}))
   end function
 
   prototype.rafEventHandler = function(rafEvent) as Void
