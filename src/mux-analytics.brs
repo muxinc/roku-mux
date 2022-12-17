@@ -766,7 +766,8 @@ function muxAnalytics() as Object
       m._viewPrerollPlayedCount = Invalid
       m._videoSourceFormat = Invalid
       m._videoSourceDuration = Invalid
-      m.view_drm_type = Invalid
+      m.drmType = Invalid
+      m.droppedFrames = Invalid
     end if
   end function
 
