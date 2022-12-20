@@ -1,7 +1,8 @@
 {
   "dependencies": {
-    "bslint": "^5.15.3",
-    "@snyk/protect": "latest"
+    "@rokucommunity/bslint": "^0.8.0",
+    "@snyk/protect": "latest",
+    "build": "^0.1.4"
   },
   "scripts": {
     "prepare": "npm run snyk-protect",

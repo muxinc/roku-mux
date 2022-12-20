@@ -520,7 +520,7 @@ func rokutasks(r *runner) {
 	r.AddTask("lint", task{
 		depends: []string{"build_src"},
 		main: func() error {
-			// This relies on the rokucommunity/bslint being installed
+			// This relies on @rokucommunity/bslint being installed by npm
 			// Should be installable via "npm install" in roku-mux root
 			_, err := run("npx", "bslint", "--rootDir", "build")
 			return err
