@@ -158,7 +158,7 @@ end function
 
 function ErrorBeforePlayback(contentInfo as Object)
   mux = GetGlobalAA().global.findNode("mux")
-  mux.error = {errorCode: 1, errorMessage: "Video Metadata Error"}
+  mux.error = {errorCode: 1, errorMessage: "Video Metadata Error", errorContext: "Video Error Context"}
 end function
 
 function PlayStitchedContentWithAds(contentInfo as Object)

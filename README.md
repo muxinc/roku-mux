@@ -30,6 +30,10 @@ To remote debug the sample app on a physical device from within VS Code, be sure
 
 After that, launch the "BrightScript Debug: Launch" configuration from the "Run and Debug" section in VS Code.
 
+### Exploring the example code
+
+An example channel with a mux integration is available in the [sampleapp_source](https://github.com/muxinc/roku-mux/tree/master/sampleapp_source) folder. The components belonging to the interactive sample app can be found in [sampleapp_source/components_reset](https://github.com/muxinc/roku-mux/tree/master/sampleapp_source/components_reset/components)
+
 ### Configuration ###
 
 Please configure mux settings in manifest.
