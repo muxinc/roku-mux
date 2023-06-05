@@ -60,6 +60,7 @@ function runBeaconLoop()
     m.top.video.ObserveField("state", m.messagePort)
     m.top.video.ObserveField("content", m.messagePort)
     m.top.video.ObserveField("control", m.messagePort)
+    m.top.video.ObserveField("licenseStatus", m.messagePort)
   end if
 
   if m.top.view <> Invalid AND m.top.view <> ""
@@ -98,6 +99,7 @@ function runBeaconLoop()
             m.top.video.ObserveField("state", m.messagePort)
             m.top.video.ObserveField("content", m.messagePort)
             m.top.video.ObserveField("control", m.messagePort)
+            m.top.video.ObserveField("licenseStatus", m.messagePort)
           end if
         else if field = "config"
           m.mxa.configChangeHandler(msg.getData())
@@ -107,6 +109,8 @@ function runBeaconLoop()
           m.mxa.videoControlChangeHandler(msg.getData())
         else if field = "content"
           m.mxa.videoContentChangeHandler(msg.getData())
+        else if field = "licenseStatus"
+          m.mxa.drmLicenseStatusChangeHandler(msg.getData())
         else if field = "view"
           m.mxa.videoViewChangeHandler(msg.getData())
         else if field = "state"
@@ -439,6 +443,7 @@ function muxAnalytics() as Object
     else if videoState = "error"
       errorCode = ""
       errorMessage = ""
+      errorContext = ""
       if m.video <> Invalid
         if m.video.errorCode <> Invalid
           errorCode = m.video.errorCode
@@ -446,10 +451,21 @@ function muxAnalytics() as Object
         if m.video.errorMsg <> Invalid
           errorMessage = m.video.errorMsg
         end if
+        if m.video.errorStr <> Invalid
+          errorContext = m.video.errorStr
+        end if
       end if
-      m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage}))
+      m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message: errorMessage, player_error_context: errorContext}))
     end if
     m._Flag_lastVideoState = videoState
+  end function
+
+  prototype.drmLicenseStatusChangeHandler = function(licenseStatus as Object)
+    if licenseStatus <> Invalid
+      if licenseStatus.keysystem <> Invalid
+        m.drmType = licenseStatus.keysystem
+      end if
+    end if
   end function
 
   prototype.videoViewChangeHandler = function(view as String)
@@ -496,6 +512,7 @@ function muxAnalytics() as Object
   prototype.videoErrorHandler = function(error as Object)
     errorCode = "0"
     errorMessage = "Unknown"
+    errorContext = "No additional information"
     if error <> Invalid
       if error.errorCode <> Invalid
         errorCode = error.errorCode
@@ -506,8 +523,11 @@ function muxAnalytics() as Object
       if error.errorMessage <> Invalid
         errorMessage = error.errorMessage
       end if
+      if error.errorContext <> invalid
+        errorContext = error.errorContext
+      end if 
     end if
-    m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage}))
+    m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage, player_error_context:errorContext}))
   end function
 
   prototype.rafEventHandler = function(rafEvent) as Void
@@ -746,6 +766,8 @@ function muxAnalytics() as Object
       m._viewPrerollPlayedCount = Invalid
       m._videoSourceFormat = Invalid
       m._videoSourceDuration = Invalid
+      m.drmType = Invalid
+      m.droppedFrames = Invalid
     end if
   end function
 
@@ -967,6 +989,12 @@ function muxAnalytics() as Object
       if m.video.timeToStartStreaming <> Invalid AND m.video.timeToStartStreaming <> 0
         props.player_time_to_first_frame = Int(m.video.timeToStartStreaming * 1000)
       end if
+    end if
+    if m.drmType <> Invalid 
+      props.view_drm_type = m.drmType
+    end if
+    if m.droppedFrames <> Invalid
+      props.view_dropped_frames_count = m.droppedFrames
     end if
     if m._playerSequence <> Invalid AND m._playerSequence <> 0
       props.player_sequence_number = Int(m._playerSequence)
@@ -1371,6 +1399,7 @@ function muxAnalytics() as Object
     "asset": "as",
     "autoplay": "au",
     "break": "br",
+    "codec": "cc",
     "code": "cd",
     "category": "cg",
     "config": "cn",
@@ -1380,12 +1409,15 @@ function muxAnalytics() as Object
     "content": "ct",
     "current": "cu",
     "country": "cy",
+    "context": "cz",
     "downscaling": "dg",
     "domain": "dm",
     "cdn": "dn",
     "downscale": "do",
     "duration": "du",
     "device": "dv",
+    "drm": "dr",
+    "dropped": "dp",
     "encoding": "ec",
     "end": "en",
     "engine": "eg",
@@ -1396,6 +1428,7 @@ function muxAnalytics() as Object
     "first": "fi",
     "family": "fm",
     "format": "ft",
+    "fps": "fp",
     "frequency": "fq",
     "frame": "fr",
     "fullscreen": "fs",
