@@ -10,7 +10,9 @@ Function TestSuite__MuxTask_Url_Utils() as Object
     ' this.addTest("TestCase__find_domain_three", TestCase__find_domain_three)
     ' this.addTest("TestCase__find_hostname_four", TestCase__find_hostname_four)
     ' this.addTest("TestCase__find_domain_four", TestCase__find_domain_four)
-    
+    this.addTest("TestCase__find_hostname_with_hyphen", TestCase__find_hostname_with_hyphen)
+    this.addTest("TestCase__find_domain_with_hyphen", TestCase__find_domain_with_hyphen)
+
     return this
 End Function
 
@@ -56,3 +58,12 @@ function TestCase__find_domain_four() as Object
   return m.assertEqual(result, "company.com")
 end function
 
+function TestCase__find_hostname_with_hyphen() as Object
+  result = _getHostname("http://video-test.company-test.com/test.mp4?correlator=123456")
+  return m.assertEqual(result, "video-test.company-test.com")
+end function
+
+function TestCase__find_domain_with_hyphen() as Object
+  result = _getDomain("http://video-test.company-test.com/test.mp4?correlator=123456")
+  return m.assertEqual(result, "company-test.com")
+end function

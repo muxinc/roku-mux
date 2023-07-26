@@ -1105,7 +1105,7 @@ function muxAnalytics() as Object
 
   prototype._getHostname = function(url as String) as String
     host = ""
-    hostRegex = CreateObject("roRegex", "([a-z]{1,})(\.)([a-z.]{1,})", "i")
+    hostRegex = CreateObject("roRegex", "([a-z0-9\-]{1,})(\.)([a-z0-9\-\.]{1,})", "i")
     matchResults = hostRegex.Match(url)
     if matchResults.count() > 0
       host = matchResults[0]
