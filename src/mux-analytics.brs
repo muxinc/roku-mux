@@ -1095,7 +1095,7 @@ function muxAnalytics() as Object
     if strippedUrl.count() > 0
       url = strippedUrl[0]
     end if
-    domainRegex = CreateObject("roRegex", "([a-z0-9\-]+)\.([a-z]+|[a-z]{2}\.[a-z]+)$", "i")
+    domainRegex = CreateObject("roRegex", "([a-z0-9\-]+)\.([a-z0-9\-]+|[a-z0-9\-]{2}\.[a-z0-9\-]+)$", "i")
     matchResults = domainRegex.Match(url)
     if matchResults.count() > 0
       domain = matchResults[0]
@@ -1105,7 +1105,7 @@ function muxAnalytics() as Object
 
   prototype._getHostname = function(url as String) as String
     host = ""
-    hostRegex = CreateObject("roRegex", "([a-z0-9\-]{1,})(\.)([a-z0-9\-\.]{1,})", "i")
+    hostRegex = CreateObject("roRegex", "([a-z0-9\-]+)(\.)([a-z0-9\-\.]+)", "i")
     matchResults = hostRegex.Match(url)
     if matchResults.count() > 0
       host = matchResults[0]
