@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "1.3.2"
+  m.MUX_SDK_VERSION = "1.3.3"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -1233,7 +1233,7 @@ function muxAnalytics() as Object
     if m.manifestBaseUrl <> Invalid AND m.manifestBaseUrl <> ""
       return m.manifestBaseUrl
     end if
-    keyRegex = CreateObject("roRegex", "[0-9]+", "i")
+    keyRegex = CreateObject("roRegex", "^[a-z0-9]+$", "i")
     result = "https://"
     subdomain = "img"
     if keyRegex <> Invalid
