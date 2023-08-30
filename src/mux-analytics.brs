@@ -545,7 +545,6 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adimpresion"))
     else if eventType = "Pause"
       m._addEventToQueue(m._createEvent("adpause"))
-    else if eventType = "Resume"
     else if eventType = "Start"
       if m._viewTimeToFirstFrame = Invalid
         if m._viewStartTimestamp <> Invalid AND m._viewStartTimestamp <> 0
@@ -554,10 +553,7 @@ function muxAnalytics() as Object
           m._viewTimeToFirstFrame = now - m._viewStartTimestamp
         end if
       end if
-      m._advertProperties = m._getAdvertProperites(data.ctx)
-      m._addEventToQueue(m._createEvent("adplay"))
-      m._addEventToQueue(m._createEvent("adplaying"))
-    else if eventType = "Complete"
+      ' mark us as having another ad being played
       if m._viewAdPlayedCount <> Invalid
         m._viewAdPlayedCount++
       end if
@@ -565,6 +561,14 @@ function muxAnalytics() as Object
         ' CHECK FOR PREROLL
         m._viewPrerollPlayedCount++
       end if
+      m._advertProperties = m._getAdvertProperites(data.ctx)
+      m._addEventToQueue(m._createEvent("adplay"))
+      m._addEventToQueue(m._createEvent("adplaying"))
+    else if eventType = "Resume"
+      m._advertProperties = m._getAdvertProperites(data.ctx)
+      m._addEventToQueue(m._createEvent("adplay"))
+      m._addEventToQueue(m._createEvent("adplaying"))
+    else if eventType = "Complete"
       m._addEventToQueue(m._createEvent("adended"))
     else if eventType = "NoAdsError"
       if m._Flag_FailedAdsErrorSet <> true
