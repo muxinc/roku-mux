@@ -598,7 +598,7 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adthirdquartile"))
     end if
     else if eventType = "Skip"
-      ' In the future we could emit adskipped here
+      m._addEventToQueue(m._createEvent("adskipped"))
       m._addEventToQueue(m._createEvent("adended"))
     end if
   end function
