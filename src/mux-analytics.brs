@@ -544,7 +544,7 @@ function muxAnalytics() as Object
     else if eventType = "Impression"
       m._addEventToQueue(m._createEvent("adimpresion"))
     else if eventType = "Pause"
-      m._addEventToQueue(m._createEvent("adpaused"))
+      m._addEventToQueue(m._createEvent("adpause"))
     else if eventType = "Resume"
     else if eventType = "Start"
       if m._viewTimeToFirstFrame = Invalid
@@ -583,6 +583,19 @@ function muxAnalytics() as Object
         m._addEventToQueue(m._createEvent("aderror"))
         m._Flag_FailedAdsErrorSet = true
       end if
+    end if
+    else if eventType = "FirstQuartile"
+      m._addEventToQueue(m._createEvent("adfirstquartile"))
+    end if
+    else if eventType = "Midpoint"
+      m._addEventToQueue(m._createEvent("admidpoint"))
+    end if
+    else if eventType = "ThirdQuartile"
+      m._addEventToQueue(m._createEvent("adthirdquartile"))
+    end if
+    else if eventType = "Skip"
+      ' In the future we could emit adskipped here
+      m._addEventToQueue(m._createEvent("adended"))
     end if
   end function
 
