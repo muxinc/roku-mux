@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "1.3.3"
+  m.MUX_SDK_VERSION = "1.4.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -544,8 +544,7 @@ function muxAnalytics() as Object
     else if eventType = "Impression"
       m._addEventToQueue(m._createEvent("adimpresion"))
     else if eventType = "Pause"
-      m._addEventToQueue(m._createEvent("adpaused"))
-    else if eventType = "Resume"
+      m._addEventToQueue(m._createEvent("adpause"))
     else if eventType = "Start"
       if m._viewTimeToFirstFrame = Invalid
         if m._viewStartTimestamp <> Invalid AND m._viewStartTimestamp <> 0
@@ -554,10 +553,7 @@ function muxAnalytics() as Object
           m._viewTimeToFirstFrame = now - m._viewStartTimestamp
         end if
       end if
-      m._advertProperties = m._getAdvertProperites(data.ctx)
-      m._addEventToQueue(m._createEvent("adplay"))
-      m._addEventToQueue(m._createEvent("adplaying"))
-    else if eventType = "Complete"
+      ' mark us as having another ad being played
       if m._viewAdPlayedCount <> Invalid
         m._viewAdPlayedCount++
       end if
@@ -565,6 +561,14 @@ function muxAnalytics() as Object
         ' CHECK FOR PREROLL
         m._viewPrerollPlayedCount++
       end if
+      m._advertProperties = m._getAdvertProperites(data.ctx)
+      m._addEventToQueue(m._createEvent("adplay"))
+      m._addEventToQueue(m._createEvent("adplaying"))
+    else if eventType = "Resume"
+      m._advertProperties = m._getAdvertProperites(data.ctx)
+      m._addEventToQueue(m._createEvent("adplay"))
+      m._addEventToQueue(m._createEvent("adplaying"))
+    else if eventType = "Complete"
       m._addEventToQueue(m._createEvent("adended"))
     else if eventType = "NoAdsError"
       if m._Flag_FailedAdsErrorSet <> true
@@ -583,6 +587,19 @@ function muxAnalytics() as Object
         m._addEventToQueue(m._createEvent("aderror"))
         m._Flag_FailedAdsErrorSet = true
       end if
+    end if
+    else if eventType = "FirstQuartile"
+      m._addEventToQueue(m._createEvent("adfirstquartile"))
+    end if
+    else if eventType = "Midpoint"
+      m._addEventToQueue(m._createEvent("admidpoint"))
+    end if
+    else if eventType = "ThirdQuartile"
+      m._addEventToQueue(m._createEvent("adthirdquartile"))
+    end if
+    else if eventType = "Skip"
+      m._addEventToQueue(m._createEvent("adskipped"))
+      m._addEventToQueue(m._createEvent("adended"))
     end if
   end function
 
