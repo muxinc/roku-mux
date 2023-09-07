@@ -1,5 +1,5 @@
 function init()
-  m.MUX_SDK_VERSION = "1.4.0"
+  m.MUX_SDK_VERSION = "1.4.1"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end function
@@ -587,16 +587,12 @@ function muxAnalytics() as Object
         m._addEventToQueue(m._createEvent("aderror"))
         m._Flag_FailedAdsErrorSet = true
       end if
-    end if
     else if eventType = "FirstQuartile"
       m._addEventToQueue(m._createEvent("adfirstquartile"))
-    end if
     else if eventType = "Midpoint"
       m._addEventToQueue(m._createEvent("admidpoint"))
-    end if
     else if eventType = "ThirdQuartile"
       m._addEventToQueue(m._createEvent("adthirdquartile"))
-    end if
     else if eventType = "Skip"
       m._addEventToQueue(m._createEvent("adskipped"))
       m._addEventToQueue(m._createEvent("adended"))
