@@ -1,7 +1,8 @@
 {
   "dependencies": {
-    "@rokucommunity/bslint": "^0.8.0",
+    "@rokucommunity/bslint": "^0.8.9",
     "@snyk/protect": "latest",
+    "brighterscript": "^0.65.5",
     "build": "^0.1.4"
   },
   "scripts": {

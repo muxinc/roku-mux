@@ -18,6 +18,26 @@ Edit local.properties to reflect the setup of your roku device. You can also use
 
 Linting (optional) requires installing [BSLint](https://github.com/rokucommunity/bslint) and dependencies. (Note this is different from the previously used linter also called BSLint).
 
+Install the linter is:
+
+`npm install brighterscript @rokucommunity/bslint`
+
+**Development Environment**
+
+Visual Studio Code has an [extension](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript) for BrightScript that provides syntax highlighting, linting, and debugging. To install and configure this functionality:
+
+Install [BrighterScript](https://github.com/rokucommunity/brighterscript), which provides a BrightScript compiler and CLI. 
+
+`npm install brighterscript --location=global`
+
+Install [BSLint](https://github.com/rokucommunity/bslint):
+
+`npm install @rokucommunity/bslint`
+
+Install the [BrightScript Language extension](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript) for Visual Studio Code.
+
+You should now see syntax highlighting and other Roku tools in Visual Studio Code.
+
 ### To Run Sample App ###
 
 To simply run the sample app on a physical device, set ip of box in local.properties.
