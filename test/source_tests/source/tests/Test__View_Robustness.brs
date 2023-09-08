@@ -36,7 +36,7 @@ Sub ViewRobustness_SetUp()
   m.fakeTimer = FakeTimer()
   m.fakeAppInfo = FakeAppInfo()
   m.fakeAppConfig = {
-    SEEK_THRESHOLD: 1500,
+    SEEK_THRESHOLD: 1500
   }
   m.fakeCustomerConfig = {
     property_key: "UNIT_TEST_PROPERTY_KEY"
@@ -204,7 +204,7 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_3() as String
   ' WHEN
   m.SUT.videoControlChangeHandler("stop")
 
-  if m.SUT._eventQueue.count() < 4 then
+  if m.SUT._eventQueue.count() < 4
     return m.assertEqual(0, "Not enough events in eventQueue")
   endif
 
@@ -273,7 +273,7 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_start_8() as String
   m.SUT.videoControlChangeHandler("play")
   ' THEN
 
-  if m.SUT._eventQueue.count() < 2 then
+  if m.SUT._eventQueue.count() < 2
     return m.assertEqual(0, "Not enough events in eventQueue")
   endif
 

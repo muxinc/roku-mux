@@ -1,6 +1,6 @@
 'Channel entry point
 sub RunUserInterface(args)
-  if args.RunTests = "true" and type(TestRunner) = "Function" then
+  if args.RunTests = "true" and type(TestRunner) = "Function"
       Runner = TestRunner()
 
       Runner.SetFunctions([

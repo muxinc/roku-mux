@@ -109,9 +109,9 @@ End Sub
 '----------------------------------------------------------------
 Function BTS__CreateTest(name as String, func as Object, setup = invalid as Object, teardown = invalid as Object) as Object
     return {
-        Name: name 
-        Func: func
-        SetUp: setup
+        Name: name,
+        Func: func,
+        SetUp: setup,
         TearDown: teardown
     }
 End Function
@@ -171,7 +171,7 @@ End Function
 ' @return An error message.
 '----------------------------------------------------------------
 Function BTS__AssertTrue(expr as dynamic, msg = "Expression evaluates to false" as string) as string
-    if not TF_Utils__IsBoolean(expr) or not expr then
+    if not TF_Utils__IsBoolean(expr) or not expr
         return msg
     End if
     return ""
@@ -608,9 +608,9 @@ End Function
 '----------------------------------------------------------------
 Function BTS__EqValues(Value1 as dynamic, Value2 as dynamic, comparator = invalid as Object) as Boolean
 	if comparator = invalid
-		return m.baseComparator(value1, value2)
+		return m.baseComparator(Value1, Value2)
 	else
-		return comparator(value1, value2)
+		return comparator(Value1, Value2)
 	end if
 End Function
 
@@ -682,7 +682,7 @@ Function BTS__EqArray(Value1 as Object, Value2 as Object) as Boolean
         for i = 0 to l1 - 1
             v1 = Value1[i]
             v2 = Value2[i]
-            if not m.eqValues(v1, v2) then
+            if not m.eqValues(v1, v2)
                 return False
             end if
         end for
@@ -930,9 +930,9 @@ function Logger() as Object
     this = {}
 
     this.verbosityLevel = {
-        basic           : 0
-        normal          : 1
-        verboseFailed   : 2
+        basic           : 0,
+        normal          : 1,
+        verboseFailed   : 2,
         verbose         : 3
     }
 
@@ -1064,12 +1064,12 @@ end sub
 '----------------------------------------------------------------
 function Logger__CreateTotalStatistic() as Object
     statTotalItem = {
-        Suites      : []
-        Time        : 0
-        Total       : 0
-        Correct     : 0
-        Fail        : 0
-        Skipped     : 0
+        Suites      : [],
+        Time        : 0,
+        Total       : 0,
+        Correct     : 0,
+        Fail        : 0,
+        Skipped     : 0,
         Crash       : 0
     }
 
@@ -1089,13 +1089,13 @@ end function
 '----------------------------------------------------------------
 function Logger__CreateSuiteStatistic(name as String) as Object
     statSuiteItem = {
-        Name    : name
-        Tests   : []
-        Time    : 0
-        Total   : 0
-        Correct : 0
-        Fail    : 0
-        Skipped : 0
+        Name    : name,
+        Tests   : [],
+        Time    : 0,
+        Total   : 0,
+        Correct : 0,
+        Fail    : 0,
+        Skipped : 0,
         Crash   : 0
     }
 
@@ -1135,11 +1135,11 @@ end function
 '----------------------------------------------------------------
 function Logger__CreateTestStatistic(name as String, result = "Success" as String, time = 0 as Integer, errorCode = 0 as Integer, errorMessage = "" as String) as Object
     statTestItem = {
-        Name    : name
-        Result  : result
-        Time    : time
+        Name    : name,
+        Result  : result,
+        Time    : time,
         Error   : {
-            Code    : errorCode
+            Code    : errorCode,
             Message : errorMessage
         }
     }
@@ -1465,7 +1465,8 @@ function TestRunner__Run(statObj = m.logger.CreateTotalStatistic() as Object, te
         end if
 
         suiteStatObj = m.logger.CreateSuiteStatistic(testSuite.Name)
-
+        testStatObj = invalid
+        
         for each testCase in testCases
             if m.testCaseName = "" or (m.testCaseName <> "" and LCase(testCase.Name) = LCase(m.testCaseName))
                 if TF_Utils__IsFunction(testCase.SetUp)
@@ -1534,6 +1535,8 @@ function TestRunner__Run(statObj = m.logger.CreateTotalStatistic() as Object, te
         
         m.logger.PrintStatistic(totalStatObj)
     end if
+
+    return invalid
 end function
 
 '----------------------------------------------------------------
@@ -1689,9 +1692,9 @@ function TestRunner__GetTestFilesList(testsDirectory = m.testsDirectory as Strin
             itemPath = testsDirectory + "/" + item
             itemStat = fileSystem.Stat(itemPath)
 
-            if itemStat.type = "directory" then
+            if itemStat.type = "directory"
                 result.Append(m.getTestFilesList(itemPath, testFilePrefix))
-            else if testsFileRegex.IsMatch(item) then
+            else if testsFileRegex.IsMatch(item)
                 result.Push(itemPath)
             end if
         end for
@@ -1720,9 +1723,9 @@ function TestRunner__GetTestNodesList(testsDirectory = m.nodesTestDirectory as S
             itemPath = testsDirectory + "/" + item
             itemStat = fileSystem.Stat(itemPath)
 
-            if itemStat.type = "directory" then
+            if itemStat.type = "directory"
                 result.Append(m.getTestNodesList(itemPath))
-            else if testsFileRegex.IsMatch(item) then
+            else if testsFileRegex.IsMatch(item)
                 result.Push(item.replace(".xml", ""))
             end if
         end for

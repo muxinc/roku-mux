@@ -23,7 +23,7 @@ Sub VideoStateHandling_SetUp()
   m.fakeTimer = FakeTimer()
   m.fakeAppInfo = FakeAppInfo()
   m.fakeAppConfig = {
-    SEEK_THRESHOLD: 1500,
+    SEEK_THRESHOLD: 1500
   }
   m.fakeCustomerConfig = {
     property_key: "UNIT_TEST_PROPERTY_KEY"
@@ -59,7 +59,7 @@ Function TestCase__MuxAnalytics_VideoStateHandling() as String
   ' WHEN
   m.SUT.videoStateChangeHandler("buffering")
   ' END
-  if m.SUT._eventQueue.count() = 0 then
+  if m.SUT._eventQueue.count() = 0
     return m.assertEqual(0, "Event queue zero length")
   endif
   result = m.SUT._eventQueue[0].event
@@ -81,7 +81,7 @@ Function TestCase__MuxAnalytics_VideoStateHandling_Normal() as String
   m.SUT._Flag_lastReportedPosition = 2
   m.SUT.videoStateChangeHandler("playing")
   ' END
-  if m.SUT._eventQueue.count() = 0 then
+  if m.SUT._eventQueue.count() = 0
     return m.assertEqual(0, "Event queue zero length")
   endif
   result = []
@@ -108,7 +108,7 @@ Function TestCase__MuxAnalytics_VideoStateHandling_SeekingBackwards() as String
   m.SUT.video.position = 0
   m.SUT.videoStateChangeHandler("playing")
   ' END
-  if m.SUT._eventQueue.count() = 0 then
+  if m.SUT._eventQueue.count() = 0
     return m.assertEqual(0, "Event queue zero length")
   endif
   result = []
@@ -136,7 +136,7 @@ Function TestCase__MuxAnalytics_VideoStateHandling_SeekingForwardsIntoBuffering(
   m.SUT.videoStateChangeHandler("buffering")
   m.SUT.videoStateChangeHandler("playing")
   ' END
-  if m.SUT._eventQueue.count() = 0 then
+  if m.SUT._eventQueue.count() = 0
     return m.assertEqual(0, "Event queue zero length")
   endif
   result = []
@@ -163,7 +163,7 @@ Function TestCase__MuxAnalytics_VideoStateHandling_SeekingForwardsIntoPlayback()
   m.SUT.video.position = 10
   m.SUT.videoStateChangeHandler("playing")
   ' END
-  if m.SUT._eventQueue.count() = 0 then
+  if m.SUT._eventQueue.count() = 0
     return m.assertEqual(0, "Event queue zero length")
   endif
   result = []

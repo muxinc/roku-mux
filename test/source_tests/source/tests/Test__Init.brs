@@ -30,7 +30,7 @@ Sub MuxAnalyticsTestSuite__SetUp()
   m.fakeTimer = FakeTimer()
   m.fakeAppInfo = FakeAppInfo()
   m.fakeAppConfig = {
-    SEEK_THRESHOLD: 1500,
+    SEEK_THRESHOLD: 1500
   }
   m.fakeCustomerConfig = {
     property_key: "UNIT_TEST_PROPERTY_KEY"

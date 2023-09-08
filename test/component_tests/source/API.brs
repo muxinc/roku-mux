@@ -13,9 +13,9 @@
 'contains Api functions that returns static content and tend to modeling Api calls
 function InitApi()
     this = {
-        GetChannelContent   :   Api_GetChannelContent
-        GetCategoriesMenu   :   Api_GetCategoriesMenu
-        GetSubCategoriesMenu:   Api_GetSubCategoriesMenu
+        GetChannelContent   :   Api_GetChannelContent,
+        GetCategoriesMenu   :   Api_GetCategoriesMenu,
+        GetSubCategoriesMenu:   Api_GetSubCategoriesMenu,
         GetSeasonContent    :   Api_GetSeasonContent
     }
 
@@ -29,7 +29,7 @@ end function
 ' 
 ' If you will have a complex parsing process with a lot of external resourses,
 ' then it will be a good practice to move all logic to separate files.
-Function Api_GetChannelContent(event as Object) as Object
+sub Api_GetChannelContent(event as Object)
     url = CreateObject("roUrlTransfer")
     'External resource
     url.SetUrl("http://api.delvenetworks.com/rest/organizations/59021fabe3b645968e382ac726cd6c7b/channels/1cfd09ab38e54f48be8498e0249f5c83/media.rss")
@@ -38,7 +38,8 @@ Function Api_GetChannelContent(event as Object) as Object
     'Utility function for XML parsing.
     'Bassed on native Bright Script XML parser.
     responseXML = Utils_ParseXML(rsp)
-    If responseXML <> invalid then
+    responseArray = invalid
+    If responseXML <> invalid
          responseXML   = responseXML.GetChildElements()
          responseArray = responseXML.GetChildElements()
     End if     
@@ -76,39 +77,39 @@ Function Api_GetChannelContent(event as Object) as Object
     'to field m.request.result in BaseScene.brs:
     '      Code example: m.request.ObserveField("result", "OnContent")
     event.result = Utils_ContentList2Node(result)
-End Function
+End sub
 
 'returns content for main menu label list items
-function Api_GetCategoriesMenu(event as Object) as Object
-    if TF_Utils__IsValid(event) and TF_Utils__IsAssociativeArray(event.params) and TF_Utils__IsInteger(event.params.category_id) and TF_Utils__IsString(event.params.category_name) then 
+sub Api_GetCategoriesMenu(event as Object)
+    if TF_Utils__IsValid(event) and TF_Utils__IsAssociativeArray(event.params) and TF_Utils__IsInteger(event.params.category_id) and TF_Utils__IsString(event.params.category_name) 
         res = [{
-                id              : "cat1"
-                title           : "Category 1"
+                id              : "cat1",
+                title           : "Category 1",
                 'panel name that will be created when this item will be focused
                 nextPanelName   : "MarkupListStubPanel"
             },{
-                id              : "cat2"
-                title           : "Category 2"
+                id              : "cat2",
+                title           : "Category 2",
                 'panel name that will be created when this item will be focused
-                nextPanelName   : "MarkupListPanel"
+                nextPanelName   : "MarkupListPanel",
                 'tells if we need to include buttons after panel that will be created after this panel
                 includeButtons  : true
             },{
-                id              : "cat3"
-                title           : "Category 3"
+                id              : "cat3",
+                title           : "Category 3",
                 'panel name that will be created when this item will be focusedі
                 nextPanelName   : "MarkupListStubPanel"
             },{
-                id              : "cat4"
-                title           : "Category 4"
+                id              : "cat4",
+                title           : "Category 4",
                 'panel name that will be created when this item will be focused
-                nextPanelName   : "MarkupListStubPanel"
+                nextPanelName   : "MarkupListStubPanel",
                 'tells if seasons button should be available in buttons panel
                 isSeasonsAvailable : true
                 
             },{
-                id              : "search"
-                title           : "Search"
+                id              : "search",
+                title           : "Search",
                 'panel name that will be created when this item will be focused
                 nextPanelName   : "SearchPanel"
         }]
@@ -121,34 +122,34 @@ function Api_GetCategoriesMenu(event as Object) as Object
     'to field m.request.result in CategoriesMenu.brs:
     '      Code example: m.request.ObserveField("result", "OnContent")
     event.result = Utils_ContentList2Node(res)
-end function
+end sub
 
 'returns content for seasons label list items
-function Api_GetSeasonContent(event as Object) as Object
+sub Api_GetSeasonContent(event as Object)
     res = [
         {
-            id              : "season1"
-            title           : "Season 1"
+            id              : "season1",
+            title           : "Season 1",
             nextPanelName   : "MarkupListPanel"
         }
         {
-            id              : "season2"
-            title           : "Season 2"
+            id              : "season2",
+            title           : "Season 2",
             nextPanelName   : "MarkupListPanel"
         }
         {
-            id              : "season3"
-            title           : "Season 3"
+            id              : "season3",
+            title           : "Season 3",
             nextPanelName   : "MarkupListPanel"
         }
         {
-            id              : "season4"
-            title           : "Season 4"
+            id              : "season4",
+            title           : "Season 4",
             nextPanelName   : "MarkupListPanel"
         }
         {
-            id              : "season5"
-            title           : "Season 5"
+            id              : "season5",
+            title           : "Season 5",
             nextPanelName   : "MarkupListPanel"
         }
     ]
@@ -158,37 +159,37 @@ function Api_GetSeasonContent(event as Object) as Object
     'to field m.request.result in ListMarkupDetailsPanel.brs:
     '      Code example: m.request.ObserveField("result", "OnContent")
     event.result = Utils_ContentList2Node(res)
-end function
+end sub
 
 'returns content for subcategory menu label list items
-function Api_GetSubCategoriesMenu(event as Object) as Object
+sub Api_GetSubCategoriesMenu(event as Object)
     res = [
         {
-            id              : "sub1"
-            title           : "Subcategory 1"
+            id              : "sub1",
+            title           : "Subcategory 1",
             'panel name that will be created when this item will be focused
             nextPanelName   : "MarkupListPanel"
         }
         {
-            id              : "sub2"
-            title           : "Subcategory 2"
+            id              : "sub2",
+            title           : "Subcategory 2",
             nextPanelName   : "MarkupListPanel"
         }
         {
-            id              : "sub3"
-            title           : "Subcategory 3"
+            id              : "sub3",
+            title           : "Subcategory 3",
             'panel name that will be created when this item will be focused
             nextPanelName   : "MarkupListPanel"
         }
         {
-            id              : "sub4"
-            title           : "Subcategory 4"
+            id              : "sub4",
+            title           : "Subcategory 4",
             'panel name that will be created when this item will be focused
             nextPanelName   : "MarkupListPanel"
         }
         {
-            id              : "sub5"
-            title           : "Subcategory 5"
+            id              : "sub5",
+            title           : "Subcategory 5",
             'panel name that will be created when this item will be focused
             nextPanelName   : "MarkupListPanel"
         }
@@ -199,4 +200,4 @@ function Api_GetSubCategoriesMenu(event as Object) as Object
     'to field m.request.result in SubcategoriesMenu.brs:
     '      Code example: m.request.ObserveField("result", "OnContent")
     event.result = Utils_ContentList2Node(res)
-end function
+end sub

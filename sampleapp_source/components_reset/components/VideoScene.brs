@@ -1,4 +1,4 @@
-function init()
+sub init()
   m.top.backgroundURI = ""
   m.top.backgroundColor="0x111111FF"
   m.video = m.top.FindNode("MainVideo")
@@ -18,9 +18,9 @@ function init()
   m.list.observeField("itemSelected", "onItemSelected")
   m.mux.observeField("state", "muxTaskStateChangeHandler")
   m.list.setFocus(true)
-end function
+end sub
 
-function setupContent()
+sub setupContent()
   m.contentList = [
   {title: "Content Only, No Ads", selectionID: "none"},
   {title: "Full RAF Integration", selectionID: "standard"},
@@ -41,9 +41,9 @@ function setupContent()
 
   m.loading = m.top.FindNode("LoadingScreen")
   m.loadingText = m.loading.findNode("LoadingScreenText")
-end function
+end sub
 
-function onItemSelected()
+sub onItemSelected()
   menuItemTitle = m.contentList[m.list.itemSelected].title
   'showing facade
   m.list.visible = false
@@ -59,7 +59,7 @@ function onItemSelected()
   m.PlayerTask.video = m.video
   m.PlayerTask.facade = m.loading
   m.PlayerTask.control = "RUN"
-end function
+end sub
 
 sub playbackTaskChangeHandler(msg as Object)
   state = msg.GetData()
