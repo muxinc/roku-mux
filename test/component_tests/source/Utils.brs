@@ -56,7 +56,7 @@ Function Utils_CopyNodeContent(node as Object, nodeType = "ContentNode" as Strin
     'AA of node read-only fields for filtering'
     if fieldsFilterAA = invalid OR fieldsFilterAA.Count() = 0
         fieldsFilterAA = {
-            focusedChild    :   "focusedChild"
+            focusedChild    :   "focusedChild",
             change          :   "change"
         }
     end if
@@ -84,9 +84,9 @@ Function Utils_AAToContentNode(inputAA = {} as Object, nodeType = "ContentNode" 
     
       'AA of node read-only fields for filtering'
     fieldsFilterAA = {
-        focusedChild    :   "focusedChild"
-        change          :   "change"
-        metadata        :   "metadata"
+        focusedChild    :   "focusedChild",
+        change          :   "change",
+        metadata        :   "metadata",
         nextPanelName   :   "nextPanelName"
     }
 
@@ -201,13 +201,13 @@ end sub
 '*****************************************************************
 Function Utils_Join(array As Object, delim = "" As String) As String
     result = ""
-    If type(array) = "roArray" Then
+    If type(array) = "roArray"
         For i = 0 To array.Count() - 1
             item = array[i]
-            If NOT (LCase(type(item)) = "rostring" or LCase(type(item)) = "string") Then
+            If NOT (LCase(type(item)) = "rostring" or LCase(type(item)) = "string")
                 item = ""
             End If
-            If i > 0 Then
+            If i > 0
                 result = result + delim
             End If
             result = result + item
@@ -232,8 +232,8 @@ End Function
 ' @return As Dynamic - roXmlElement object or invalid
 '*****************************************************************
 Function Utils_ParseXML(str As String) As dynamic
-    if str = invalid return invalid
+    if str = invalid then return invalid
     xml = CreateObject("roXMLElement")
-    if not xml.Parse(str) return invalid
+    if not xml.Parse(str) then return invalid
     return xml
 End Function

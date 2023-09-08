@@ -1,8 +1,8 @@
-function init()
+sub init()
   m.MUX_SDK_VERSION = "1.4.1"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
-end function
+end sub
 
 function runBeaconLoop()
   m.messagePort = _createPort()
@@ -47,7 +47,7 @@ function runBeaconLoop()
     BASE_TIME_BETWEEN_BEACONS: m.BASE_TIME_BETWEEN_BEACONS,
     HEARTBEAT_INTERVAL: m.HEARTBEAT_INTERVAL,
     POSITION_TIMER_INTERVAL: m.POSITION_TIMER_INTERVAL,
-    SEEK_THRESHOLD: m.SEEK_THRESHOLD,
+    SEEK_THRESHOLD: m.SEEK_THRESHOLD
   }
   m.mxa.init(appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.pollTimer)
 
@@ -82,7 +82,7 @@ function runBeaconLoop()
   m.beaconTimer.ObserveField("fire", m.messagePort)
   m.heartbeatTimer.ObserveField("fire", m.messagePort)
   running = true
-  while(running)
+  while running
     msg = wait(50, m.messagePort)
     if m.top.exit = true
       running = false
@@ -149,7 +149,7 @@ function runBeaconLoop()
   m.top.UnobserveField("view")
 
   if m.top.exitType = "soft"
-    while (NOT m.mxa.isQueueEmpty())
+    while NOT m.mxa.isQueueEmpty()
       m.mxa.LIGHT_THE_BEACONS()
     end while
   end if
@@ -227,7 +227,7 @@ function muxAnalytics() as Object
   prototype.MUX_API_VERSION = "2.1" ' 2.1 because of GUIDs for player instance IDs
   prototype.PLAYER_IS_FULLSCREEN = "true"
 
-  prototype.init = function(appInfo as Object, systemConfig as Object, customerConfig as Object, hbt as Object, pp as Object)
+  prototype.init = sub(appInfo as Object, systemConfig as Object, customerConfig as Object, hbt as Object, pp as Object)
     m.httpPort = _createPort()
     m.connection = _createConnection(m.httpPort)
     m.httpRetries = 5
@@ -328,21 +328,21 @@ function muxAnalytics() as Object
     m._playerViewCount = 0
     m._sessionProperties = m._getSessionProperites()
     m._addEventToQueue(m._createEvent("playerready"))
-  end function
+  end sub
 
-  prototype.beaconIntervalHandler = function(beaconIntervalEvent)
+  prototype.beaconIntervalHandler = sub(beaconIntervalEvent)
     data = beaconIntervalEvent.getData()
     m.LIGHT_THE_BEACONS()
-  end function
+  end sub
 
-  prototype.heartbeatIntervalHandler = function(heartbeatIntervalEvent)
+  prototype.heartbeatIntervalHandler = sub(heartbeatIntervalEvent)
     data = heartbeatIntervalEvent.getData()
-    if (m._Flag_isPaused <> true)
+    if m._Flag_isPaused <> true
       m._addEventToQueue(m._createEvent("hb"))
     end if
-  end function
+  end sub
 
-  prototype.videoAddedHandler = function(video as Object)
+  prototype.videoAddedHandler = sub(video as Object)
     m._videoProperties = m._getVideoProperties(video)
     m._videoContentProperties = m._getVideoContentProperties(video.content)
     m.video = video
@@ -353,9 +353,9 @@ function muxAnalytics() as Object
         m._seekThreshold = maximimumPossiblePositionChange
       end if
     end if
-  end function
+  end sub
 
-  prototype.videoStateChangeHandler = function(videoState as String)
+  prototype.videoStateChangeHandler = sub(videoState as String)
     previouslyLastReportedPosition = m._Flag_lastReportedPosition
     positionNow = m.video.position
     m._Flag_lastReportedPosition = positionNow
@@ -458,25 +458,25 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message: errorMessage, player_error_context: errorContext}))
     end if
     m._Flag_lastVideoState = videoState
-  end function
+  end sub
 
-  prototype.drmLicenseStatusChangeHandler = function(licenseStatus as Object)
+  prototype.drmLicenseStatusChangeHandler = sub(licenseStatus as Object)
     if licenseStatus <> Invalid
       if licenseStatus.keysystem <> Invalid
         m.drmType = licenseStatus.keysystem
       end if
     end if
-  end function
+  end sub
 
-  prototype.videoViewChangeHandler = function(view as String)
+  prototype.videoViewChangeHandler = sub(view as String)
     if view = "end"
       m._endView(true)
     else if view = "start"
       m._startView(true)
     end if
-  end function
+  end sub
 
-  prototype._triggerPlayEvent = function()
+  prototype._triggerPlayEvent = sub()
     if m.video <> Invalid
       if m.video.content <> Invalid
         m._videoContentProperties = m._getVideoContentProperties(m.video.content)
@@ -484,32 +484,32 @@ function muxAnalytics() as Object
       m._videoProperties = m._getVideoProperties(m.video)
     end if
     m._addEventToQueue(m._createEvent("play"))
-  end function
+  end sub
 
-  prototype.videoControlChangeHandler = function(control as String)
+  prototype.videoControlChangeHandler = sub(control as String)
     if control = "play"
       m._startView()
       m._triggerPlayEvent()
     else if control = "stop"
       m._endView()
     end if
-  end function
+  end sub
 
-  prototype.videoContentChangeHandler = function(videoContent as Object)
+  prototype.videoContentChangeHandler = sub(videoContent as Object)
     if m._clientOperatedStartAndEnd <> true
       m._endView()
       m._startView()
     end if
-  end function
+  end sub
 
-  prototype.configChangeHandler = function(config as Object)
+  prototype.configChangeHandler = sub(config as Object)
     m._configProperties = config
     if config.property_key <> Invalid AND config.property_key <> ""
       m.beaconUrl = m._createBeaconUrl(config.property_key)
     end if
-  end function
+  end sub
 
-  prototype.videoErrorHandler = function(error as Object)
+  prototype.videoErrorHandler = sub(error as Object)
     errorCode = "0"
     errorMessage = "Unknown"
     errorContext = "No additional information"
@@ -528,9 +528,9 @@ function muxAnalytics() as Object
       end if 
     end if
     m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage, player_error_context:errorContext}))
-  end function
+  end sub
 
-  prototype.rafEventHandler = function(rafEvent) as Void
+  prototype.rafEventHandler = sub(rafEvent)
     data = rafEvent.getData()
     eventType = data.eventType
     m._Flag_isPaused = (eventType = "Pause")
@@ -597,9 +597,9 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adskipped"))
       m._addEventToQueue(m._createEvent("adended"))
     end if
-  end function
+  end sub
 
-  prototype.pollingIntervalHandler = function(pollingIntervalEvent) as Void
+  prototype.pollingIntervalHandler = sub(pollingIntervalEvent)
     if m.video = Invalid then return
 
     m._setBufferingMetrics()
@@ -607,26 +607,26 @@ function muxAnalytics() as Object
 
     m._updateTotalWatchTime()
     m._updateLastReportedPositionFlag()
-  end function
+  end sub
 
   ' ' //////////////////////////////////////////////////////////////
   ' ' INTERNAL METHODS
   ' ' //////////////////////////////////////////////////////////////
 
-  prototype._updateLastReportedPositionFlag = function() as Void
+  prototype._updateLastReportedPositionFlag = sub()
     if m.video.position = m._Flag_lastReportedPosition then return
     m._Flag_lastReportedPosition = m.video.position
-  end function
+  end sub
 
-  prototype._updateContentPlaybackTime = function() as Void
+  prototype._updateContentPlaybackTime = sub()
     if m.video.position <= m._Flag_lastReportedPosition then return
     if m.video.state <> "playing" then return
     if m._contentPlaybackTime = Invalid then return
 
     m._contentPlaybackTime = m._contentPlaybackTime + ((m.video.position - m._Flag_lastReportedPosition) * 1000)
-  end function
+  end sub
 
-  prototype._updateTotalWatchTime = function() as Void
+  prototype._updateTotalWatchTime = sub()
     if m.video.state = "paused" then return
     if m._viewWatchTime = Invalid then return
     if m._viewStartTimestamp = Invalid then return
@@ -635,9 +635,9 @@ function muxAnalytics() as Object
     if m._contentPlaybackTime = Invalid then return
 
     m._viewWatchTime = m._viewTimeToFirstFrame + m._viewRebufferDuration + m._contentPlaybackTime
-  end function
+  end sub
 
-  prototype._setBufferingMetrics = function() as Void
+  prototype._setBufferingMetrics = sub()
     if m.video.state <> "buffering" then return
     if m._Flag_atLeastOnePlayEventForContent <> true then return
     if m._viewRebufferDuration = Invalid then return
@@ -646,9 +646,9 @@ function muxAnalytics() as Object
     if m._viewWatchTime <> Invalid AND m._viewWatchTime > 0
       m._viewRebufferPercentage = m._viewRebufferDuration / m._viewWatchTime
     end if
-  end function
+  end sub
 
-  prototype._addEventToQueue = function(_event as Object) as Object
+  prototype._addEventToQueue = sub(_event as Object)
     m._logEvent(_event)
     ' If the hearbeat is running restart it.
     if m.heartbeatTimer.control = "start"
@@ -656,13 +656,13 @@ function muxAnalytics() as Object
       m.heartbeatTimer.control = "start"
     end if
     m._eventQueue.push(_event)
-  end function
+  end sub
 
   prototype.isQueueEmpty = function() as Boolean
     return m._eventQueue.count() = 0
   end function
 
-  prototype.LIGHT_THE_BEACONS = function() as Object
+  prototype.LIGHT_THE_BEACONS = sub()
     queueSize = m._eventQueue.count()
     if queueSize >= m.MAX_BEACON_SIZE
       beacon = []
@@ -675,9 +675,9 @@ function muxAnalytics() as Object
       m._eventQueue.Clear()
     end if
     m._makeRequest(beacon)
-  end function
+  end sub
 
-  prototype._makeRequest = function(beacon as Object)
+  prototype._makeRequest = sub(beacon as Object)
     m._beaconCount++
     if m.dryRun = true
       m._logBeacon(beacon, "DRY-BEACON")
@@ -712,14 +712,14 @@ function muxAnalytics() as Object
         end while
       end if
     end if
-  end function
+  end sub
 
-  prototype._startView = function(setByClient = false as Boolean) as Void
+  prototype._startView = sub(setByClient = false as Boolean)
     if setByClient = true
       m._clientOperatedStartAndEnd = true
     end if
-    if (m._clientOperatedStartAndEnd = true AND setByClient = false) then return
-    if (m._inView = false)
+    if m._clientOperatedStartAndEnd = true AND setByClient = false then return
+    if m._inView = false
       m.heartbeatTimer.control = "start"
       m.pollTimer.control = "start"
       m._viewSequence = 0
@@ -753,12 +753,12 @@ function muxAnalytics() as Object
 
       m._inView = true
     end if
-  end function
+  end sub
 
-  prototype._endView = function(setByClient = false as Boolean) as Void
-    if (m._clientOperatedStartAndEnd = true AND setByClient = false) then return
-    if (m._clientOperatedStartAndEnd = false AND setByClient = true) then return
-    if (m._inView = true)
+  prototype._endView = sub(setByClient = false as Boolean)
+    if m._clientOperatedStartAndEnd = true AND setByClient = false then return
+    if m._clientOperatedStartAndEnd = false AND setByClient = true then return
+    if m._inView = true
       m.heartbeatTimer.control = "stop"
       m.pollTimer.control = "stop"
       m._addEventToQueue(m._createEvent("viewend"))
@@ -782,7 +782,7 @@ function muxAnalytics() as Object
       m.drmType = Invalid
       m.droppedFrames = Invalid
     end if
-  end function
+  end sub
 
   prototype._createEvent = function(eventType as String, eventProperties = {} as Object) as Object
     newEvent = {}
@@ -856,7 +856,7 @@ function muxAnalytics() as Object
     props.viewer_device_manufacturer = deviceInfo.GetModelDetails()["VendorName"]
     ' If GetModel() is invalid, try the specific model number
     seriesModel = deviceInfo.GetModel()
-    if seriesModel = invalid then
+    if seriesModel = invalid
       seriesModel = deviceInfo.GetModelDetails()["ModelNumber"]
     end if
     props.viewer_device_model = seriesModel
@@ -970,8 +970,8 @@ function muxAnalytics() as Object
               if adData.ad.streams[0].url <> Invalid
                 adUrl = adData.ad.streams[0].url
                 if adUrl <> Invalid AND adUrl <> ""
-                  props.view_preroll_ad_asset_hostname = m._getHostname(adurl)
-                  props.view_preroll_ad_asset_domain = m._getDomain(adurl)
+                  props.view_preroll_ad_asset_hostname = m._getHostname(adUrl)
+                  props.view_preroll_ad_asset_domain = m._getDomain(adUrl)
                 end if
               end if
             end if
@@ -1072,7 +1072,7 @@ function muxAnalytics() as Object
     if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
       if type(m._configProperties.player_init_time) = "roString"
         playerInitTime = ParseJSON(m._configProperties.player_init_time)
-        if (playerInitTime <> invalid)
+        if playerInitTime <> invalid
           if (LCase(Type(playerInitTime)) = "rointeger") and (playerInitTime > 0)
             props.player_startup_time = Int(m._startTimestamp - playerInitTime)
             if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
@@ -1186,11 +1186,11 @@ function muxAnalytics() as Object
     return "unknown"
   end function
 
-  prototype._setCookieData = function(data as Object) as Void
+  prototype._setCookieData = sub(data as Object)
     cookie = _createRegistry()
     cookie.Write("UserRegistrationToken", data)
     cookie.Flush()
-  end function
+  end sub
 
   prototype._getCookieData = function() as dynamic
     cookie = _createRegistry()
@@ -1306,7 +1306,6 @@ function muxAnalytics() as Object
   end function
 
   prototype._generateViewID = function () as String
-    viewRegex = CreateObject("roRegex", "x", "i")
     pattern = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
     randomiseX = function() as String
       return StrI(Rnd(0) * 16, 16)
@@ -1333,7 +1332,7 @@ function muxAnalytics() as Object
     return viewId
   end function
 
-  prototype._logBeacon = function(eventArray as Object, title = "BEACON" as String) as Void
+  prototype._logBeacon = sub(eventArray as Object, title = "BEACON" as String)
     if m.debugBeacons <> "full" AND m.debugBeacons <> "partial" then return
     fullEvent = (m.debugBeacons = "full")
     tot = m.loggingPrefix + title + " (" + eventArray.count().toStr() + ") [ "
@@ -1353,9 +1352,9 @@ function muxAnalytics() as Object
     end for
     tot = tot + " ]"
     Print tot
-  end function
+  end sub
 
-  prototype._logEvent = function(event = {} as Object, subtype = "" as String, title = "EVENT" as String) as Void
+  prototype._logEvent = sub(event = {} as Object, subtype = "" as String, title = "EVENT" as String)
     if m.debugEvents = "none" then return
     tot = m.loggingPrefix + title + " " + event.event
     if m.debugEvents = "full"
@@ -1369,7 +1368,7 @@ function muxAnalytics() as Object
       tot = tot + "} "
     end if
     Print tot
-  end function
+  end sub
 
   prototype._getDeviceInfo = function() as Object
     return _createDeviceInfo()

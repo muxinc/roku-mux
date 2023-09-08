@@ -1,7 +1,7 @@
 ' ********** Copyright 2017 Roku Corp.  All Rights Reserved. **********
 
 'Roku Advertising Framework for Video Ads Main Entry Point
-function main()
+sub main()
   date = CreateObject("roDateTime")
   timestamp = FormatJSON(0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds())
   screen = createObject("roSGScreen")
@@ -16,4 +16,4 @@ function main()
       if msg.isScreenClosed() then exit while
     end if
   end while
-end function
+end sub

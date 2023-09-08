@@ -1,11 +1,11 @@
 ' ********** Copyrig 2017 Roku Corp.  All Rights Reserved. **********
 Library  "Roku_Ads.brs"
-function init()
+sub init()
   m.top.functionName = "playContent"
   m.top.id = "PlayerTask"
-end function
+end sub
 
-function playContent()
+sub playContent()
   selectionId = m.top.selectionId
 
   contentNode = CreateObject("roSGNode", "ContentNode")
@@ -13,7 +13,7 @@ function playContent()
 
   contentInfo = {
     contentId: "TED Talks", 'String value representing content to allow potential ad targeting.
-    length: "1200", 'Integer value representing total length of content (in seconds).
+    length: "1200" 'Integer value representing total length of content (in seconds).
   }
   mux = GetGlobalAA().global.findNode("mux")
   mux.setField("view", "start")
@@ -63,38 +63,38 @@ function playContent()
     ErrorBeforePlayback(contentInfo)
   else if selectionId = "playbackerror"
     contentNode.URL= "http://dash.akamaized.net/dash264/TestCasesIOP33/MPDChaining/fallback_chain/1/manifest_fallback_MPDChaining.mpd"
-    contentnode.StreamFormat = "dash"
+    contentNode.StreamFormat = "dash"
     contentInfo.contentId = "Elephants Dream"
     contentInfo.length = 9000
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
   else if selectionId = "hlsnoads"
-    contentnode.URL = "https://content.jwplatform.com/manifests/yp34SRmf.m3u8"
-    contentnode.StreamFormat = "hls"
+    contentNode.URL = "https://content.jwplatform.com/manifests/yp34SRmf.m3u8"
+    contentNode.StreamFormat = "hls"
     contentInfo.length = 25
     contentInfo.contentId = "HLS Content"
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
   else if selectionId = "dashnoads"
-    contentnode.URL = "http://rdmedia.bbc.co.uk/dash/ondemand/bbb/2/client_manifest-common_init.mpd"
-    contentnode.StreamFormat = "dash"
+    contentNode.URL = "http://rdmedia.bbc.co.uk/dash/ondemand/bbb/2/client_manifest-common_init.mpd"
+    contentNode.StreamFormat = "dash"
     contentNode.length = 572
     contentInfo.length = 568
     contentInfo.contentId = "BIG BUCK BUNNY"
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
   else if selectionId = "live"
-    contentnode.URL = "http://dash.akamaized.net/dash264/TestCasesUHD/2b/2/MultiRate.mpd"
-    contentnode.StreamFormat = "dash"
-    contentnode.LIVE = true
+    contentNode.URL = "http://dash.akamaized.net/dash264/TestCasesUHD/2b/2/MultiRate.mpd"
+    contentNode.StreamFormat = "dash"
+    contentNode.LIVE = true
     contentInfo.length = 596
     contentInfo.contentId = "BIG BUCK BUNNY"
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
   end if
-end function
+end sub
 
-function PlayContentOnlyNoAds(contentInfo as Object)
+sub PlayContentOnlyNoAds(contentInfo as Object)
   m.top.facade.visible = false
   video = m.top.video
   view = video.getParent()
@@ -110,15 +110,15 @@ function PlayContentOnlyNoAds(contentInfo as Object)
     msg = wait(0, port)
     msgType = type(msg)
     if msgType = "roSGNodeEvent"
-      if msg.GetField() = "position" then
+      if msg.GetField() = "position"
         curPos = msg.getData()
-      else if msg.GetField() = "state" then
+      else if msg.GetField() = "state"
         curState = msg.getData()
-        if curState = "stopped" then
-        else if curState = "buffering" then
-        else if curState = "playing" then
-        else if curState = "paused" then
-        else if curState = "finished" then
+        if curState = "stopped"
+        else if curState = "buffering"
+        else if curState = "playing"
+        else if curState = "paused"
+        else if curState = "finished"
           video.control = "stop"
           mux = GetGlobalAA().global.findNode("mux")
           mux.setField("view", "end")
@@ -126,9 +126,9 @@ function PlayContentOnlyNoAds(contentInfo as Object)
       end if
     end if
   end while
-end function
+end sub
 
-function PlayContentWithFullRAFIntegration(contentInfo as Object)
+sub PlayContentWithFullRAFIntegration(contentInfo as Object)
   adIface = Roku_Ads() 'RAF initialize
   setLog = adIface.SetTrackingCallback(adTrackingCallback, adIface)
   adIface.enableAdMeasurements(true)
@@ -138,9 +138,9 @@ function PlayContentWithFullRAFIntegration(contentInfo as Object)
   adIface.setAdUrl(contentInfo.adUrl)
   adPods = adIface.getAds()
   playVideoWithAds(adPods, adIface)
-end function
+end sub
 
-function PlayContentWithCustomAds(contentInfo as Object)
+sub PlayContentWithCustomAds(contentInfo as Object)
   raf = Roku_Ads()
   raf.setAdPrefs(false)
   setLog = raf.SetTrackingCallback(adTrackingCallback, raf)
@@ -154,14 +154,14 @@ function PlayContentWithCustomAds(contentInfo as Object)
   end if
   ' process preroll ads
   playVideoWithAds(adPods, raf)
-end function
+end sub
 
-function ErrorBeforePlayback(contentInfo as Object)
+sub ErrorBeforePlayback(contentInfo as Object)
   mux = GetGlobalAA().global.findNode("mux")
   mux.error = {errorCode: 1, errorMessage: "Video Metadata Error", errorContext: "Video Error Context"}
-end function
+end sub
 
-function PlayStitchedContentWithAds(contentInfo as Object)
+sub PlayStitchedContentWithAds(contentInfo as Object)
   adIface = Roku_Ads()
   ' adIface.enableAdMeasurements(true)
   setLog = adIface.SetTrackingCallback(adTrackingCallback, adIface)
@@ -210,19 +210,19 @@ function PlayStitchedContentWithAds(contentInfo as Object)
       end if
     end if
   end while
-end function
+end sub
 
-function adTrackingCallback(obj = Invalid as Dynamic, eventType = Invalid as Dynamic, ctx = Invalid as Dynamic)
+sub adTrackingCallback(obj = Invalid as Dynamic, eventType = Invalid as Dynamic, ctx = Invalid as Dynamic)
   mux = GetGlobalAA().global.findNode("mux")
   mux.setField("rafEvent", {obj:obj, eventType:eventType, ctx:ctx})
-end function
+end sub
 
-function playVideoWithAds(adPods as object, adIface as object) as void
+sub playVideoWithAds(adPods as object, adIface as object) as void
   m.top.facade.visible = false
   keepPlaying = true
   video = m.top.video
   view = video.getParent()
-  if adPods <> invalid and adPods.count() > 0 then
+  if adPods <> invalid and adPods.count() > 0
     keepPlaying = adIface.showAds(adPods, invalid, view)
   end if
   if not keepPlaying then return
@@ -240,34 +240,34 @@ function playVideoWithAds(adPods as object, adIface as object) as void
     msg = wait(0, port)
     msgType = type(msg)
     if msgType = "roSGNodeEvent"
-      if msg.GetField() = "position" then
+      if msg.GetField() = "position"
         curPos = msg.getData()
         adPods = adIface.getAds(msg)
         if adPods <> invalid and adPods.count() > 0
           video.control = "stop"
         end if
-      else if msg.GetField() = "state" then
+      else if msg.GetField() = "state"
         curState = msg.getData()
-        if curState = "stopped" then
-          if adPods = invalid or adPods.count() = 0 then
+        if curState = "stopped"
+          if adPods = invalid or adPods.count() = 0
             exit while
           end if
           keepPlaying = adIface.showAds(adPods, invalid, view)
           adPods = invalid
-          if isPlayingPostroll then
+          if isPlayingPostroll
             exit while
           end if
-          if keepPlaying then
+          if keepPlaying
             video.visible = true
             video.seek = curPos
             video.control = "play"
             video.setFocus(true) 'important: take the focus back (RAF took it above)
           end if
-        else if curState = "buffering" then
-        else if curState = "playing" then
-        else if curState = "finished" then
+        else if curState = "buffering"
+        else if curState = "playing"
+        else if curState = "finished"
           adPods = adIface.getAds(msg)
-          if adPods = invalid or adPods.count() = 0 then
+          if adPods = invalid or adPods.count() = 0
             exit while
           end if
           isPlayingPostroll = true
@@ -276,7 +276,7 @@ function playVideoWithAds(adPods as object, adIface as object) as void
       end if
     end if
   end while
-end function
+end sub
 
 function GetNonStandardAds(filePath as String) as Object
   feed = ReadAsciiFile(filePath)

@@ -48,12 +48,12 @@
             event = m.global.requestQueue.getchild(0)
             m.global.requestQueue.removeChildIndex(0)                
             
-            if event <> invalid AND event.name <> invalid then
+            if event <> invalid AND event.name <> invalid
                 'this parameters is only used in condition of API GetCategoriesMenu function
                 'and in TestCase__OutputResult_GetCategoriesMenu
                 'to create usage example of test framework more complicated
                 event.params = {
-                    category_id : 87
+                    category_id : 87,
                     category_name : "SomeName"}
                 m.Api[event.name](event)
             end if
@@ -68,7 +68,7 @@
 
     end while
     
-    if m.screen <> invalid then
+    if m.screen <> invalid
         m.screen.Close()
         m.screen = invalid
     end if

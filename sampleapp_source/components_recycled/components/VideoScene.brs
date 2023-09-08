@@ -1,4 +1,4 @@
-function init()
+sub init()
   m.top.backgroundURI = ""
   m.top.backgroundColor="0x111111FF"
   m.facade = m.top.FindNode("adFacade")
@@ -33,18 +33,18 @@ function init()
   m.list.content = listContent
   m.list.observeField("itemSelected", "onItemSelected")
   m.list.setFocus(true)
-end function
+end sub
 
 sub videoStateChanged(msg as Object)
 end sub
 
-function onItemSelected()
+sub onItemSelected()
   selectionId = m.contentList[m.list.itemSelected].selectionID
   setContent(selectionId)
   m.video.control = "play"
-end function
+end sub
 
-function setContent(selectionId as String)
+sub setContent(selectionId as String)
   contentNode = CreateObject("roSGNode", "VideoContentNode")
   if selectionId = "1"
     contentNode.URL= "http://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4"
@@ -94,7 +94,7 @@ function setContent(selectionId as String)
     m.mux.setField("config", m.muxConfig)
   end if
   m.video.content = contentNode
-end function
+end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
   if press

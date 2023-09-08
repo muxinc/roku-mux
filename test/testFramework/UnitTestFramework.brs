@@ -116,15 +116,15 @@ end sub
 ' ----------------------------------------------------------------
 function BTS__CreateTest(name as String, func as Object, setup = invalid as Object, teardown = invalid as Object, arg = invalid as Dynamic, hasArgs = false as Boolean, skip = false as Boolean) as Object
     return {
-        Name: name
-        Func: func
-        SetUp: setup
-        TearDown: teardown
+        Name: name,
+        Func: func,
+        SetUp: setup,
+        TearDown: teardown,
 	    
-	    perfData: {}
+	    perfData: {},
 
-        hasArguments: hasArgs
-        arg: arg
+        hasArguments: hasArgs,
+        arg: arg,
         
         skip: skip
     }
@@ -140,7 +140,7 @@ Sub BTS__StorePerformanceData(name as String, value as Object)
     timestamp = StrI(CreateObject("roDateTime").AsSeconds())
     m.testInstance.perfData.Append({
         name: {
-            "value" : value
+            "value" : value,
             "timestamp": timestamp
         }
     })
@@ -203,7 +203,7 @@ end function
 ' @return An error message.
 ' ----------------------------------------------------------------
 function BTS__AssertTrue(expr as Dynamic, msg = "Expression evaluates to false" as String) as String
-    if not TF_Utils__IsBoolean(expr) or not expr then
+    if not TF_Utils__IsBoolean(expr) or not expr
         return msg
     end if
     return ""
@@ -926,9 +926,9 @@ function Logger() as Object
     this = {}
 
     this.verbosityLevel = {
-        basic: 0
-        normal: 1
-        verboseFailed: 2
+        basic: 0,
+        normal: 1,
+        verboseFailed: 2,
         verbose: 3
     }
 
@@ -1106,12 +1106,12 @@ end sub
 ' ----------------------------------------------------------------
 function Logger__CreateTotalStatistic() as Object
     statTotalItem = {
-        Suites: []
-        Time: 0
-        Total: 0
-        Correct: 0
-        Fail: 0
-        Skipped: 0
+        Suites: [],
+        Time: 0,
+        Total: 0,
+        Correct: 0,
+        Fail: 0,
+        Skipped: 0,
         Crash: 0
     }
 
@@ -1131,13 +1131,13 @@ end function
 ' ----------------------------------------------------------------
 function Logger__CreateSuiteStatistic(name as String) as Object
     statSuiteItem = {
-        Name: name
-        Tests: []
-        Time: 0
-        Total: 0
-        Correct: 0
-        Fail: 0
-        Skipped: 0
+        Name: name,
+        Tests: [],
+        Time: 0,
+        Total: 0,
+        Correct: 0,
+        Fail: 0,
+        Skipped: 0,
         Crash: 0
     }
 
@@ -1177,12 +1177,12 @@ end function
 ' ----------------------------------------------------------------
 function Logger__CreateTestStatistic(name as String, result = "Success" as String, time = 0 as Integer, errorCode = 0 as Integer, errorMessage = "" as String, isInit = false as Boolean) as Object
     statTestItem = {
-        Name: name
-        Result: result
-        Time: time
-	PerfData: {}
+        Name: name,
+        Result: result,
+        Time: time,
+	    PerfData: {},
         Error: {
-            Code: errorCode
+            Code: errorCode,
             Message: errorMessage
         }
     }
@@ -1438,7 +1438,7 @@ sub Logger__PrintJUnitFormat(statObj as Object)
             test.AddAttribute("name", testAA.name)
             test.AddAttribute("time", testAA.time.toStr())
 
-            if LCase(testAA.result) = "skipped" then
+            if LCase(testAA.result) = "skipped"
                 test.AddElement("skipped")
                 skippedNum++
             else if LCase(testAA.Result) <> "success"
@@ -1547,7 +1547,7 @@ function TestRunner__Run(statObj = m.Logger.CreateTotalStatistic() as Object, te
 
         if TF_Utils__IsFunction(testSuite.SetUp)
             m.Logger.PrintSuiteSetUp(testSuite.Name)
-            if IS_NEW_APPROACH then
+            if IS_NEW_APPROACH
                 env.functionToCall = testSuite.SetUp
                 env.functionToCall()
             else
@@ -1567,7 +1567,7 @@ function TestRunner__Run(statObj = m.Logger.CreateTotalStatistic() as Object, te
                 
                 if TF_Utils__IsFunction(testCase.SetUp) and not skipTest
                     m.Logger.PrintTestSetUp(testCase.Name)
-                    if IS_NEW_APPROACH then
+                    if IS_NEW_APPROACH
                         env.functionToCall = testCase.SetUp
                         env.functionToCall()
                     else
@@ -1585,11 +1585,11 @@ function TestRunner__Run(statObj = m.Logger.CreateTotalStatistic() as Object, te
                     testSuite.testCase = testCase.Func
     
                     runResult = ""
-                    if IS_NEW_APPROACH then
+                    if IS_NEW_APPROACH
                         env.functionToCall = testCase.Func
                         
                         if GetInterface(env.functionToCall, "ifFunction") <> invalid
-                            if testCase.hasArguments then
+                            if testCase.hasArguments
                                 env.functionToCall(testCase.arg)
                             else
                                 env.functionToCall()
@@ -1604,7 +1604,7 @@ function TestRunner__Run(statObj = m.Logger.CreateTotalStatistic() as Object, te
 
                 if TF_Utils__IsFunction(testCase.TearDown) and not skipTest
                     m.Logger.PrintTestTearDown(testCase.Name)
-                    if IS_NEW_APPROACH then
+                    if IS_NEW_APPROACH
                         env.functionToCall = testCase.TearDown
                         env.functionToCall()
                     else
@@ -1612,7 +1612,7 @@ function TestRunner__Run(statObj = m.Logger.CreateTotalStatistic() as Object, te
                     end if
                 end if
                 
-                if IS_NEW_APPROACH then
+                if IS_NEW_APPROACH
                     if globalErrorsList.count() > 0
                         for each error in globalErrorsList
                             runResult += error + Chr(10) + String(10, "-") + Chr(10)
@@ -1657,16 +1657,16 @@ function TestRunner__Run(statObj = m.Logger.CreateTotalStatistic() as Object, te
 
     gthis = GetGlobalAA()
     msg = ""
-    if gthis.notFoundFunctionPointerList <> invalid then
+    if gthis.notFoundFunctionPointerList <> invalid
         msg = Chr(10) + String(40, "---") + Chr(10)
         if m.isNodeMode
             fileNamesString = ""
 
             for each testSuiteObject in testSuiteNamesList
-                if GetInterface(testSuiteObject, "ifString") <> invalid then
+                if GetInterface(testSuiteObject, "ifString") <> invalid
                     fileNamesString += testSuiteObject + ".brs, "
-                else if GetInterface(testSuiteObject, "ifAssociativeArray") <> invalid then
-                    if testSuiteObject.filePath <> invalid then
+                else if GetInterface(testSuiteObject, "ifAssociativeArray") <> invalid
+                    if testSuiteObject.filePath <> invalid
                         fileNamesString += testSuiteObject.filePath + ", "
                     end if
                 end if
@@ -1684,14 +1684,14 @@ function TestRunner__Run(statObj = m.Logger.CreateTotalStatistic() as Object, te
 
         tmpMap = {}
         for each functionName in gthis.notFoundFunctionPointerList
-            if tmpMap[functionName] = invalid then
+            if tmpMap[functionName] = invalid
                 tmpMap[functionName] = ""
                 msg += Chr(10) + "    " + functionName
             end if
         end for
 
         msg += Chr(10) + "])"
-        if m.isNodeMode then
+        if m.isNodeMode
             msg += Chr(10) + "end sub"
         else
             msg += Chr(10) + "Runner.Run()"
@@ -1699,7 +1699,7 @@ function TestRunner__Run(statObj = m.Logger.CreateTotalStatistic() as Object, te
     end if
 
     if m.isNodeMode
-        if msg.Len() > 0 then
+        if msg.Len() > 0
             if totalStatObj.notFoundFunctionsMessage = invalid then totalStatObj.notFoundFunctionsMessage = ""
             totalStatObj.notFoundFunctionsMessage += msg
         end if
@@ -1721,7 +1721,7 @@ function TestRunner__Run(statObj = m.Logger.CreateTotalStatistic() as Object, te
                 else
                     params = [m, totalStatObj, testSuiteNamesList, m.GetIncludeFilter(), m.GetExcludeFilter()]
                     tmp = testNode.callFunc("TestFramework__RunNodeTests", params)
-                    if tmp <> invalid then
+                    if tmp <> invalid
                         totalStatObj = tmp
                     end if
                 end if
@@ -1731,18 +1731,20 @@ function TestRunner__Run(statObj = m.Logger.CreateTotalStatistic() as Object, te
         m.Logger.PrintStatistic(totalStatObj)
     end if
 
-    if msg.Len() > 0 or totalStatObj.notFoundFunctionsMessage <> invalid then
+    if msg.Len() > 0 or totalStatObj.notFoundFunctionsMessage <> invalid
         title = ""
         title += Chr(10) + "NOTE: If some your tests haven't been executed this might be due to outdated list of functions"
         title += Chr(10) + "To resolve this issue please execute" + Chr(10) + Chr(10)
 
         title += msg
 
-        if totalStatObj.notFoundFunctionsMessage <> invalid then
+        if totalStatObj.notFoundFunctionsMessage <> invalid
             title += totalStatObj.notFoundFunctionsMessage
         end if
         ? title
-    end if   
+    end if
+
+    return invalid
 end function
 
 ' ----------------------------------------------------------------
@@ -1799,9 +1801,9 @@ function TestRunner__GetTestSuitesList(testSuiteNamesList = [] as Object) as Obj
 
     if testSuiteNamesList.count() > 0
         for each value in testSuiteNamesList
-            if TF_Utils__IsString(value) then
+            if TF_Utils__IsString(value)
                 tmpTestSuiteFunction = TestFramework__getFunctionPointer(value)
-                if tmpTestSuiteFunction <> invalid then
+                if tmpTestSuiteFunction <> invalid
                     testSuite = tmpTestSuiteFunction()
 
                     if TF_Utils__IsAssociativeArray(testSuite)
@@ -1810,13 +1812,13 @@ function TestRunner__GetTestSuitesList(testSuiteNamesList = [] as Object) as Obj
                 end if
                 ' also we can get AA that will give source code and filePath
                 ' Please be aware this is executed in render thread
-            else if GetInterface(value, "ifAssociativeArray") <> invalid then
+            else if GetInterface(value, "ifAssociativeArray") <> invalid
                 ' try to use new approach
                 testSuite = ScanFileForNewTests(value.code, value.filePath)
-                if testSuite <> invalid then
+                if testSuite <> invalid
                     result.push(testSuite)
                 end if
-            else if GetInterface(value, "ifFunction") <> invalid then
+            else if GetInterface(value, "ifFunction") <> invalid
                  result.Push(value)
             end if
         end for
@@ -1837,7 +1839,7 @@ function TestRunner__GetTestSuitesList(testSuiteNamesList = [] as Object) as Obj
                         functionName = testSuiteRegex.Match(line).Peek()
 
                         tmpTestSuiteFunction = TestFramework__getFunctionPointer(functionName)
-                        if tmpTestSuiteFunction <> invalid then
+                        if tmpTestSuiteFunction <> invalid
                             testSuite = tmpTestSuiteFunction()
 
                             if TF_Utils__IsAssociativeArray(testSuite)
@@ -1853,9 +1855,9 @@ function TestRunner__GetTestSuitesList(testSuiteNamesList = [] as Object) as Obj
                         end if
                     end if
                 end for
-                if not foundTestSuite then
+                if not foundTestSuite
                     testSuite = ScanFileForNewTests(code, filePath)
-                    if testSuite <> invalid then
+                    if testSuite <> invalid
                         result.push(testSuite)
                     end if
                 end if
@@ -1875,30 +1877,30 @@ function ScanFileForNewTests(souceCode, filePath)
     anyArgsFunctionRegex = CreateObject("roRegex", "^(function|sub)\s([a-z0-9A-Z_]*)\(", "i")
 
     processors = {
-        testSuite: testSuite
-        filePath: filePath
-        currentLine: ""
-        annotations: {}
+        testSuite: testSuite,
+        filePath: filePath,
+        currentLine: "",
+        annotations: {},
 
-        functionName: ""
+        functionName: "",
 
-        tests: []
+        tests: [],
 
-        beforeEachFunc: invalid
-        beforeAllFunc: invalid
+        beforeEachFunc: invalid,
+        beforeAllFunc: invalid,
 
-        AfterEachFunc: invalid
-        AfterAllFunc: invalid
+        AfterEachFunc: invalid,
+        AfterAllFunc: invalid,
 
-        isParameterizedTest: false
-        MethodForArguments: ""
-        executedParametrizedAdding: false
+        isParameterizedTest: false,
+        MethodForArguments: "",
+        executedParametrizedAdding: false,
 
         test: sub()
             skipTest = m.doSkipTest(m.functionName)
             funcPointer = m.getFunctionPointer(m.functionName)
             m.tests.push({ name: m.functionName, pointer: funcPointer, skip: skipTest })
-        end sub
+        end sub,
 
         repeatedtest: sub()
             allowedAnnotationsRegex = CreateObject("roRegex", "^'\s*@(repeatedtest)\((\d*)\)", "i")
@@ -1906,7 +1908,7 @@ function ScanFileForNewTests(souceCode, filePath)
             if allowedAnnotationsRegex.IsMatch(annotationLine)
                 groups = allowedAnnotationsRegex.Match(annotationLine)
                 numberOfLoops = groups[2]
-                if numberOfLoops <> invalid and TF_Utils__AsInteger(numberOfLoops) > 0 then
+                if numberOfLoops <> invalid and TF_Utils__AsInteger(numberOfLoops) > 0
                     numberOfLoops = TF_Utils__AsInteger(numberOfLoops)
                     funcPointer = m.getFunctionPointer(m.functionName)
                     for index = 1 to numberOfLoops
@@ -1918,20 +1920,20 @@ function ScanFileForNewTests(souceCode, filePath)
             else
                 ? "WARNING: Wrong format of repeatedTest(numberOfRuns) "annotationLine
             end if
-        end sub
+        end sub,
 
         parameterizedTest: sub()
             m.processParameterizedTests()
-        end sub
+        end sub,
 
         methodSource: sub()
             m.processParameterizedTests()
-        end sub
+        end sub,
 
         processParameterizedTests: sub()
             ' add test if it was not added already
             if not m.executedParametrizedAdding
-                if m.annotations.methodSource <> invalid and m.annotations.parameterizedTest <> invalid then
+                if m.annotations.methodSource <> invalid and m.annotations.parameterizedTest <> invalid
                     methodAnottation = m.annotations.methodSource.line
     
                     allowedAnnotationsRegex = CreateObject("roRegex", "^'\s*@(methodsource)\(" + Chr(34) + "([A-Za-z0-9_]*)" + Chr(34) + "\)", "i")
@@ -1942,7 +1944,7 @@ function ScanFileForNewTests(souceCode, filePath)
     
                         providerFunctionPointer = m.getFunctionPointer(providerFunction)
     
-                        if providerFunctionPointer <> invalid then
+                        if providerFunctionPointer <> invalid
                             funcPointer = m.getFunctionPointer(m.functionName)
     
                             args = providerFunctionPointer()
@@ -1966,28 +1968,28 @@ function ScanFileForNewTests(souceCode, filePath)
                     ? ""
                 end if
             end if
-        end sub
+        end sub,
 
         beforeEach: sub()
             m.beforeEachFunc = m.getFunctionPointer(m.functionName)
-        end sub
+        end sub,
 
         beforeAll: sub()
             m.beforeAllFunc = m.getFunctionPointer(m.functionName)
-        end sub
+        end sub,
 
         AfterEach: sub()
             m.AfterEachFunc = m.getFunctionPointer(m.functionName)
-        end sub
+        end sub,
 
         AfterAll: sub()
             m.AfterAllFunc = m.getFunctionPointer(m.functionName)
-        end sub
+        end sub,
 
         ignore: sub()
             funcPointer = m.getFunctionPointer(m.functionName)
             m.tests.push({ name: m.functionName, pointer: funcPointer, skip: true })
-        end sub
+        end sub,
 
         doSkipTest: function(name as String)
             includeFilter = []
@@ -2022,7 +2024,7 @@ function ScanFileForNewTests(souceCode, filePath)
             end if
             
             return skipTest
-        end function
+        end function,
 
         buildTests: sub()
             testSuite = m.testSuite
@@ -2035,14 +2037,14 @@ function ScanFileForNewTests(souceCode, filePath)
                 ' Add tests to suite's tests collection
                 arg = invalid
                 hasArgs = false
-                if test.hasArgs <> invalid then
+                if test.hasArgs <> invalid
                     arg = test.arg
                     hasArgs = true
                 end if
 
                 testSuite.addTest(test.name, test.pointer, m.beforeEachFunc, m.AfterEachFunc, arg, hasArgs, test.skip)
             end for
-        end sub
+        end sub,
 
         getFunctionPointer: TestFramework__getFunctionPointer
     }
@@ -2056,25 +2058,25 @@ function ScanFileForNewTests(souceCode, filePath)
             if allowedAnnotationsRegex.IsMatch(line)
                 groups = allowedAnnotationsRegex.Match(line)
                 anottationType = groups[1]
-                if anottationType <> invalid and processors[anottationType] <> invalid then
+                if anottationType <> invalid and processors[anottationType] <> invalid
                     currentAnottations.push(anottationType)
                     processors.annotations[anottationType] = { line: line, lineIndex: index }
                 end if
             else
-                if currentAnottations.count() > 0 then
+                if currentAnottations.count() > 0
                     isParametrized = anyArgsFunctionRegex.IsMatch(line)
                     properMap = { parameterizedtest: "", methodsource: "" }
                     for each availableAnottation in currentAnottations
                         isParametrized = isParametrized or properMap[availableAnottation] <> invalid
                     end for
 
-                    if voidFunctionRegex.IsMatch(line) or isParametrized then
+                    if voidFunctionRegex.IsMatch(line) or isParametrized
                         groups = voidFunctionRegex.Match(line)
 
-                        if isParametrized then
+                        if isParametrized
                             groups = anyArgsFunctionRegex.Match(line)
                         end if
-                        if groups[2] <> invalid then
+                        if groups[2] <> invalid
                             processors.functionName = groups[2]
                             processors.currentLine = line
 
@@ -2103,7 +2105,7 @@ function ScanFileForNewTests(souceCode, filePath)
 
     processors.buildTests()
 
-    if not foundAnyTest then
+    if not foundAnyTest
         testSuite = invalid
     end if
     return testSuite
@@ -2113,9 +2115,9 @@ function TestFramework__getFunctionPointer(functionName as String) as Dynamic
     result = invalid
 
     gthis = GetGlobalAA()
-    if gthis.FunctionsList <> invalid then
+    if gthis.FunctionsList <> invalid
         for each value in gthis.FunctionsList
-            if Type(value) <> "" and LCase(Type(value)) <> "<uninitialized>" and GetInterface(value, "ifFunction") <> invalid and LCase(value.tostr()) = "function: " + LCase(functionName) then
+            if Type(value) <> "" and LCase(Type(value)) <> "<uninitialized>" and GetInterface(value, "ifFunction") <> invalid and LCase(value.tostr()) = "function: " + LCase(functionName)
                 result = value
                 exit for
             end if
@@ -2123,7 +2125,7 @@ function TestFramework__getFunctionPointer(functionName as String) as Dynamic
     end if
     
     if LCase(Type(result)) = "<uninitialized>" then result = invalid
-    if result = invalid then
+    if result = invalid
         if gthis.notFoundFunctionPointerList = invalid then gthis.notFoundFunctionPointerList = []
         gthis.notFoundFunctionPointerList.push(functionName)
     end if
@@ -2133,7 +2135,7 @@ end function
 sub TestRunner__SetFunctions(listOfFunctions as Dynamic)
     gthis = GetGlobalAA()
 
-    if gthis.FunctionsList = invalid then
+    if gthis.FunctionsList = invalid
         gthis.FunctionsList = []
     end if
     gthis.FunctionsList.append(listOfFunctions)
@@ -2218,7 +2220,7 @@ function TestRunner__GetTestSuiteNamesList(testNodeName as String) as Object
                 end if
             end for
 
-            if not foundTestSuite then
+            if not foundTestSuite
                 ' we cannot scan for new tests as we are not in proper scope
                 ' so we need to pass some data so this can be executed in render thread
                 result.push({ filePath: filePath, code: code })
@@ -2259,9 +2261,9 @@ function TestRunner__GetTestFilesList(testsDirectory = m.testsDirectory as Strin
             itemPath = testsDirectory + "/" + item
             itemStat = fileSystem.Stat(itemPath)
 
-            if itemStat.type = "directory" then
+            if itemStat.type = "directory"
                 result.Append(m.getTestFilesList(itemPath, testFilePrefix))
-            else if testsFileRegex.IsMatch(item) then
+            else if testsFileRegex.IsMatch(item)
                 result.Push(itemPath)
             end if
         end for
@@ -2289,9 +2291,9 @@ function TestRunner__GetTestNodesList(testsDirectory = m.nodesTestDirectory as S
             itemPath = testsDirectory + "/" + item
             itemStat = fileSystem.Stat(itemPath)
 
-            if itemStat.type = "directory" then
+            if itemStat.type = "directory"
                 result.Append(m.getTestNodesList(itemPath))
-            else if testsFileRegex.IsMatch(item) then
+            else if testsFileRegex.IsMatch(item)
                 result.Push(item.replace(".xml", ""))
             end if
         end for
@@ -2408,7 +2410,7 @@ end function
 
 function UTF_PushErrorMessage(message as String) as Boolean
     result = Len(message) <= 0
-    if not result then
+    if not result
         m.globalErrorsList.push(message)
     end if
 
@@ -2782,9 +2784,9 @@ end function
 ' ----------------------------------------------------------------
 function TF_Utils__EqValues(Value1 as Dynamic, Value2 as Dynamic, comparator = invalid as Object) as Boolean
     if comparator = invalid
-        return TF_Utils__BaseComparator(value1, value2)
+        return TF_Utils__BaseComparator(Value1, Value2)
     else
-        return comparator(value1, value2)
+        return comparator(Value1, Value2)
     end if
 end function
 
@@ -2858,7 +2860,7 @@ function TF_Utils__EqArray(Value1 as Object, Value2 as Object) as Boolean
         for i = 0 to l1 - 1
             v1 = Value1[i]
             v2 = Value2[i]
-            if not TF_Utils__EqValues(v1, v2) then
+            if not TF_Utils__EqValues(v1, v2)
                 return false
             end if
         end for

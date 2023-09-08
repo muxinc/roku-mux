@@ -39,16 +39,16 @@ function _createDeviceInfo() as Object
     end function,
     GetVersion: function() as String
       return "1234"
-    end function
+    end function,
     GetModel: function() as String
       return "r1"
-    end function
+    end function,
     GetModelDisplayName: function() as String
       return "Roku Express"
-    end function
+    end function,
     GetCountryCode: function() as String
       return "us"
-    end function
+    end function,
     GetDisplaySize: function() as Object
       return {w:1280, h:720}
     end function
