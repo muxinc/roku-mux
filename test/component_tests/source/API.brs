@@ -38,6 +38,7 @@ sub Api_GetChannelContent(event as Object)
     'Utility function for XML parsing.
     'Bassed on native Bright Script XML parser.
     responseXML = Utils_ParseXML(rsp)
+    responseArray = invalid
     If responseXML <> invalid
          responseXML   = responseXML.GetChildElements()
          responseArray = responseXML.GetChildElements()
