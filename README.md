@@ -26,13 +26,13 @@ Install the linter is:
 
 Visual Studio Code has an [extension](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript) for BrightScript that provides syntax highlighting, linting, and debugging. To install and configure this functionality:
 
-Install [BSLint](https://github.com/rokucommunity/bslint):
-
-`npm install brighterscript @rokucommunity/bslint`
-
 Install [BrighterScript](https://github.com/rokucommunity/brighterscript), which provides a BrightScript compiler and CLI. 
 
-`npm install brighterscript -g`
+`npm install brighterscript --location=global`
+
+Install [BSLint](https://github.com/rokucommunity/bslint):
+
+`npm install @rokucommunity/bslint`
 
 Install the [BrightScript Language extension](https://marketplace.visualstudio.com/items?itemName=RokuCommunity.brightscript) for Visual Studio Code.
 
