@@ -506,6 +506,8 @@ function muxAnalytics() as Object
     m._configProperties = config
     if config.beaconCollectionDomain <> Invalid AND config.beaconCollectionDomain <> ""
       m.beaconUrl = "https://" + config.beaconCollectionDomain
+    else if config.env_key <> Invalid AND config.env_key <> ""
+      m.beaconUrl = m._createBeaconUrl(config.env_key)
     else if config.property_key <> Invalid AND config.property_key <> ""
       m.beaconUrl = m._createBeaconUrl(config.property_key)
     end if

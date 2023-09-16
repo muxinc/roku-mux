@@ -8,3 +8,4 @@
 .env
 test_runner
 local.properties
+.tool-versions
