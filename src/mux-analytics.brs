@@ -1388,6 +1388,7 @@ function muxAnalytics() as Object
 
   prototype._firstWords = {
     "property": "a",
+    "env": "a",
     "beacon": "b",
     "custom": "c",
     "ad": "d",
