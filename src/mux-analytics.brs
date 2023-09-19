@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "1.4.1"
+  m.MUX_SDK_VERSION = "1.4.2"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -504,7 +504,11 @@ function muxAnalytics() as Object
 
   prototype.configChangeHandler = sub(config as Object)
     m._configProperties = config
-    if config.property_key <> Invalid AND config.property_key <> ""
+    if config.beaconCollectionDomain <> Invalid AND config.beaconCollectionDomain <> ""
+      m.beaconUrl = "https://" + config.beaconCollectionDomain
+    else if config.env_key <> Invalid AND config.env_key <> ""
+      m.beaconUrl = m._createBeaconUrl(config.env_key)
+    else if config.property_key <> Invalid AND config.property_key <> ""
       m.beaconUrl = m._createBeaconUrl(config.property_key)
     end if
   end sub
