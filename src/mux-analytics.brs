@@ -443,9 +443,7 @@ function muxAnalytics() as Object
       if m._Flag_lastVideoState = "paused"
         m._addEventToQueue(m._createEvent("play"))
       end if
-      m._addEventToQueue(m._createEvent("playing"))
-      m._Flag_isSeeking = false
-      m._Flag_atLeastOnePlayEventForContent = true
+      m._triggerPlayingEvent()
     else if videoState = "stopped"
     else if videoState = "finished"
       m._addEventToQueue(m._createEvent("ended"))
@@ -494,6 +492,12 @@ function muxAnalytics() as Object
       m._videoProperties = m._getVideoProperties(m.video)
     end if
     m._addEventToQueue(m._createEvent("play"))
+  end sub
+
+  prototype._triggerPlayingEvent = sub()
+    m._addEventToQueue(m._createEvent("playing"))
+    m._Flag_isSeeking = false
+    m._Flag_atLeastOnePlayEventForContent = true
   end sub
 
   prototype.videoControlChangeHandler = sub(control as String)
@@ -563,6 +567,11 @@ function muxAnalytics() as Object
     else if eventType = "PodComplete"
       m._addEventToQueue(m._createEvent("adbreakend"))
       m._Flag_FailedAdsErrorSet = false
+      ' If the video is already in the 'playing' state, emit a 'playing' event to end the ad break. 
+      ' If it is in another state, the regular state change event handler will send the 'playing' event when appropriate 
+      if m.video.state = "playing"
+        m._triggerPlayingEvent()
+      end if
     else if eventType = "Impression"
       m._addEventToQueue(m._createEvent("adimpresion"))
     else if eventType = "Pause"
