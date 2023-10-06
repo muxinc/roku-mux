@@ -61,6 +61,10 @@ function runBeaconLoop()
     m.top.video.ObserveField("content", m.messagePort)
     m.top.video.ObserveField("control", m.messagePort)
     m.top.video.ObserveField("licenseStatus", m.messagePort)
+    if m.top.video.enableDecoderStats <> Invalid
+      m.top.video.enableDecoderStats = true
+      m.top.video.ObserveField("decoderStats", m.messagePort)
+    end if
   end if
 
   if m.top.view <> Invalid AND m.top.view <> ""
@@ -100,7 +104,10 @@ function runBeaconLoop()
             m.top.video.ObserveField("content", m.messagePort)
             m.top.video.ObserveField("control", m.messagePort)
             m.top.video.ObserveField("licenseStatus", m.messagePort)
-            m.top.video.ObserveField("decoderStats", m.messagePort)
+            if m.top.video.enableDecoderStats <> Invalid
+              m.top.video.enableDecoderStats = true
+              m.top.video.ObserveField("decoderStats", m.messagePort)
+            end if
           end if
         else if field = "config"
           m.mxa.configChangeHandler(msg.getData())
