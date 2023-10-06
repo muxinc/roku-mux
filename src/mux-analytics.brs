@@ -100,6 +100,7 @@ function runBeaconLoop()
             m.top.video.ObserveField("content", m.messagePort)
             m.top.video.ObserveField("control", m.messagePort)
             m.top.video.ObserveField("licenseStatus", m.messagePort)
+            m.top.video.ObserveField("decoderStats", m.messagePort)
           end if
         else if field = "config"
           m.mxa.configChangeHandler(msg.getData())
@@ -109,6 +110,8 @@ function runBeaconLoop()
           m.mxa.videoControlChangeHandler(msg.getData())
         else if field = "content"
           m.mxa.videoContentChangeHandler(msg.getData())
+        else if field = "decoderStats"
+          m.mxa.videoDecoderStatsChangeHandler(msg.getData())
         else if field = "licenseStatus"
           m.mxa.drmLicenseStatusChangeHandler(msg.getData())
         else if field = "view"
@@ -499,6 +502,14 @@ function muxAnalytics() as Object
     if m._clientOperatedStartAndEnd <> true
       m._endView()
       m._startView()
+    end if
+  end sub
+
+  prototype.videoDecoderStatsChangeHandler = sub(decoderStats as Object)
+    if decoderStats <> Invalid
+      if decoderStats.frameDropCount <> Invalid
+        m.droppedFrames = decoderStats.frameDropCount
+      end if
     end if
   end sub
 
