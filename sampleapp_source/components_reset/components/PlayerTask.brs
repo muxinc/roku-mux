@@ -9,7 +9,8 @@ sub playContent()
   selectionId = m.top.selectionId
 
   contentNode = CreateObject("roSGNode", "ContentNode")
-  adUrl = "https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/single_ad_samples&ciu_szs=300x250&impl=s&gdfp_req=1&env=vp&output=vast&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ct%3Dlinear&correlator=12345"
+  ' adUrl = "https://pubads.g.doubleclick.net/gampad/ads?sz=640x480&iu=/124319096/external/single_ad_samples&ciu_szs=300x250&impl=s&gdfp_req=1&env=vp&output=vast&unviewed_position_start=1&cust_params=deployment%3Ddevsite%26sample_ct%3Dlinear&correlator=12345"
+  adUrl = "https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/vmap_ad_samples&sz=640x480&cust_params=sample_ar%3Dpremidpost&ciu_szs=300x250&gdfp_req=1&ad_rule=1&output=vmap&unviewed_position_start=1&env=vp&impl=s&cmsid=496&vid=short_onecue&correlator=12345"
 
   contentInfo = {
     contentId: "TED Talks", 'String value representing content to allow potential ad targeting.
@@ -47,14 +48,24 @@ sub playContent()
     contentInfo.length = 1200
     m.top.video.content = contentNode
     PlayContentWithCustomAds(contentInfo)
-  else if selectionId = "stitched"
+  else if selectionId = "csai"
+    contentNode.URL= "https://stream.mux.com/uy0201Gh5To8LV100DB4FDEAzUIKlCrr01iH.m3u8"
+    contentNode.streamFormat = "hls"
+    contentNode.length = 734
+    contentInfo.adUrl = adUrl
+    contentInfo.TITLE = "I want to be awesome in space"
+    contentInfo.contentId = "blender"
+    contentInfo.length = 734
+    m.top.video.content = contentNode
+    PlayClientStitchedVideoAndAds(contentInfo)
+  else if selectionId = "stitchedoverlay"
     contentNode.URL= "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
-    contentInfo.stitchedAdsFilePath = "pkg:/feed/MixedStitchedAds.json"
+    contentInfo.stitchedOverlayAdsFilePath = "pkg:/feed/MixedStitchedAds.json"
     contentInfo.adUrl = adUrl
     contentInfo.contentId = "TED Talks"
     contentInfo.length = 1200
     m.top.video.content = contentNode
-    PlayStitchedContentWithAds(contentInfo)
+    PlayStitchedOverlayContentWithAds(contentInfo)
   else if selectionId = "preplaybackerror"
     contentNode.URL= "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
     contentInfo.contentId = "TED Talks"
@@ -130,6 +141,7 @@ end sub
 
 sub PlayContentWithFullRAFIntegration(contentInfo as Object)
   adIface = Roku_Ads() 'RAF initialize
+  adIface.setDebugOutput(false)
   setLog = adIface.SetTrackingCallback(adTrackingCallback, adIface)
   adIface.enableAdMeasurements(true)
   adIface.setContentLength(contentInfo.length)
@@ -140,8 +152,28 @@ sub PlayContentWithFullRAFIntegration(contentInfo as Object)
   playVideoWithAds(adPods, adIface)
 end sub
 
+sub PlayClientStitchedVideoAndAds(contentInfo as Object)
+  adIface = Roku_Ads() 'RAF initialize
+  adIface.setDebugOutput(false)
+  setLog = adIface.SetTrackingCallback(adTrackingCallback, adIface)
+  adIface.enableAdMeasurements(true)
+  adIface.setContentLength(contentInfo.length)
+  adIface.setContentId(contentInfo.contentId)
+  adIface.setContentLength(contentInfo.length)
+  adIface.setAdPrefs(false)
+  adIface.setAdUrl(contentInfo.adUrl)
+  adPods = adIface.getAds()
+
+  video = m.top.video
+  view = video.getParent()
+  
+  csasStream = adIface.constructStitchedStream(m.top.video.content, m.adPods)
+  adIface.renderStitchedStream(csasStream, view)
+end sub
+
 sub PlayContentWithCustomAds(contentInfo as Object)
   raf = Roku_Ads()
+  raf.setDebugOutput(false)
   raf.setAdPrefs(false)
   setLog = raf.SetTrackingCallback(adTrackingCallback, raf)
 
@@ -161,7 +193,7 @@ sub ErrorBeforePlayback(contentInfo as Object)
   mux.error = {errorCode: 1, errorMessage: "Video Metadata Error", errorContext: "Video Error Context"}
 end sub
 
-sub PlayStitchedContentWithAds(contentInfo as Object)
+sub PlayStitchedOverlayContentWithAds(contentInfo as Object)
   adIface = Roku_Ads()
   ' adIface.enableAdMeasurements(true)
   setLog = adIface.SetTrackingCallback(adTrackingCallback, adIface)
@@ -170,8 +202,8 @@ sub PlayStitchedContentWithAds(contentInfo as Object)
   adIface.setContentGenre(contentInfo.genre)
   adIface.setDebugOutput(false)
 
-  if contentInfo <> invalid AND contentInfo.stitchedAdsFilePath <> invalid
-    adPodArray = GetAdPods(contentInfo.stitchedAdsFilePath)
+  if contentInfo <> invalid AND contentInfo.stitchedOverlayAdsFilePath <> invalid
+    adPodArray = GetAdPods(contentInfo.stitchedOverlayAdsFilePath)
     adIface.StitchedAdsInit(adPodArray)
   end if
   m.top.facade.visible = false

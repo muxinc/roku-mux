@@ -3,13 +3,13 @@
       "ads":[
          {
             "duration":30,
-            "streamformat":"mp4",
+            "streamformat":"hls",
             "streams":[
                {
                   "bitrate":1230,
                   "height":480,
-                  "mimetype":"video/mp4",
-                  "url":"http://htmlsamples.blob.core.windows.net/video/Windows_8_Cliffjumpers_852x480.mp4",
+                  "mimetype":"application/x-mpegUrl",
+                  "url":"https://stream.mux.com/hmHjkg02uWfzyR02HII5uOP1oJaaG4K8M4.m3u8",
                   "width":852
                }
             ],
@@ -100,7 +100,7 @@
                   "bitrate":622,
                   "height":360,
                   "mimetype":"application/x-mpegURL",
-                  "url":"http://hdadshds-f.akamaihd.net/i/video/campaigns/fx/millercoors/snowparty30enhdns_,340,50,30,22,15,450,180,250,130,80,0.mp4.csmil/master.m3u8",
+                  "url":"https://stream.mux.com/C42trVNPGtSOF02Ga7rkuzEpSPpfGvLuC.m3u8",
                   "width":640
                }
             ],
