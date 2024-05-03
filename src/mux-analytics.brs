@@ -85,11 +85,20 @@ function runBeaconLoop()
   m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
   m.heartbeatTimer.ObserveField("fire", m.messagePort)
+
+  ' Track exit on a separate port per Roku's guidance
+  m.exitPort = _createPort()
+  m.top.ObserveField("exit", m.exitPort)
+
   running = true
   while running
-    msg = wait(50, m.messagePort)
-    if m.top.exit = true
-      running = false
+    exitMsg = wait(10, m.exitPort)
+    msg = wait(40, m.messagePort)
+    if exitMsg <> invalid
+      data = exitMsg.getData()
+      if data = true
+        running = false
+      end if
     end if
     if msg <> Invalid
       msgType = type(msg)
