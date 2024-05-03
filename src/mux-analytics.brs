@@ -375,6 +375,7 @@ function muxAnalytics() as Object
   end sub
 
   prototype.videoStateChangeHandler = sub(videoState as String)
+    m.video_state = videoState
     previouslyLastReportedPosition = m._Flag_lastReportedPosition
     positionNow = m.video.position
     m._Flag_lastReportedPosition = positionNow
@@ -651,14 +652,14 @@ function muxAnalytics() as Object
 
   prototype._updateContentPlaybackTime = sub()
     if m.video.position <= m._Flag_lastReportedPosition then return
-    if m.video.state <> "playing" then return
+    if m.video_state <> "playing" then return
     if m._contentPlaybackTime = Invalid then return
 
     m._contentPlaybackTime = m._contentPlaybackTime + ((m.video.position - m._Flag_lastReportedPosition) * 1000)
   end sub
 
   prototype._updateTotalWatchTime = sub()
-    if m.video.state = "paused" then return
+    if m.video_state = "paused" then return
     if m._viewWatchTime = Invalid then return
     if m._viewStartTimestamp = Invalid then return
     if m._viewTimeToFirstFrame = Invalid then return
@@ -669,7 +670,7 @@ function muxAnalytics() as Object
   end sub
 
   prototype._setBufferingMetrics = sub()
-    if m.video.state <> "buffering" then return
+    if m.video_state <> "buffering" then return
     if m._Flag_atLeastOnePlayEventForContent <> true then return
     if m._viewRebufferDuration = Invalid then return
 
