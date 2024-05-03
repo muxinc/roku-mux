@@ -933,9 +933,10 @@ function muxAnalytics() as Object
   end function
 
   ' Set called per video content'
-  prototype._getVideoContentProperties = function(content as Object) as Object
+  prototype._getVideoContentProperties = function(incomingContent as Object) as Object
     props = {}
-    if content <> Invalid
+    if incomingContent <> invalid
+      content = incomingContent.GetFields()
       if content.title <> Invalid AND (type(content.title) = "String" OR type(content.title) = "roString") AND content.title <> ""
         props.video_title = content.title
       end if
