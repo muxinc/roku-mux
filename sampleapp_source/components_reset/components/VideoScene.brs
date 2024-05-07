@@ -4,7 +4,7 @@ sub init()
   m.video = m.top.FindNode("MainVideo")
 
   muxConfig = {
-    property_key: "<YOUR PROPERTY KEY>",
+    property_key: "e1u5eoe3vb189oejshtlcl9mr",
     player_name: "Reset Player"
   }
   m.mux = m.top.FindNode("mux")
@@ -22,15 +22,15 @@ end sub
 
 sub setupContent()
   m.contentList = [
-  {title: "Content Only, No Ads", selectionID: "none"},
-  {title: "Full RAF Integration", selectionID: "standard"},
-  {title: "Custom Ad Parsing", selectionID: "nonstandard"},
-  {title: "Client-side Stitched Ads", selectionID: "csai"},
-  {title: "Stitched Overlay Ad", selectionID: "stitchedoverlay"},
-  {title: "Error before playback", selectionID: "preplaybackerror"},
-  {title: "Error during playback", selectionID: "playbackerror"},
-  {title: "HLS stream no ads", selectionID: "hlsnoads"},
-  {title: "DASH stream no ads", selectionID: "dashnoads"}
+    {title: "Content Only, No Ads", selectionID: "none"},
+    {title: "Full RAF Integration", selectionID: "standard"},
+    {title: "Custom Ad Parsing", selectionID: "nonstandard"},
+    {title: "Client-side Stitched Ads", selectionID: "csai"},
+    {title: "Stitched Overlay Ad", selectionID: "stitchedoverlay"},
+    {title: "Error before playback", selectionID: "preplaybackerror"},
+    {title: "Error during playback", selectionID: "playbackerror"},
+    {title: "HLS stream no ads", selectionID: "hlsnoads"},
+    {title: "DASH stream no ads", selectionID: "dashnoads"}
   ]
 
   listContent = createObject("roSGNode","ContentNode")

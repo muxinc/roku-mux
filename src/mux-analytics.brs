@@ -340,6 +340,10 @@ function muxAnalytics() as Object
     m._Flag_isSeeking = false
     m._Flag_lastReportedPosition = 0
     m._Flag_FailedAdsErrorSet = false
+    m._Flag_inAdBreak = false
+    m._Flag_sendPlayOnResume = true
+    m._Flag_sendPlayOnPlaying = true
+    m._Flag_sendAdPlayOnPlaying = false
 
     ' kick off analytics
     date = m._getDateTime()
@@ -564,18 +568,31 @@ function muxAnalytics() as Object
 
   prototype.rafEventHandler = sub(rafEvent)
     data = rafEvent.getData()
+    if data.eventType <> invalid
+      print data.eventType
+      ' if data.eventType = "ContentStateChange" or data.EventType = "AdStateChange"
+      '   print data.ctx
+      '   print data.obj
+      ' end if
+    end if
+    
     eventType = data.eventType
     m._Flag_isPaused = (eventType = "Pause")
     m._advertProperties = {}
     if eventType = "PodStart"
-      m._advertProperties = m._getAdvertProperites(data.obj)
-      m._addEventToQueue(m._createEvent("adbreakstart"))
+      if m._Flag_inAdBreak = false
+        m._Flag_inAdBreak = true
+        m._advertProperties = m._getAdvertProperites(data.obj)
+        m._addEventToQueue(m._createEvent("adbreakstart"))
+      end if
     else if eventType = "PodComplete"
+      m._Flag_inAdBreak = false
       m._addEventToQueue(m._createEvent("adbreakend"))
       m._Flag_FailedAdsErrorSet = false
     else if eventType = "Impression"
       m._addEventToQueue(m._createEvent("adimpresion"))
     else if eventType = "Pause"
+      m._Flag_sendAdPlayOnPlaying = true
       m._addEventToQueue(m._createEvent("adpause"))
     else if eventType = "Start"
       if m._viewTimeToFirstFrame = Invalid
@@ -597,9 +614,11 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Resume"
-      m._advertProperties = m._getAdvertProperites(data.ctx)
-      m._addEventToQueue(m._createEvent("adplay"))
-      m._addEventToQueue(m._createEvent("adplaying"))
+      if m._Flag_sendAdPlayOnResume = true
+        m._advertProperties = m._getAdvertProperites(data.ctx)
+        m._addEventToQueue(m._createEvent("adplay"))
+        m._addEventToQueue(m._createEvent("adplaying"))
+      end if
     else if eventType = "Complete"
       m._addEventToQueue(m._createEvent("adended"))
     else if eventType = "NoAdsError"
@@ -628,6 +647,56 @@ function muxAnalytics() as Object
     else if eventType = "Skip"
       m._addEventToQueue(m._createEvent("adskipped"))
       m._addEventToQueue(m._createEvent("adended"))
+    ' In the client-side stitched ad world, we get content events from RAF
+    else if eventType = "ContentStateChange"
+      if data.ctx <> Invalid
+        state = data.ctx.state
+        if state = "paused"
+          m._Flag_isPaused = true
+          m._Flag_sendPlayOnPlaying = true
+          m._addEventToQueue(m._createEvent("pause"))
+        else if state = "buffering"
+          m._Flag_sendPlayOnPlaying = false
+          m._triggerPlayEvent()
+        else if state = "playing"
+          if m._Flag_sendPlayOnPlaying = true
+            m._Flag_sendPlayOnPlaying = false
+            m._triggerPlayEvent()
+          end if
+          m._addEventToQueue(m._createEvent("playing"))
+        end if
+      end if
+    else if eventType = "AdStateChange"
+      if data.ctx <> invalid
+        state = data.ctx.state
+        if state = "paused"
+          ' m._Flag_isPaused = true
+          ' m._Flag_sendAdPlayOnResume = true
+          ' m._advertProperties = m._getAdvertProperites(data.ctx)
+          ' m._addEventToQueue(m._createEvent("adpause"))
+        else if state = "buffering"
+          if m._Flag_inAdBreak = false
+            m._Flag_inAdBreak = true
+            m._advertProperties = m._getAdvertProperites(data.ctx)
+            m._addEventToQueue(m._createEvent("adbreakstart"))
+            m._Flag_isPaused = false
+            m._Flag_sendAdPlayOnResume = false
+            m._addEventToQueue(m._createEvent("adplay"))
+          end if
+        else if state = "playing"
+          m._advertProperties = m._getAdvertProperites(data.ctx)
+          if m._Flag_sendAdPlayOnPlaying = true
+            m._addEventToQueue(m._createEvent("adplay"))
+          end if
+          m._addEventToQueue(m._createEvent("adplaying"))
+        end if
+      end if
+    else if eventType = "ContentPosition"
+      if m._Flag_inAdBreak = false
+        if m._Flag_isPaused = false
+
+        end if
+      end if
     end if
   end sub
 

@@ -7,7 +7,7 @@ sub init()
 
   ' SETUP MUX
   m.muxConfig = {
-    property_key: "<YOUR PROPERTY KEY>",
+    property_key: "e1u5eoe3vb189oejshtlcl9mr",
     player_name: "Recycle Player",
     player_version: "1.0.0"
   }
