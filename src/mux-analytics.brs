@@ -341,9 +341,9 @@ function muxAnalytics() as Object
     m._Flag_lastReportedPosition = 0
     m._Flag_FailedAdsErrorSet = false
     m._Flag_inAdBreak = false
-    m._Flag_sendPlayOnResume = true
     m._Flag_sendPlayOnPlaying = true
     m._Flag_sendAdPlayOnPlaying = false
+    m._Flag_sendPlayOnContentPosition = false
 
     ' kick off analytics
     date = m._getDateTime()
@@ -501,6 +501,8 @@ function muxAnalytics() as Object
   end sub
 
   prototype._triggerPlayEvent = sub()
+    ' For ads we need to remember not to send another one
+    m._Flag_sendPlayOnContentPosition = false
     if m.video <> Invalid
       if m.video.content <> Invalid
         m._videoContentProperties = m._getVideoContentProperties(m.video.content)
@@ -584,13 +586,25 @@ function muxAnalytics() as Object
         m._Flag_inAdBreak = true
         m._advertProperties = m._getAdvertProperites(data.obj)
         m._addEventToQueue(m._createEvent("adbreakstart"))
+        m._Flag_sendAdPlayOnImpression = true
       end if
     else if eventType = "PodComplete"
       m._Flag_inAdBreak = false
       m._addEventToQueue(m._createEvent("adbreakend"))
+      m._Flag_sendPlayOnContentPosition = true
       m._Flag_FailedAdsErrorSet = false
+      m._Flag_sendAdPlayOnImpression = false
     else if eventType = "Impression"
       m._addEventToQueue(m._createEvent("adimpresion"))
+      ' In the client-side stitched ad workflow, we sometimes only get adimpression to
+      ' tell us that a new ad has started playing within a pod
+      ' TODO: this is triggering an extra adplay+adplaying on the "full RAF" approach
+      if m._Flag_sendAdPlayOnImpression = true
+        m._advertProperties = m._getAdvertProperites(data.ctx)
+        m._addEventToQueue(m._createEvent("adplay"))
+        m._addEventToQueue(m._createEvent("adplaying"))
+        m._Flag_sendAdPlayOnImpression = false
+      end if
     else if eventType = "Pause"
       m._Flag_sendAdPlayOnPlaying = true
       m._addEventToQueue(m._createEvent("adpause"))
@@ -613,14 +627,17 @@ function muxAnalytics() as Object
       m._advertProperties = m._getAdvertProperites(data.ctx)
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
+      m._Flag_sendAdPlayOnImpression = false
     else if eventType = "Resume"
       if m._Flag_sendAdPlayOnResume = true
         m._advertProperties = m._getAdvertProperites(data.ctx)
         m._addEventToQueue(m._createEvent("adplay"))
         m._addEventToQueue(m._createEvent("adplaying"))
+        m._Flag_sendAdPlayOnImpression = false
       end if
     else if eventType = "Complete"
       m._addEventToQueue(m._createEvent("adended"))
+      m._Flag_sendAdPlayOnImpression = true
     else if eventType = "NoAdsError"
       if m._Flag_FailedAdsErrorSet <> true
         ' For now, aderror events do not support codes and messages, but leaving
@@ -669,12 +686,7 @@ function muxAnalytics() as Object
     else if eventType = "AdStateChange"
       if data.ctx <> invalid
         state = data.ctx.state
-        if state = "paused"
-          ' m._Flag_isPaused = true
-          ' m._Flag_sendAdPlayOnResume = true
-          ' m._advertProperties = m._getAdvertProperites(data.ctx)
-          ' m._addEventToQueue(m._createEvent("adpause"))
-        else if state = "buffering"
+        if state = "buffering"
           if m._Flag_inAdBreak = false
             m._Flag_inAdBreak = true
             m._advertProperties = m._getAdvertProperites(data.ctx)
@@ -689,13 +701,16 @@ function muxAnalytics() as Object
             m._addEventToQueue(m._createEvent("adplay"))
           end if
           m._addEventToQueue(m._createEvent("adplaying"))
+          m._Flag_lastEventWasAdPlaying = true
         end if
       end if
     else if eventType = "ContentPosition"
-      if m._Flag_inAdBreak = false
-        if m._Flag_isPaused = false
-
-        end if
+      ' This is not ideal because we may miss one second of content playback, but
+      ' we need to catch the case where we get a content position update after ad
+      ' playback just in case
+      if m._Flag_sendPlayOnContentPosition = true
+        m._triggerPlayEvent()
+        m._addEventToQueue(m._createEvent("playing"))
       end if
     end if
   end sub
