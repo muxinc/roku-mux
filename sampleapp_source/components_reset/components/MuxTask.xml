@@ -6,7 +6,8 @@
     <field id="error" type="assocarray" alwaysNotify="true"/>
     <field id="view" type="String" alwaysNotify="true"/>
     <field id="exit" type="Boolean" alwaysNotify="true"/>
-    <field id="exitType" type="String" alwaysNotify="true" value="hard" />
+    <field id="exitType" type="String" alwaysNotify="true" value="hard"/>
+    <field id="useRenderStitchedStream" type="String" alwaysNotify="true" value="true"/>
   </interface>
   <script type="text/brightscript" uri="pkg:/libs/mux-analytics.brs"/>
 </component>

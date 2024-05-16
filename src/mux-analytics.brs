@@ -77,6 +77,11 @@ function runBeaconLoop()
   end if
   m.top.ObserveField("config", m.messagePort)
 
+  if m.top.useRenderStitchedStream <> Invalid
+    m.mxa.useRenderStitchedStreamHandler(m.top.useRenderStitchedStream)
+  end if
+  m.top.ObserveField("useRenderStitchedStream", m.messagePort)
+
   if m.top.error <> Invalid
     m.mxa.videoErrorHandler(m.top.error)
   end if
@@ -120,6 +125,8 @@ function runBeaconLoop()
           end if
         else if field = "config"
           m.mxa.configChangeHandler(msg.getData())
+        else if field = "useRenderStitchedStream"
+          m.mxa.useRenderStitchedStreamHandler(msg.getData())
         else if field = "error"
           m.mxa.videoErrorHandler(msg.getData())
         else if field = "control"
@@ -341,6 +348,12 @@ function muxAnalytics() as Object
     m._Flag_lastReportedPosition = 0
     m._Flag_FailedAdsErrorSet = false
 
+    ' Flags specifically for when renderStitchedStream is used
+    m._Flag_useRenderStitchedStream = false
+    m._Flag_rssInAdBreak = false
+    m._Flag_rssAdEnded = false
+    m._Flag_rssContentPlayingAfterAds = false
+
     ' kick off analytics
     date = m._getDateTime()
     m._startTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
@@ -541,6 +554,12 @@ function muxAnalytics() as Object
     end if
   end sub
 
+  prototype.useRenderStitchedStreamHandler = sub(useRenderStitchedStream as String)
+    if useRenderStitchedStream <> Invalid
+      m._Flag_useRenderStitchedStream = (useRenderStitchedStream = "true")
+    end if
+  end sub
+
   prototype.videoErrorHandler = sub(error as Object)
     errorCode = "0"
     errorMessage = "Unknown"
@@ -565,8 +584,18 @@ function muxAnalytics() as Object
   prototype.rafEventHandler = sub(rafEvent)
     data = rafEvent.getData()
     eventType = data.eventType
-    m._Flag_isPaused = (eventType = "Pause")
     m._advertProperties = {}
+
+    ' Special case to handle if `renderStitchedStream` is used or not
+    if m._Flag_useRenderStitchedStream = true
+      m._renderStitchedStreamRafEventHandler(eventType, data)
+    else
+      m._rafEventHandler(eventType, data)
+    end if
+  end sub
+
+  prototype._rafEventhandler = sub(eventType, data)
+    m._Flag_isPaused = (eventType = "Pause")
     if eventType = "PodStart"
       m._advertProperties = m._getAdvertProperites(data.obj)
       m._addEventToQueue(m._createEvent("adbreakstart"))
@@ -628,6 +657,95 @@ function muxAnalytics() as Object
     else if eventType = "Skip"
       m._addEventToQueue(m._createEvent("adskipped"))
       m._addEventToQueue(m._createEvent("adended"))
+    end if
+  end sub
+
+  prototype._renderStitchedStreamRafEventHandler = sub(eventType, data)
+    if eventType = "AdStateChange"
+      state = data.ctx.state
+      m._advertProperties = m._getAdvertProperites(data.obj)
+      if state = "buffering"
+        ' the buffering state is the first event we get in a new ad pod, so start
+        ' our ad break here if we're not already in one
+        if not m._Flag_rssInAdBreak
+          m._Flag_rssInAdBreak = true
+          m._addEventToQueue(m._createEvent("adbreakstart"))
+        end if
+
+        ' and always trigger adplay
+        m._Flag_isPaused = false
+        m._addEventToQueue(m._createEvent("adplay"))
+      else if state = "playing"
+        ' in the playing state, if we either resuming, we need adplay first
+        if m._Flag_isPaused
+          m._Flag_isPaused = false
+          m._addEventToQueue(m._createEvent("adplay"))
+        end if
+        ' and always emit adplaying
+        m._addEventToQueue(m._createEvent("adplaying"))
+      else if state = "paused"
+        m._Flag_isPaused = true
+        m._addEventToQueue(m._createEvent("adpause"))
+      end if
+    else if eventType = "PodStart"
+      ' Need to handle PodStart for non-pre-rolls
+      if not m._Flag_rssInAdBreak
+        m._Flag_rssInAdBreak = true
+        if not m._Flag_isPaused
+          m._Flag_isPaused = true
+          m._addEventToQueue(m._createEvent("pause"))
+        end if
+        m._addEventToQueue(m._createEvent("adbreakstart"))
+      end if
+    else if eventType = "Complete"
+      ' Complete signals an ad has finished playback
+      m._Flag_rssAdEnded = true
+      m._addEventToQueue(m._createEvent("adended"))
+    else if eventType = "Impression"
+      ' When an additional ad is played within an ad pod, we do not get
+      ' the AdStateChange events or anything other than the Impression
+      ' event to know that a new ad was played
+      if m._Flag_rssAdEnded
+        m._Flag_rssAdEnded = false
+        m._addEventToQueue(m._createEvent("adplay"))
+        m._addEventToQueue(m._createEvent("adplaying"))
+      end if
+    else if eventType = "PodComplete"
+      m._Flag_rssInAdBreak = false
+      m._Flag_isPaused = true
+      m._addEventToQueue(m._createEvent("adbreakend"))
+    else if eventType = "ContentPosition"
+      ' we have a special case here to track the start of content after an ad break
+      if not m._Flag_rssInAdBreak
+        if m._Flag_isPaused
+          m._Flag_isPaused = false
+          m._triggerPlayEvent()
+          m._addEventToQueue(m._createEvent("playing"))
+        end if
+      end if
+    else if eventType = "ContentStateChange"
+      ' We really only care about this if we're _not_ in an ad break
+      if not m._Flag_rssInAdBreak
+        state = data.ctx.state
+        if state = "buffering"
+          ' if m._Flag_isPaused
+            m._Flag_isPaused = false
+            m._triggerPlayEvent()
+          ' end if
+        else if state = "playing"
+          ' We get the playing event after buffering on initial startup, but
+          ' also again on unpausing (without the buffering event), so we need
+          ' to send play if we're currently paused
+          if m._Flag_isPaused
+            m._Flag_isPaused = false
+            m._triggerPlayEvent()
+          end if
+          m._addEventToQueue(m._createEvent("playing"))
+        else if state = "paused"
+          m._Flag_isPaused = true
+          m._addEventToQueue(m._createEvent("pause"))
+        end if
+      end if
     end if
   end sub
 
