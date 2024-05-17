@@ -1221,14 +1221,25 @@ function muxAnalytics() as Object
       props.video_source_duration = Int(m._videoSourceDuration)
     end if
     if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
-      if type(m._configProperties.player_init_time) = "roString"
-        playerInitTime = ParseJSON(m._configProperties.player_init_time)
-        if playerInitTime <> invalid
-          if (LCase(Type(playerInitTime)) = "rointeger") and (playerInitTime > 0)
-            props.player_startup_time = Int(m._startTimestamp - playerInitTime)
-            if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
-              props.view_aggregate_startup_time = Int(m._viewTimeToFirstFrame + (m._startTimestamp - playerInitTime))
-            end if
+      playerInitTime = Invalid
+      if Type(m._configProperties.player_init_time) = "roString"
+        playerInitTime = Val(m._configProperties.player_init_time)
+      else if Type(m._configProperties.player_init_time) = "roFloat"
+        playerInitTime = m._configProperties.player_init_time
+      end if
+
+      if playerInitTime <> invalid
+        print Type(playerInitTime)
+        print playerInitTime
+        if playerInitTime > 0
+          print "it is a rointeger"
+          props.player_startup_time = Int(m._startTimestamp - playerInitTime)
+          print "startTimestamp"
+          print m._startTimestamp
+          print "parsed player_startup_time"
+          print props.player_startup_time
+          if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
+            props.view_aggregate_startup_time = Int(m._viewTimeToFirstFrame + (m._startTimestamp - playerInitTime))
           end if
         end if
       end if
