@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "1.4.3"
+  m.MUX_SDK_VERSION = "1.5.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -77,6 +77,11 @@ function runBeaconLoop()
   end if
   m.top.ObserveField("config", m.messagePort)
 
+  if m.top.useRenderStitchedStream <> Invalid
+    m.mxa.useRenderStitchedStreamHandler(m.top.useRenderStitchedStream)
+  end if
+  m.top.ObserveField("useRenderStitchedStream", m.messagePort)
+
   if m.top.error <> Invalid
     m.mxa.videoErrorHandler(m.top.error)
   end if
@@ -85,11 +90,20 @@ function runBeaconLoop()
   m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
   m.heartbeatTimer.ObserveField("fire", m.messagePort)
+
+  ' Track exit on a separate port per Roku's guidance
+  m.exitPort = _createPort()
+  m.top.ObserveField("exit", m.exitPort)
+
   running = true
   while running
-    msg = wait(50, m.messagePort)
-    if m.top.exit = true
-      running = false
+    exitMsg = wait(10, m.exitPort)
+    msg = wait(40, m.messagePort)
+    if exitMsg <> invalid
+      data = exitMsg.getData()
+      if data = true
+        running = false
+      end if
     end if
     if msg <> Invalid
       msgType = type(msg)
@@ -111,6 +125,8 @@ function runBeaconLoop()
           end if
         else if field = "config"
           m.mxa.configChangeHandler(msg.getData())
+        else if field = "useRenderStitchedStream"
+          m.mxa.useRenderStitchedStreamHandler(msg.getData())
         else if field = "error"
           m.mxa.videoErrorHandler(msg.getData())
         else if field = "control"
@@ -332,6 +348,12 @@ function muxAnalytics() as Object
     m._Flag_lastReportedPosition = 0
     m._Flag_FailedAdsErrorSet = false
 
+    ' Flags specifically for when renderStitchedStream is used
+    m._Flag_useRenderStitchedStream = false
+    m._Flag_rssInAdBreak = false
+    m._Flag_rssAdEnded = false
+    m._Flag_rssContentPlayingAfterAds = false
+
     ' kick off analytics
     date = m._getDateTime()
     m._startTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
@@ -366,6 +388,7 @@ function muxAnalytics() as Object
   end sub
 
   prototype.videoStateChangeHandler = sub(videoState as String)
+    m.video_state = videoState
     previouslyLastReportedPosition = m._Flag_lastReportedPosition
     positionNow = m.video.position
     m._Flag_lastReportedPosition = positionNow
@@ -531,6 +554,12 @@ function muxAnalytics() as Object
     end if
   end sub
 
+  prototype.useRenderStitchedStreamHandler = sub(useRenderStitchedStream as String)
+    if useRenderStitchedStream <> Invalid
+      m._Flag_useRenderStitchedStream = (useRenderStitchedStream = "true")
+    end if
+  end sub
+
   prototype.videoErrorHandler = sub(error as Object)
     errorCode = "0"
     errorMessage = "Unknown"
@@ -555,8 +584,18 @@ function muxAnalytics() as Object
   prototype.rafEventHandler = sub(rafEvent)
     data = rafEvent.getData()
     eventType = data.eventType
-    m._Flag_isPaused = (eventType = "Pause")
     m._advertProperties = {}
+
+    ' Special case to handle if `renderStitchedStream` is used or not
+    if m._Flag_useRenderStitchedStream = true
+      m._renderStitchedStreamRafEventHandler(eventType, data)
+    else
+      m._rafEventHandler(eventType, data)
+    end if
+  end sub
+
+  prototype._rafEventhandler = sub(eventType, data)
+    m._Flag_isPaused = (eventType = "Pause")
     if eventType = "PodStart"
       m._advertProperties = m._getAdvertProperites(data.obj)
       m._addEventToQueue(m._createEvent("adbreakstart"))
@@ -621,6 +660,95 @@ function muxAnalytics() as Object
     end if
   end sub
 
+  prototype._renderStitchedStreamRafEventHandler = sub(eventType, data)
+    if eventType = "AdStateChange"
+      state = data.ctx.state
+      m._advertProperties = m._getAdvertProperites(data.obj)
+      if state = "buffering"
+        ' the buffering state is the first event we get in a new ad pod, so start
+        ' our ad break here if we're not already in one
+        if not m._Flag_rssInAdBreak
+          m._Flag_rssInAdBreak = true
+          m._addEventToQueue(m._createEvent("adbreakstart"))
+        end if
+
+        ' and always trigger adplay
+        m._Flag_isPaused = false
+        m._addEventToQueue(m._createEvent("adplay"))
+      else if state = "playing"
+        ' in the playing state, if we either resuming, we need adplay first
+        if m._Flag_isPaused
+          m._Flag_isPaused = false
+          m._addEventToQueue(m._createEvent("adplay"))
+        end if
+        ' and always emit adplaying
+        m._addEventToQueue(m._createEvent("adplaying"))
+      else if state = "paused"
+        m._Flag_isPaused = true
+        m._addEventToQueue(m._createEvent("adpause"))
+      end if
+    else if eventType = "PodStart"
+      ' Need to handle PodStart for non-pre-rolls
+      if not m._Flag_rssInAdBreak
+        m._Flag_rssInAdBreak = true
+        if not m._Flag_isPaused
+          m._Flag_isPaused = true
+          m._addEventToQueue(m._createEvent("pause"))
+        end if
+        m._addEventToQueue(m._createEvent("adbreakstart"))
+      end if
+    else if eventType = "Complete"
+      ' Complete signals an ad has finished playback
+      m._Flag_rssAdEnded = true
+      m._addEventToQueue(m._createEvent("adended"))
+    else if eventType = "Impression"
+      ' When an additional ad is played within an ad pod, we do not get
+      ' the AdStateChange events or anything other than the Impression
+      ' event to know that a new ad was played
+      if m._Flag_rssAdEnded
+        m._Flag_rssAdEnded = false
+        m._addEventToQueue(m._createEvent("adplay"))
+        m._addEventToQueue(m._createEvent("adplaying"))
+      end if
+    else if eventType = "PodComplete"
+      m._Flag_rssInAdBreak = false
+      m._Flag_isPaused = true
+      m._addEventToQueue(m._createEvent("adbreakend"))
+    else if eventType = "ContentPosition"
+      ' we have a special case here to track the start of content after an ad break
+      if not m._Flag_rssInAdBreak
+        if m._Flag_isPaused
+          m._Flag_isPaused = false
+          m._triggerPlayEvent()
+          m._addEventToQueue(m._createEvent("playing"))
+        end if
+      end if
+    else if eventType = "ContentStateChange"
+      ' We really only care about this if we're _not_ in an ad break
+      if not m._Flag_rssInAdBreak
+        state = data.ctx.state
+        if state = "buffering"
+          ' if m._Flag_isPaused
+            m._Flag_isPaused = false
+            m._triggerPlayEvent()
+          ' end if
+        else if state = "playing"
+          ' We get the playing event after buffering on initial startup, but
+          ' also again on unpausing (without the buffering event), so we need
+          ' to send play if we're currently paused
+          if m._Flag_isPaused
+            m._Flag_isPaused = false
+            m._triggerPlayEvent()
+          end if
+          m._addEventToQueue(m._createEvent("playing"))
+        else if state = "paused"
+          m._Flag_isPaused = true
+          m._addEventToQueue(m._createEvent("pause"))
+        end if
+      end if
+    end if
+  end sub
+
   prototype.pollingIntervalHandler = sub(pollingIntervalEvent)
     if m.video = Invalid then return
 
@@ -642,14 +770,14 @@ function muxAnalytics() as Object
 
   prototype._updateContentPlaybackTime = sub()
     if m.video.position <= m._Flag_lastReportedPosition then return
-    if m.video.state <> "playing" then return
+    if m.video_state <> "playing" then return
     if m._contentPlaybackTime = Invalid then return
 
     m._contentPlaybackTime = m._contentPlaybackTime + ((m.video.position - m._Flag_lastReportedPosition) * 1000)
   end sub
 
   prototype._updateTotalWatchTime = sub()
-    if m.video.state = "paused" then return
+    if m.video_state = "paused" then return
     if m._viewWatchTime = Invalid then return
     if m._viewStartTimestamp = Invalid then return
     if m._viewTimeToFirstFrame = Invalid then return
@@ -660,7 +788,7 @@ function muxAnalytics() as Object
   end sub
 
   prototype._setBufferingMetrics = sub()
-    if m.video.state <> "buffering" then return
+    if m.video_state <> "buffering" then return
     if m._Flag_atLeastOnePlayEventForContent <> true then return
     if m._viewRebufferDuration = Invalid then return
 
@@ -924,9 +1052,10 @@ function muxAnalytics() as Object
   end function
 
   ' Set called per video content'
-  prototype._getVideoContentProperties = function(content as Object) as Object
+  prototype._getVideoContentProperties = function(incomingContent as Object) as Object
     props = {}
-    if content <> Invalid
+    if incomingContent <> invalid
+      content = incomingContent.GetFields()
       if content.title <> Invalid AND (type(content.title) = "String" OR type(content.title) = "roString") AND content.title <> ""
         props.video_title = content.title
       end if
@@ -1092,14 +1221,25 @@ function muxAnalytics() as Object
       props.video_source_duration = Int(m._videoSourceDuration)
     end if
     if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
-      if type(m._configProperties.player_init_time) = "roString"
-        playerInitTime = ParseJSON(m._configProperties.player_init_time)
-        if playerInitTime <> invalid
-          if (LCase(Type(playerInitTime)) = "rointeger") and (playerInitTime > 0)
-            props.player_startup_time = Int(m._startTimestamp - playerInitTime)
-            if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
-              props.view_aggregate_startup_time = Int(m._viewTimeToFirstFrame + (m._startTimestamp - playerInitTime))
-            end if
+      playerInitTime = Invalid
+      if Type(m._configProperties.player_init_time) = "roString"
+        playerInitTime = Val(m._configProperties.player_init_time)
+      else if Type(m._configProperties.player_init_time) = "roFloat"
+        playerInitTime = m._configProperties.player_init_time
+      end if
+
+      if playerInitTime <> invalid
+        print Type(playerInitTime)
+        print playerInitTime
+        if playerInitTime > 0
+          print "it is a rointeger"
+          props.player_startup_time = Int(m._startTimestamp - playerInitTime)
+          print "startTimestamp"
+          print m._startTimestamp
+          print "parsed player_startup_time"
+          print props.player_startup_time
+          if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
+            props.view_aggregate_startup_time = Int(m._viewTimeToFirstFrame + (m._startTimestamp - playerInitTime))
           end if
         end if
       end if
