@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "1.5.0"
+  m.MUX_SDK_VERSION = "1.5.1"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -1229,15 +1229,8 @@ function muxAnalytics() as Object
       end if
 
       if playerInitTime <> invalid
-        print Type(playerInitTime)
-        print playerInitTime
         if playerInitTime > 0
-          print "it is a rointeger"
           props.player_startup_time = Int(m._startTimestamp - playerInitTime)
-          print "startTimestamp"
-          print m._startTimestamp
-          print "parsed player_startup_time"
-          print props.player_startup_time
           if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
             props.view_aggregate_startup_time = Int(m._viewTimeToFirstFrame + (m._startTimestamp - playerInitTime))
           end if
