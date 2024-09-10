@@ -1432,7 +1432,7 @@ function muxAnalytics() as Object
       props.view_min_request_throughput = FormatJson(m._viewMinRequestThroughput)
     end if
     if m._viewAverageRequestThroughput <> Invalid
-      props.view_average_request_throughput = Int(m._viewAverageRequestThroughput)
+      props.view_average_request_throughput = FormatJson(m._viewAverageRequestThroughput)
     end if
     if m._viewRequestCount <> Invalid
       props.view_request_count = m._viewRequestCount
