@@ -112,8 +112,30 @@ sub playContent()
     contentInfo.contentId = "BIG BUCK BUNNY"
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
+  else if selectionId = "playlist"
+    createPlaylist()
+    PlayContentOnlyNoAds(contentInfo)
   end if
 end sub
+
+function createPlaylist()
+  playlistNode = CreateObject("roSGNode", "ContentNode")
+  for i = 0 to 1
+    contentNode = CreateObject("roSGNode", "ContentNode")
+    if i = 0
+      contentNode.URL = "https://stream.mux.com/01RaH6QVoN7DIFtrui00Khqa02PM600wno2N.m3u8"
+      contentNode.TITLE = "Test Stream MUX"
+    else if i = 1
+      contentNode.URL = "https://content.jwplatform.com/manifests/yp34SRmf.m3u8"
+      contentNode.TITLE = "Test HLS"
+    end if
+
+    contentNode.ContentType = "episode"
+    playlistNode.appendChild(contentNode)
+  end for
+  m.top.video.contentIsPlaylist = true
+  m.top.video.content = playlistNode
+end function
 
 sub PlayContentOnlyNoAds(contentInfo as Object)
   m.top.facade.visible = false

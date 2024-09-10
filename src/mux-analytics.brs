@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "1.5.1"
+  m.MUX_SDK_VERSION = "1.6.1"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -61,6 +61,9 @@ function runBeaconLoop()
     m.top.video.ObserveField("content", m.messagePort)
     m.top.video.ObserveField("control", m.messagePort)
     m.top.video.ObserveField("licenseStatus", m.messagePort)
+    m.top.video.ObserveField("contentIndex", m.messagePort)
+    m.top.video.ObserveField("downloadedSegment", m.messagePort)
+    m.top.video.ObserveField("streamingSegment", m.messagePort)
     if m.top.video.enableDecoderStats <> Invalid
       m.top.video.enableDecoderStats = true
       m.top.video.ObserveField("decoderStats", m.messagePort)
@@ -118,6 +121,9 @@ function runBeaconLoop()
             m.top.video.ObserveField("content", m.messagePort)
             m.top.video.ObserveField("control", m.messagePort)
             m.top.video.ObserveField("licenseStatus", m.messagePort)
+            m.top.video.ObserveField("contentIndex", m.messagePort)
+            m.top.video.ObserveField("downloadedSegment", m.messagePort)
+            m.top.video.ObserveField("streamingSegment", m.messagePort)
             if m.top.video.enableDecoderStats <> Invalid
               m.top.video.enableDecoderStats = true
               m.top.video.ObserveField("decoderStats", m.messagePort)
@@ -133,6 +139,12 @@ function runBeaconLoop()
           m.mxa.videoControlChangeHandler(msg.getData())
         else if field = "content"
           m.mxa.videoContentChangeHandler(msg.getData())
+        else if field = "contentIndex"
+          m.mxa.videoContentIndexChangeHandler(msg.getData())
+        else if field = "streamingSegment"
+          m.mxa.videoStreamingSegmentChangeHandler(msg.getData())
+        else if field = "downloadedSegment"
+          m.mxa.videoDownloadedSegmentChangeHandler(msg.getData())
         else if field = "decoderStats"
           m.mxa.videoDecoderStatsChangeHandler(msg.getData())
         else if field = "licenseStatus"
@@ -178,6 +190,12 @@ function runBeaconLoop()
     while NOT m.mxa.isQueueEmpty()
       m.mxa.LIGHT_THE_BEACONS()
     end while
+  end if
+
+  'video player doesn't reset the playlist field. Has to reset it default to prevent crash on next video play
+  if m.top.video <> Invalid AND m.top.video.contentIsPlaylist = true
+    m.top.video.content = Invalid
+    m.top.video.contentIsPlaylist = false
   end if
 
   m.top.exit = false
@@ -339,6 +357,29 @@ function muxAnalytics() as Object
     m._videoSourceDuration = Invalid
     m._viewPrerollPlayedCount = Invalid
 
+    m._lastSourceWidth = Invalid
+    m._lastSourceHeight = Invalid
+    m._lastPlayheadPosition = Invalid
+    m._lastVideoSegmentBitrate = Invalid
+    m._viewMaxUpscalePercentage = Invalid
+    m._viewMaxDownscalePercentage = Invalid
+    m._viewTotalUpscaling = Invalid
+    m._viewTotalDownscaling = Invalid
+    m._viewTotalContentPlaybackTime = Invalid
+    m._totalBytes = Invalid
+    m._totalLoadTime = Invalid
+    m._segmentRequestCount = Invalid
+    m._segmentRequestFailedCount = Invalid
+    m._viewMinRequestThroughput = Invalid
+    m._viewAverageRequestThroughput = Invalid
+    m._viewRequestCount = Invalid
+
+    ' Calculate player width and heitht
+    deviceInfo = m._getDeviceInfo()
+    videoMode = deviceInfo.GetVideoMode()
+    m._lastPlayerWidth = Val(m._getVideoPlaybackMetric(videoMode, "width"))
+    m._lastPlayerHeight = Val(m._getVideoPlaybackMetric(videoMode, "height"))
+
     ' flags
     m._Flag_lastVideoState = "none"
     m._Flag_isPaused = false
@@ -376,7 +417,11 @@ function muxAnalytics() as Object
 
   prototype.videoAddedHandler = sub(video as Object)
     m._videoProperties = m._getVideoProperties(video)
-    m._videoContentProperties = m._getVideoContentProperties(video.content)
+    if video.contentIsPlaylist = true
+      m._videoContentProperties = m._getVideoContentProperties(video.content.getChild(video.contentIndex))
+    else
+      m._videoContentProperties = m._getVideoContentProperties(video.content)
+    end if
     m.video = video
 
     if video <> Invalid
@@ -512,7 +557,11 @@ function muxAnalytics() as Object
   prototype._triggerPlayEvent = sub()
     if m.video <> Invalid
       if m.video.content <> Invalid
-        m._videoContentProperties = m._getVideoContentProperties(m.video.content)
+        if m.video.contentIsPlaylist
+          m._videoContentProperties = m._getVideoContentProperties(m.video.content.getChild(m.video.contentIndex))
+        else
+          m._videoContentProperties = m._getVideoContentProperties(m.video.content)
+        end if
       end if
       m._videoProperties = m._getVideoProperties(m.video)
     end if
@@ -532,6 +581,122 @@ function muxAnalytics() as Object
     if m._clientOperatedStartAndEnd <> true
       m._endView()
       m._startView()
+    end if
+  end sub
+
+  prototype.videoContentIndexChangeHandler = sub(contentIndex as integer)
+    if contentIndex > 0
+      m._addEventToQueue(m._createEvent("ended"))
+      m._endView(true)
+      m._startView(true)
+      m._triggerPlayEvent()
+      if m._Flag_atLeastOnePlayEventForContent = false
+        if m._viewTimeToFirstFrame = Invalid
+          if m._viewStartTimestamp <> Invalid and m._viewStartTimestamp <> 0
+            date = m._getDateTime()
+            now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+            m._viewTimeToFirstFrame = now - m._viewStartTimestamp
+          end if
+        end if
+      end if
+      m._addEventToQueue(m._createEvent("playing"))
+    end if
+  end sub
+
+  prototype.videoStreamingSegmentChangeHandler = sub(videoSegment as object)
+    if videoSegment <> Invalid
+      if m._lastPlayerWidth <> Invalid AND m._lastPlayerHeight <> Invalid AND m._lastPlayheadPosition <> Invalid AND m._lastSourceWidth <> Invalid AND m._lastSourceHeight <> Invalid AND videoSegment.segStartTime <> Invalid
+        player_playhead_time = Int(videoSegment.segStartTime * 1000)
+        if m._lastPlayerWidth >= 0 AND m._lastPlayerHeight >= 0 AND m._lastPlayheadPosition >= 0 AND player_playhead_time >= 0 AND m._lastSourceWidth > 0 AND m._lastSourceHeight > 0
+          timeDiff = player_playhead_time - m._lastPlayheadPosition
+          scale = m._min(m._lastPlayerWidth / m._lastSourceWidth, m._lastPlayerHeight / m._lastSourceHeight)
+          upscale = m._max(0, scale - 1)
+          downscale = m._max(0, 1 - scale)
+          m._viewMaxUpscalePercentage = m._max(m._viewMaxUpscalePercentage, upscale)
+          m._viewMaxDownscalePercentage = m._max(m._viewMaxDownscalePercentage, downscale)
+          m._viewTotalContentPlaybackTime = m._safeAdd(m._viewTotalContentPlaybackTime, timeDiff)
+          m._viewTotalUpscaling = m._safeAdd(m._viewTotalUpscaling, upscale * timeDiff)
+          m._viewTotalDownscaling = m._safeAdd(m._viewTotalDownscaling, downscale * timeDiff)
+        end if
+      end if
+      if videoSegment.width <> Invalid AND videoSegment.height <> Invalid AND videoSegment.segBitrateBps <> Invalid
+        if m._lastSourceWidth <> Invalid AND m._lastSourceWidth <> videoSegment.width OR m._lastSourceHeight <> Invalid AND m._lastSourceHeight <> videoSegment.height OR m._lastVideoSegmentBitrate <> Invalid AND m._lastVideoSegmentBitrate <> videoSegment.segBitrateBps
+          m._addEventToQueue(m._createEvent("renditionchange", { video_source_width : videoSegment.width, video_source_height : videoSegment.height, video_source_bitrate : videoSegment.segBitrateBps }))
+        end if
+      end if
+      m._lastSourceWidth = videoSegment.width
+      m._lastSourceHeight = videoSegment.height
+      m._lastVideoSegmentBitrate = videoSegment.segBitrateBps
+      m._lastPlayheadPosition = Int(videoSegment.segStartTime * 1000)
+    end if
+  end sub
+
+  prototype.videoDownloadedSegmentChangeHandler = sub(videoSegment as object)
+    if m._segmentRequestCount = Invalid then m._segmentRequestCount = 0
+    m._segmentRequestCount++
+    if videoSegment <> Invalid
+      props = {}
+      if videoSegment.segType <> Invalid
+        if videoSegment.segType = 0
+          props.request_type = "media"
+        else if videoSegment.segType = 1
+          props.request_type = "audio"
+        else if videoSegment.segType = 2
+          props.request_type = "video"
+        else if videoSegment.segType = 3
+          props.request_type = "captions"
+        end if
+      end if
+      if videoSegment.downloadDuration <> Invalid
+        props.request_media_duration = videoSegment.downloadDuration
+        date = m._getDateTime()
+        now = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
+        props.request_response_end = FormatJson(now)
+        resultMilliseconds = now - videoSegment.downloadDuration
+        props.request_start = FormatJson(resultMilliseconds)
+      end if
+      if videoSegment.segUrl <> Invalid
+        props.request_hostname = m._getHostname(videoSegment.segUrl)
+      end if
+      if videoSegment.status <> Invalid
+        if videoSegment.status = 0
+          if videoSegment.segSize <> Invalid
+            props.request_bytes_loaded = videoSegment.segSize
+          end if
+          if videoSegment.width <> Invalid
+            props.request_video_width = videoSegment.width
+          end if
+          if videoSegment.height <> Invalid
+            props.request_video_height = videoSegment.height
+          end if
+          if m.video <> Invalid AND m.video.content <> Invalid
+            if m.video.contentIsPlaylist
+              props.video_source_is_live = m.video.content.getChild(m.video.contentIndex).live
+            else
+              props.video_source_is_live = m.video.content.live
+            end if
+          end if
+          if videoSegment.downloadDuration <> Invalid AND videoSegment.downloadDuration > 0 AND videoSegment.segSize <> Invalid AND videoSegment.segSize > 0
+            loadTime = videoSegment.downloadDuration / 1000
+            throughput = (videoSegment.segSize * 8) / loadTime ' in bits / sec
+            m._totalBytes = m._safeAdd(m._totalBytes, videoSegment.segSize)
+            m._totalLoadTime = m._safeAdd(m._totalLoadTime, loadTime)
+            if m._viewMinRequestThroughput = Invalid
+              m._viewMinRequestThroughput = throughput
+            else
+              m._viewMinRequestThroughput = m._min(m._viewMinRequestThroughput, throughput)
+            end if
+            m._viewAverageRequestThroughput = (m._totalBytes * 8) / m._totalLoadTime
+            m._viewRequestCount = m._segmentRequestCount
+          end if
+          m._addEventToQueue(m._createEvent("requestcompleted", props))
+        else
+          if m._segmentRequestFailedCount = Invalid then m._segmentRequestFailedCount = 0
+          m._segmentRequestFailedCount++
+          props.view_request_failed_count = m._segmentRequestFailedCount
+          m._addEventToQueue(m._createEvent("requestfailed", props))
+        end if
+      end if
     end if
   end sub
 
@@ -886,6 +1051,13 @@ function muxAnalytics() as Object
       m._viewAdPlayedCount = 0
       m._viewPrerollPlayedCount = 0
 
+      m._lastSourceWidth = 0
+      m._lastSourceHeight = 0
+      m._totalBytes = 0
+      m._totalLoadTime = 0
+      m._segmentRequestCount = 0
+      m._segmentRequestFailedCount = 0
+
       m._Flag_lastReportedPosition = 0
       m._Flag_atLeastOnePlayEventForContent = false
       m._Flag_isSeeking = false
@@ -894,7 +1066,11 @@ function muxAnalytics() as Object
 
       if m.video <> Invalid
         if m.video.content <> Invalid
-          m._videoContentProperties = m._getVideoContentProperties(m.video.content)
+          if m.video.contentIsPlaylist
+            m._videoContentProperties = m._getVideoContentProperties(m.video.content.getChild(m.video.contentIndex))
+          else
+            m._videoContentProperties = m._getVideoContentProperties(m.video.content)
+          end if
         end if
         m._videoProperties = m._getVideoProperties(m.video)
       end if
@@ -931,6 +1107,23 @@ function muxAnalytics() as Object
       m._videoSourceDuration = Invalid
       m.drmType = Invalid
       m.droppedFrames = Invalid
+
+      m._lastSourceWidth = Invalid
+      m._lastSourceHeight = Invalid
+      m._lastPlayheadPosition = Invalid
+      m._lastVideoSegmentBitrate = Invalid
+      m._viewMaxUpscalePercentage = Invalid
+      m._viewMaxDownscalePercentage = Invalid
+      m._viewTotalUpscaling = Invalid
+      m._viewTotalDownscaling = Invalid
+      m._viewTotalContentPlaybackTime = Invalid
+      m._totalBytes = Invalid
+      m._totalLoadTime = Invalid
+      m._segmentRequestCount = Invalid
+      m._viewMinRequestThroughput = Invalid
+      m._viewAverageRequestThroughput = Invalid
+      m._viewRequestCount = Invalid
+      m._segmentRequestFailedCount = Invalid
     end if
   end sub
 
@@ -1220,6 +1413,30 @@ function muxAnalytics() as Object
     if m._videoSourceDuration <> Invalid
       props.video_source_duration = Int(m._videoSourceDuration)
     end if
+    if m._viewMaxUpscalePercentage <> Invalid
+      props.view_max_upscale_percentage = m._viewMaxUpscalePercentage
+    end if
+    if m._viewMaxDownscalePercentage <> Invalid
+      props.view_max_downscale_percentage = m._viewMaxDownscalePercentage
+    end if
+    if m._viewTotalContentPlaybackTime <> Invalid
+      props.view_total_content_playback_time = m._viewTotalContentPlaybackTime
+    end if
+    if m._viewTotalUpscaling <> Invalid
+      props.view_total_upscaling = m._viewTotalUpscaling
+    end if
+    if m._viewTotalDownscaling <> Invalid
+      props.view_total_downscaling = m._viewTotalDownscaling
+    end if
+    if m._viewMinRequestThroughput <> Invalid
+      props.view_min_request_throughput = FormatJson(m._viewMinRequestThroughput)
+    end if
+    if m._viewAverageRequestThroughput <> Invalid
+      props.view_average_request_throughput = Int(m._viewAverageRequestThroughput)
+    end if
+    if m._viewRequestCount <> Invalid
+      props.view_request_count = m._viewRequestCount
+    end if
     if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
       playerInitTime = Invalid
       if Type(m._configProperties.player_init_time) = "roString"
@@ -1449,7 +1666,9 @@ function muxAnalytics() as Object
       "2160p25b10": {width: "3840", height: "2160", aspect: "16:9", refresh: "25 Hz", depth: "10 Bit"},
       "2160p50b10": {width: "3840", height: "2160", aspect: "16:9", refresh: "50 Hz", depth: "10 Bit"},
       "2160p30b10": {width: "3840", height: "2160", aspect: "16:9", refresh: "30 Hz", depth: "10 Bit"},
-      "2160p60b10": {width: "3840", height: "2160", aspect: "16:9", refresh: "60 Hz", depth: "10 Bit"}
+      "2160p60b10": {width: "3840", height: "2160", aspect: "16:9", refresh: "60 Hz", depth: "10 Bit"},
+      "4320p60": { width: "7680", height: "4320", aspect: "16:9", refresh: "60 Hz", depth: "12 Bit"},
+      "4320p60b10": { width: "7680", height: "4320", aspect: "16:9", refresh: "60 Hz", depth: "12 Bit"}
     }
     if metrics[videoMode] <> Invalid
       modeMetrics = metrics[videoMode]
@@ -1562,37 +1781,54 @@ function muxAnalytics() as Object
     "aggregate": "ag",
     "api": "ap",
     "application": "al",
-    "audio": "ao",
     "architecture": "ar",
     "asset": "as",
     "autoplay": "au",
+    "average": "av",
+    "bitrate": "bi",
     "break": "br",
+    "browser": "bw",
+    "bytes": "by",
+    "business": "bz",
+    "cached": "ca",
+    "cancel": "cb",
     "codec": "cc",
     "code": "cd",
     "category": "cg",
+    "changed": "ch",
+    "clicked": "ck",
+    "canceled": "cl",
     "config": "cn",
     "count": "co",
+    "counter": "ce",
     "complete": "cp",
-    "connection": "cx",
+    "creative": "cr",
     "content": "ct",
     "current": "cu",
-    "country": "cy",
+    "connection": "cx",
     "context": "cz",
     "downscaling": "dg",
     "domain": "dm",
     "cdn": "dn",
     "downscale": "do",
-    "duration": "du",
-    "device": "dv",
     "drm": "dr",
     "dropped": "dp",
+    "duration": "du",
+    "device": "dv",
     "encoding": "ec",
+    "edge": "ed",
     "end": "en",
     "engine": "eg",
     "embed": "em",
     "error": "er",
+    "experiments": "ep",
+    "errorcode": "es",
+    "errortext": "et",
+    "event": "ee",
     "events": "ev",
     "expires": "ex",
+    "exception": "ez",
+    "failed": "fa",
     "first": "fi",
     "family": "fm",
     "format": "ft",
@@ -1600,6 +1836,9 @@ function muxAnalytics() as Object
     "frequency": "fq",
     "frame": "fr",
     "fullscreen": "fs",
+    "has": "ha",
+    "holdback": "hb",
+    "headers": "he",
     "host": "ho",
     "hostname": "hn",
     "height": "ht",
@@ -1610,15 +1849,24 @@ function muxAnalytics() as Object
     "is": "is",
     "key": "ke",
     "language": "la",
+    "labeled": "lb",
+    "level": "le",
     "live": "li",
+    "loaded": "ld",
     "load": "lo",
+    "lists": "ls",
+    "latency": "lt",
     "max": "ma",
+    "media": "md",
     "message": "me",
+    "manifest": "mf",
     "mime": "mi",
     "midroll": "ml",
+    "min": "mm",
     "manufacturer": "mn",
     "model": "mo",
     "mux": "mx",
+    "newest": "ne",
     "name": "nm",
     "number": "no",
     "on": "on",
@@ -1628,19 +1876,27 @@ function muxAnalytics() as Object
     "producer": "pd",
     "percentage": "pe",
     "played": "pf",
+    "program": "pg",
     "playhead": "ph",
     "plugin": "pi",
     "preroll": "pl",
+    "playing": "pn",
     "poster": "po",
     "preload": "pr",
+    "position": "ps",
+    "part": "pt",
     "property": "py",
     "rate": "ra",
     "requested": "rd",
     "rebuffer": "re",
+    "rendition": "rf",
+    "remote": "rm",
     "ratio": "ro",
+    "response": "rp",
     "request": "rq",
     "requests": "rs",
     "sample": "sa",
+    "skipped": "sd",
     "session": "se",
     "seek": "sk",
     "stream": "sm",
@@ -1651,16 +1907,19 @@ function muxAnalytics() as Object
     "startup": "su",
     "server": "sv",
     "software": "sw",
-    "subtitle": "sb",
+    "severity": "sy",
     "tag": "ta",
     "tech": "tc",
+    "text": "te",
+    "target": "tg",
+    "throughput": "th",
     "time": "ti",
     "total": "tl",
     "to": "to",
     "title": "tt",
     "type": "ty",
-    "track": "tr",
     "upscaling": "ug",
+    "universal": "un",
     "upscale": "up",
     "url": "ur",
     "user": "us",
@@ -1674,6 +1933,40 @@ function muxAnalytics() as Object
     "watch": "wa",
     "waiting": "wt"
   }
+
+  ' ' //////////////////////////////////////////////////////////////
+  ' ' UTILS METHODS
+  ' ' //////////////////////////////////////////////////////////////
+
+  prototype._min = function(a, b) as object
+    if a = invalid then a = 0
+    if b = invalid then b = 0
+
+    if a < b then
+      return a
+    else
+      return b
+    end if
+  end function
+
+  prototype._max = function(a, b) as object
+    if a = invalid then a = 0
+    if b = invalid then b = 0
+
+    if a < b then
+      return b
+    else
+      return a
+    end if
+  end function
+
+  prototype._safeAdd = function(var, addValue) as object
+    if var = invalid then
+      return addValue
+    else
+      return var + addValue
+    end if
+  end function
 
   return prototype
 end function

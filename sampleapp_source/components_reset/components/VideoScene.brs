@@ -30,7 +30,8 @@ sub setupContent()
   {title: "Error before playback", selectionID: "preplaybackerror"},
   {title: "Error during playback", selectionID: "playbackerror"},
   {title: "HLS stream no ads", selectionID: "hlsnoads"},
-  {title: "DASH stream no ads", selectionID: "dashnoads"}
+  {title: "DASH stream no ads", selectionID: "dashnoads"},
+  { title : "Playlist content, no ads", selectionID : "playlist" },
   ]
 
   listContent = createObject("roSGNode","ContentNode")
