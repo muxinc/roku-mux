@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "1.6.1"
+  m.MUX_SDK_VERSION = "1.6.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -137,8 +137,6 @@ function runBeaconLoop()
           m.mxa.videoErrorHandler(msg.getData())
         else if field = "control"
           m.mxa.videoControlChangeHandler(msg.getData())
-        else if field = "content"
-          m.mxa.videoContentChangeHandler(msg.getData())
         else if field = "contentIndex"
           m.mxa.videoContentIndexChangeHandler(msg.getData())
         else if field = "streamingSegment"
@@ -669,13 +667,6 @@ function muxAnalytics() as Object
           if videoSegment.height <> Invalid
             props.request_video_height = videoSegment.height
           end if
-          if m.video <> Invalid AND m.video.content <> Invalid
-            if m.video.contentIsPlaylist
-              props.video_source_is_live = m.video.content.getChild(m.video.contentIndex).live
-            else
-              props.video_source_is_live = m.video.content.live
-            end if
-          end if
           if videoSegment.downloadDuration <> Invalid AND videoSegment.downloadDuration > 0 AND videoSegment.segSize <> Invalid AND videoSegment.segSize > 0
             loadTime = videoSegment.downloadDuration / 1000
             throughput = (videoSegment.segSize * 8) / loadTime ' in bits / sec
@@ -1124,6 +1115,7 @@ function muxAnalytics() as Object
       m._viewAverageRequestThroughput = Invalid
       m._viewRequestCount = Invalid
       m._segmentRequestFailedCount = Invalid
+      m.video.position = 0
     end if
   end sub
 
