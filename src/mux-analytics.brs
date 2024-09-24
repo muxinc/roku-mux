@@ -1201,7 +1201,6 @@ function muxAnalytics() as Object
     props.mux_api_version = m.MUX_API_VERSION
     props.player_mux_plugin_name = m.MUX_SDK_NAME
     props.player_mux_plugin_version = m.MUX_SDK_VERSION
-    props.player_country_code = deviceInfo.GetCountryCode()
     props.player_language_code = deviceInfo.GetCurrentLocale()
     videoMode = deviceInfo.GetVideoMode()
     props.player_width = m._getVideoPlaybackMetric(videoMode, "width")
