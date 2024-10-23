@@ -85,6 +85,11 @@ function runBeaconLoop()
   end if
   m.top.ObserveField("useRenderStitchedStream", m.messagePort)
 
+  if m.top.useSSAI <> Invalid
+    m.mxa.useSSAIHandler(m.top.useSSAI)
+  end if
+  m.top.ObserveField("useSSAI", m.messagePort)
+
   if m.top.error <> Invalid
     m.mxa.videoErrorHandler(m.top.error)
   end if
@@ -133,6 +138,8 @@ function runBeaconLoop()
           m.mxa.configChangeHandler(msg.getData())
         else if field = "useRenderStitchedStream"
           m.mxa.useRenderStitchedStreamHandler(msg.getData())
+        else if field = "useSSAI"
+          m.mxa.useSSAIHandler(msg.getData())
         else if field = "error"
           m.mxa.videoErrorHandler(msg.getData())
         else if field = "control"
@@ -386,6 +393,7 @@ function muxAnalytics() as Object
     m._Flag_isSeeking = false
     m._Flag_lastReportedPosition = 0
     m._Flag_FailedAdsErrorSet = false
+    m._Flag_useSSAI = false
 
     ' Flags specifically for when renderStitchedStream is used
     m._Flag_useRenderStitchedStream = false
@@ -722,6 +730,12 @@ function muxAnalytics() as Object
     end if
   end sub
 
+  prototype.useSSAIHandler = sub(useSSAI as String)
+    if useSSAI <> Invalid
+      m._Flag_useSSAI = (useSSAI = "true")
+    end if
+  end sub
+
   prototype.videoErrorHandler = sub(error as Object)
     errorCode = "0"
     errorMessage = "Unknown"
@@ -776,6 +790,12 @@ function muxAnalytics() as Object
     else if eventType = "PodComplete"
       m._addEventToQueue(m._createEvent("adbreakend"))
       m._Flag_FailedAdsErrorSet = false
+      ' In the case that this is SSAI, we need to signal a play and playing event
+      if m._Flag_useSSAI = true
+        m._Flag_isPaused = false
+        m._triggerPlayEvent()
+        m._addEventToQueue(m._createEvent("playing"))
+      end if
     else if eventType = "Impression"
       m._addEventToQueue(m._createEvent("adimpresion"))
     else if eventType = "Pause"

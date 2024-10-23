@@ -97,10 +97,10 @@ sub playContent()
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
   else if selectionId = "dashnoads"
-    contentNode.URL = "http://rdmedia.bbc.co.uk/dash/ondemand/bbb/2/client_manifest-common_init.mpd"
+    contentNode.URL = "https://dash.akamaized.net/dash264/TestCases/5a/nomor/1.mpd"
     contentNode.StreamFormat = "dash"
-    contentNode.length = 572
-    contentInfo.length = 568
+    contentNode.length = 594
+    contentInfo.length = 594
     contentInfo.contentId = "BIG BUCK BUNNY"
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
