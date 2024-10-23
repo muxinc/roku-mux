@@ -750,7 +750,7 @@ function muxAnalytics() as Object
     ctx = data.ctx
 
     ' Only pull the pieces of data we care about
-    ' Previous instructions passed the full adIface in, which has a circular reference
+    ' Previous instructions passed the full adIface in, which has a circular reference in some cases
     adMetadata = {}
     if obj <> Invalid
       if obj.adurl <> Invalid
