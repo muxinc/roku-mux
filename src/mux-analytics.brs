@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "1.6.0"
+  m.MUX_SDK_VERSION = "1.7.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -102,7 +102,7 @@ function runBeaconLoop()
   while running
     exitMsg = wait(10, m.exitPort)
     msg = wait(40, m.messagePort)
-    if exitMsg <> invalid
+    if exitMsg <> Invalid
       data = exitMsg.getData()
       if data = true
         running = false
@@ -603,29 +603,33 @@ function muxAnalytics() as Object
 
   prototype.videoStreamingSegmentChangeHandler = sub(videoSegment as object)
     if videoSegment <> Invalid
-      if m._lastPlayerWidth <> Invalid AND m._lastPlayerHeight <> Invalid AND m._lastPlayheadPosition <> Invalid AND m._lastSourceWidth <> Invalid AND m._lastSourceHeight <> Invalid AND videoSegment.segStartTime <> Invalid
-        player_playhead_time = Int(videoSegment.segStartTime * 1000)
-        if m._lastPlayerWidth >= 0 AND m._lastPlayerHeight >= 0 AND m._lastPlayheadPosition >= 0 AND player_playhead_time >= 0 AND m._lastSourceWidth > 0 AND m._lastSourceHeight > 0
-          timeDiff = player_playhead_time - m._lastPlayheadPosition
-          scale = m._min(m._lastPlayerWidth / m._lastSourceWidth, m._lastPlayerHeight / m._lastSourceHeight)
-          upscale = m._max(0, scale - 1)
-          downscale = m._max(0, 1 - scale)
-          m._viewMaxUpscalePercentage = m._max(m._viewMaxUpscalePercentage, upscale)
-          m._viewMaxDownscalePercentage = m._max(m._viewMaxDownscalePercentage, downscale)
-          m._viewTotalContentPlaybackTime = m._safeAdd(m._viewTotalContentPlaybackTime, timeDiff)
-          m._viewTotalUpscaling = m._safeAdd(m._viewTotalUpscaling, upscale * timeDiff)
-          m._viewTotalDownscaling = m._safeAdd(m._viewTotalDownscaling, downscale * timeDiff)
+      ' For now, we only listen for video or media segments for all of our calculations
+      if videoSegment.segType = 0 or videoSegment.segType = 2
+        if m._lastPlayerWidth <> Invalid AND m._lastPlayerHeight <> Invalid AND m._lastPlayheadPosition <> Invalid AND m._lastSourceWidth <> Invalid AND m._lastSourceHeight <> Invalid AND videoSegment.segStartTime <> Invalid
+          player_playhead_time = Int(videoSegment.segStartTime * 1000)
+          if m._lastPlayerWidth >= 0 AND m._lastPlayerHeight >= 0 AND m._lastPlayheadPosition >= 0 AND player_playhead_time >= 0 AND m._lastSourceWidth > 0 AND m._lastSourceHeight > 0
+            timeDiff = player_playhead_time - m._lastPlayheadPosition
+            scale = m._min(m._lastPlayerWidth / m._lastSourceWidth, m._lastPlayerHeight / m._lastSourceHeight)
+            upscale = m._max(0, scale - 1)
+            downscale = m._max(0, 1 - scale)
+            m._viewMaxUpscalePercentage = m._max(m._viewMaxUpscalePercentage, upscale)
+            m._viewMaxDownscalePercentage = m._max(m._viewMaxDownscalePercentage, downscale)
+            m._viewTotalContentPlaybackTime = m._safeAdd(m._viewTotalContentPlaybackTime, timeDiff)
+            m._viewTotalUpscaling = m._safeAdd(m._viewTotalUpscaling, upscale * timeDiff)
+            m._viewTotalDownscaling = m._safeAdd(m._viewTotalDownscaling, downscale * timeDiff)
+          end if
         end if
-      end if
-      if videoSegment.width <> Invalid AND videoSegment.height <> Invalid AND videoSegment.segBitrateBps <> Invalid
-        if m._lastSourceWidth <> Invalid AND m._lastSourceWidth <> videoSegment.width OR m._lastSourceHeight <> Invalid AND m._lastSourceHeight <> videoSegment.height OR m._lastVideoSegmentBitrate <> Invalid AND m._lastVideoSegmentBitrate <> videoSegment.segBitrateBps
-          m._addEventToQueue(m._createEvent("renditionchange", { video_source_width : videoSegment.width, video_source_height : videoSegment.height, video_source_bitrate : videoSegment.segBitrateBps }))
+        if videoSegment.width <> Invalid AND videoSegment.height <> Invalid AND videoSegment.segBitrateBps <> Invalid
+          if m._lastSourceWidth <> Invalid AND m._lastSourceWidth <> videoSegment.width OR m._lastSourceHeight <> Invalid AND m._lastSourceHeight <> videoSegment.height OR m._lastVideoSegmentBitrate <> Invalid AND m._lastVideoSegmentBitrate <> videoSegment.segBitrateBps
+            details = { video_source_width : videoSegment.width, video_source_height : videoSegment.height, video_source_bitrate : videoSegment.segBitrateBps }
+            m._addEventToQueue(m._createEvent("renditionchange", details))
+          end if
         end if
+        m._lastSourceWidth = videoSegment.width
+        m._lastSourceHeight = videoSegment.height
+        m._lastVideoSegmentBitrate = videoSegment.segBitrateBps
+        m._lastPlayheadPosition = Int(videoSegment.segStartTime * 1000)
       end if
-      m._lastSourceWidth = videoSegment.width
-      m._lastSourceHeight = videoSegment.height
-      m._lastVideoSegmentBitrate = videoSegment.segBitrateBps
-      m._lastPlayheadPosition = Int(videoSegment.segStartTime * 1000)
     end if
   end sub
 
@@ -645,8 +649,10 @@ function muxAnalytics() as Object
           props.request_type = "captions"
         end if
       end if
+      if videoSegment.segDuration <> Invalid
+        props.request_media_duration = videoSegment.segDuration
+      end if
       if videoSegment.downloadDuration <> Invalid
-        props.request_media_duration = videoSegment.downloadDuration
         date = m._getDateTime()
         now = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
         props.request_response_end = FormatJson(now)
@@ -730,7 +736,7 @@ function muxAnalytics() as Object
       if error.errorMessage <> Invalid
         errorMessage = error.errorMessage
       end if
-      if error.errorContext <> invalid
+      if error.errorContext <> Invalid
         errorContext = error.errorContext
       end if 
     end if
@@ -740,20 +746,32 @@ function muxAnalytics() as Object
   prototype.rafEventHandler = sub(rafEvent)
     data = rafEvent.getData()
     eventType = data.eventType
+    obj = data.obj
+    ctx = data.ctx
+
+    ' Only pull the pieces of data we care about
+    ' Previous instructions passed the full adIface in, which has a circular reference
+    adMetadata = {}
+    if obj <> Invalid
+      if obj.adurl <> Invalid
+        adMetadata.adTagUrl = obj.adurl
+      end if
+    end if
+
     m._advertProperties = {}
 
     ' Special case to handle if `renderStitchedStream` is used or not
     if m._Flag_useRenderStitchedStream = true
-      m._renderStitchedStreamRafEventHandler(eventType, data)
+      m._renderStitchedStreamRafEventHandler(eventType, ctx, adMetadata)
     else
-      m._rafEventHandler(eventType, data)
+      m._rafEventHandler(eventType, ctx, adMetadata)
     end if
   end sub
 
-  prototype._rafEventhandler = sub(eventType, data)
+  prototype._rafEventhandler = sub(eventType, ctx, adMetadata)
     m._Flag_isPaused = (eventType = "Pause")
     if eventType = "PodStart"
-      m._advertProperties = m._getAdvertProperites(data.obj)
+      m._advertProperties = m._getAdvertProperites(adMetadata)
       m._addEventToQueue(m._createEvent("adbreakstart"))
     else if eventType = "PodComplete"
       m._addEventToQueue(m._createEvent("adbreakend"))
@@ -778,11 +796,11 @@ function muxAnalytics() as Object
         ' CHECK FOR PREROLL
         m._viewPrerollPlayedCount++
       end if
-      m._advertProperties = m._getAdvertProperites(data.ctx)
+      m._advertProperties = m._getAdvertProperites(ctx)
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Resume"
-      m._advertProperties = m._getAdvertProperites(data.ctx)
+      m._advertProperties = m._getAdvertProperites(ctx)
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Complete"
@@ -793,12 +811,12 @@ function muxAnalytics() as Object
         ' this here for now for context in the future
         ' errorCode = ""
         ' errorMessage = ""
-        ' if data.ctx <> Invalid
-        '   if data.ctx.errcode <> Invalid
-        '     errorCode = data.ctx.errcode
+        ' if ctx <> Invalid
+        '   if ctx.errcode <> Invalid
+        '     errorCode = ctx.errcode
         '   end if
-        '   if data.ctx.errmsg <> Invalid
-        '     errorMessage = data.ctx.errmsg
+        '   if ctx.errmsg <> Invalid
+        '     errorMessage = ctx.errmsg
         '   end if
         ' end if
         m._addEventToQueue(m._createEvent("aderror"))
@@ -816,10 +834,10 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype._renderStitchedStreamRafEventHandler = sub(eventType, data)
+  prototype._renderStitchedStreamRafEventHandler = sub(eventType, ctx, adMetadata)
     if eventType = "AdStateChange"
-      state = data.ctx.state
-      m._advertProperties = m._getAdvertProperites(data.obj)
+      state = ctx.state
+      m._advertProperties = m._getAdvertProperites(adMetadata)
       if state = "buffering"
         ' the buffering state is the first event we get in a new ad pod, so start
         ' our ad break here if we're not already in one
@@ -882,7 +900,7 @@ function muxAnalytics() as Object
     else if eventType = "ContentStateChange"
       ' We really only care about this if we're _not_ in an ad break
       if not m._Flag_rssInAdBreak
-        state = data.ctx.state
+        state = ctx.state
         if state = "buffering"
           ' if m._Flag_isPaused
             m._Flag_isPaused = false
@@ -907,6 +925,7 @@ function muxAnalytics() as Object
 
   prototype.pollingIntervalHandler = sub(pollingIntervalEvent)
     if m.video = Invalid then return
+    if m._Flag_isPaused = true then return
 
     m._setBufferingMetrics()
     m._updateContentPlaybackTime()
@@ -1191,7 +1210,7 @@ function muxAnalytics() as Object
     props.viewer_device_manufacturer = deviceInfo.GetModelDetails()["VendorName"]
     ' If GetModel() is invalid, try the specific model number
     seriesModel = deviceInfo.GetModel()
-    if seriesModel = invalid
+    if seriesModel = Invalid
       seriesModel = deviceInfo.GetModelDetails()["ModelNumber"]
     end if
     props.viewer_device_model = seriesModel
@@ -1238,7 +1257,7 @@ function muxAnalytics() as Object
   ' Set called per video content'
   prototype._getVideoContentProperties = function(incomingContent as Object) as Object
     props = {}
-    if incomingContent <> invalid
+    if incomingContent <> Invalid
       content = incomingContent.GetFields()
       if content.title <> Invalid AND (type(content.title) = "String" OR type(content.title) = "roString") AND content.title <> ""
         props.video_title = content.title
@@ -1298,12 +1317,15 @@ function muxAnalytics() as Object
   prototype._getAdvertProperites = function(adData as Object) as Object
     props = {}
     if adData <> Invalid
-      if adData.ad <> Invalid
-        if adData.adIndex <> Invalid AND adData.adIndex = 1 'preroll only'
-          if adData.ad.streams <> Invalid
-            if adData.ad.streams.count() > 0
-              if adData.ad.streams[0].url <> Invalid
-                adUrl = adData.ad.streams[0].url
+      ad = adData.ad
+      adIndex = adData.adIndex
+      adTagUrl = adData.adTagUrl
+      if ad <> Invalid
+        if adIndex <> Invalid AND adIndex = 1 'preroll only'
+          if ad.streams <> Invalid
+            if ad.streams.count() > 0
+              if ad.streams[0].url <> Invalid
+                adUrl = ad.streams[0].url
                 if adUrl <> Invalid AND adUrl <> ""
                   props.view_preroll_ad_asset_hostname = m._getHostname(adUrl)
                   props.view_preroll_ad_asset_domain = m._getDomain(adUrl)
@@ -1313,9 +1335,9 @@ function muxAnalytics() as Object
           end if
         end if
       end if
-      if adData.adurl <> Invalid AND adData.adurl <> ""
-        props.view_preroll_ad_tag_hostname = m._getHostname(adData.adurl)
-        props.view_preroll_ad_tag_domain = m._getDomain(adData.adurl)
+      if adTagUrl <> Invalid AND adTagUrl <> ""
+        props.view_preroll_ad_tag_hostname = m._getHostname(adTagUrl)
+        props.view_preroll_ad_tag_domain = m._getDomain(adTagUrl)
       end if
     end if
     return props
@@ -1436,7 +1458,7 @@ function muxAnalytics() as Object
         playerInitTime = m._configProperties.player_init_time
       end if
 
-      if playerInitTime <> invalid
+      if playerInitTime <> Invalid
         if playerInitTime > 0
           props.player_startup_time = Int(m._startTimestamp - playerInitTime)
           if m._viewTimeToFirstFrame <> Invalid AND m._viewTimeToFirstFrame <> 0
@@ -1930,8 +1952,8 @@ function muxAnalytics() as Object
   ' ' //////////////////////////////////////////////////////////////
 
   prototype._min = function(a, b) as object
-    if a = invalid then a = 0
-    if b = invalid then b = 0
+    if a = Invalid then a = 0
+    if b = Invalid then b = 0
 
     if a < b then
       return a
@@ -1941,8 +1963,8 @@ function muxAnalytics() as Object
   end function
 
   prototype._max = function(a, b) as object
-    if a = invalid then a = 0
-    if b = invalid then b = 0
+    if a = Invalid then a = 0
+    if b = Invalid then b = 0
 
     if a < b then
       return b
@@ -1952,7 +1974,7 @@ function muxAnalytics() as Object
   end function
 
   prototype._safeAdd = function(var, addValue) as object
-    if var = invalid then
+    if var = Invalid then
       return addValue
     else
       return var + addValue
