@@ -278,7 +278,10 @@ end sub
 
 sub adTrackingCallback(obj = Invalid as Dynamic, eventType = Invalid as Dynamic, ctx = Invalid as Dynamic)
   mux = GetGlobalAA().global.findNode("mux")
-  mux.setField("rafEvent", {obj:obj, eventType:eventType, ctx:ctx})
+  if obj <> Invalid
+    adUrl = obj.getAdUrl()
+  end if
+  mux.setField("rafEvent", {obj: { adurl: adUrl }, eventType:eventType, ctx:ctx})
 end sub
 
 sub playVideoWithAds(adPods as object, adIface as object) as void

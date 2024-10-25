@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "1.7.0-beta.1"
+  m.MUX_SDK_VERSION = "1.7.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -787,6 +787,11 @@ function muxAnalytics() as Object
     if eventType = "PodStart"
       m._advertProperties = m._getAdvertProperites(adMetadata)
       m._addEventToQueue(m._createEvent("adbreakstart"))
+      ' In the case that this is SSAI, we need to signal an adplay and adplaying event
+      if m._Flag_useSSAI = true
+        m._addEventToQueue(m._createEvent("adplay"))
+        m._addEventToQueue(m._createEvent("adplaying"))
+      end if
     else if eventType = "PodComplete"
       m._addEventToQueue(m._createEvent("adbreakend"))
       m._Flag_FailedAdsErrorSet = false
