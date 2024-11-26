@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "1.7.0"
+  m.MUX_SDK_VERSION = "1.7.1"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -1313,15 +1313,17 @@ function muxAnalytics() as Object
           props.video_content_type = content.ContentType
         end if
       end if
-      props.video_source_url = content.URL
-      props.video_source_hostname = m._getHostname(content.URL)
-      props.video_source_domain = m._getDomain(content.URL)
+
+      if (content.URL <> Invalid and content.URL <> "")
+        props.video_source_url = content.URL
+        props.video_source_hostname = m._getHostname(content.URL)
+        props.video_source_domain = m._getDomain(content.URL)
+        m._videoSourceFormat = m._getVideoFormat(content.URL)
+      end if
 
       if content.StreamFormat <> Invalid AND (type(content.StreamFormat) = "String" OR type(content.StreamFormat) = "roString") AND content.StreamFormat <> "(null)"
         props.video_source_mime_type = m._convertStreamFormat(content.StreamFormat)
       end if
-
-      m._videoSourceFormat = m._getVideoFormat(content.URL)
 
       if content.Live <> Invalid
         if content.Live = true
