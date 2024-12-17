@@ -105,7 +105,7 @@ sub playContent()
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
   else if selectionId = "live"
-    contentNode.URL = "https://stream.mux.com/M9yT02aOmr3OsAudiImXvSDyVdDA7tgbW.m3u8"
+    contentNode.URL = "https://stream.mux.com/v69RSHhFelSm4701snP22dYz2jICy4E4FUyk02rW4gxRM.m3u8"
     contentNode.StreamFormat = "hls"
     contentNode.LIVE = true
     contentInfo.length = 596

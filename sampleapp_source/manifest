@@ -22,6 +22,6 @@ mux_base_url=https://img.litix.io
 #Set minification to false for readable metrics. These will not be recognised by mux.
 mux_minification=true
 #Display events in the log as they are created. Values: full | partial | none
-mux_debug_events=partial
+mux_debug_events=none
 #Display beacons in the log as they are sent. Values: full | partial | none
-mux_debug_beacons=partial
+mux_debug_beacons=none
