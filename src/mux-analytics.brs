@@ -350,6 +350,7 @@ function muxAnalytics() as Object
     m._playerViewCount = Invalid
     m._viewSequence = Invalid
     m._viewId = Invalid
+    m._playerPlayheadTime = Invalid
     m._viewTimeToFirstFrame = Invalid
     m._playerTimeToFirstFrame = Invalid
     m._contentPlaybackTime = Invalid
@@ -449,13 +450,13 @@ function muxAnalytics() as Object
   prototype.videoStateChangeHandler = sub(videoState as String)
     m.video_state = videoState
     previouslyLastReportedPosition = m._Flag_lastReportedPosition
-    positionNow = m.video.position
-    m._Flag_lastReportedPosition = positionNow
+    m._playerPlayheadTime = m.video.position
+    m._Flag_lastReportedPosition = m._playerPlayheadTime
 
     ' Need to actually infer seek all the way out here
     if m._Flag_isSeeking <> true
       ' If we've gone backwards at all or forwards by more than the threshold
-      if (positionNow < previouslyLastReportedPosition) OR (positionNow > (previouslyLastReportedPosition + m._seekThreshold))
+      if (m._playerPlayheadTime < previouslyLastReportedPosition) OR (m._playerPlayheadTime > (previouslyLastReportedPosition + m._seekThreshold))
         if videoState = "buffering"
           m._addEventToQueue(m._createEvent("pause"))
         end if
@@ -960,6 +961,8 @@ function muxAnalytics() as Object
     if m.video = Invalid then return
     if m._Flag_isPaused = true then return
 
+    m._playerPlayheadTime = m.video.position
+
     m._setBufferingMetrics()
     m._updateContentPlaybackTime()
 
@@ -972,16 +975,16 @@ function muxAnalytics() as Object
   ' ' //////////////////////////////////////////////////////////////
 
   prototype._updateLastReportedPositionFlag = sub()
-    if m.video.position = m._Flag_lastReportedPosition then return
-    m._Flag_lastReportedPosition = m.video.position
+    if m._playerPlayheadTime = m._Flag_lastReportedPosition then return
+    m._Flag_lastReportedPosition = m._playerPlayheadTime
   end sub
 
   prototype._updateContentPlaybackTime = sub()
-    if m.video.position <= m._Flag_lastReportedPosition then return
+    if m._playerPlayheadTime <= m._Flag_lastReportedPosition then return
     if m.video_state <> "playing" then return
     if m._contentPlaybackTime = Invalid then return
 
-    m._contentPlaybackTime = m._contentPlaybackTime + ((m.video.position - m._Flag_lastReportedPosition) * 1000)
+    m._contentPlaybackTime = m._contentPlaybackTime + ((m._playerPlayheadTime - m._Flag_lastReportedPosition) * 1000)
   end sub
 
   prototype._updateTotalWatchTime = sub()
@@ -1162,6 +1165,7 @@ function muxAnalytics() as Object
       m._viewId = Invalid
       m._viewStartTimestamp = Invalid
       m._viewSequence = Invalid
+      m._playerPlayheadTime = Invalid
       m._viewTimeToFirstFrame = Invalid
       m._playerTimeToFirstFrame = Invalid
       m._contentPlaybackTime = Invalid
@@ -1195,7 +1199,6 @@ function muxAnalytics() as Object
       m._viewAverageRequestThroughput = Invalid
       m._viewRequestCount = Invalid
       m._segmentRequestFailedCount = Invalid
-      m.video.position = 0
     end if
   end sub
 
@@ -1423,8 +1426,8 @@ function muxAnalytics() as Object
         m._playerTimeToFirstFrame = Int(m.video.timeToStartStreaming * 1000)
         props.player_time_to_first_frame = m._playerTimeToFirstFrame
       end if
-      if m.video.position <> Invalid
-        props.player_playhead_time = Int(m.video.position * 1000)
+      if m._playerPlayheadTime <> Invalid
+        props.player_playhead_time = Int(m._playerPlayheadTime * 1000)
       end if
     end if
     if m.drmType <> Invalid 
