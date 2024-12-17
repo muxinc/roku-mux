@@ -384,7 +384,7 @@ function muxAnalytics() as Object
     m._viewAverageRequestThroughput = Invalid
     m._viewRequestCount = Invalid
 
-    ' Calculate player width and heitht
+    ' Calculate player width and height
     deviceInfo = m._getDeviceInfo()
     videoMode = deviceInfo.GetVideoMode()
     m._lastPlayerWidth = Val(m._getVideoPlaybackMetric(videoMode, "width"))
@@ -439,9 +439,9 @@ function muxAnalytics() as Object
     m.video = video
 
     if video <> Invalid
-      maximimumPossiblePositionChange = ((video.notificationInterval * 1000) + m.POSITION_TIMER_INTERVAL) / 1000
-      if m._seekThreshold < maximimumPossiblePositionChange
-        m._seekThreshold = maximimumPossiblePositionChange
+      maximumPossiblePositionChange = ((video.notificationInterval * 1000) + m.POSITION_TIMER_INTERVAL) / 1000
+      if m._seekThreshold < maximumPossiblePositionChange
+        m._seekThreshold = maximumPossiblePositionChange
       end if
     end if
   end sub
@@ -793,7 +793,7 @@ function muxAnalytics() as Object
   prototype._rafEventhandler = sub(eventType, ctx, adMetadata)
     m._Flag_isPaused = (eventType = "Pause")
     if eventType = "PodStart"
-      m._advertProperties = m._getAdvertProperites(adMetadata)
+      m._advertProperties = m._getAdvertProperties(adMetadata)
       m._addEventToQueue(m._createEvent("adbreakstart"))
       ' In the case that this is SSAI, we need to signal an adplay and adplaying event
       if m._Flag_useSSAI = true
@@ -810,7 +810,7 @@ function muxAnalytics() as Object
         m._addEventToQueue(m._createEvent("playing"))
       end if
     else if eventType = "Impression"
-      m._addEventToQueue(m._createEvent("adimpresion"))
+      m._addEventToQueue(m._createEvent("adimpression"))
     else if eventType = "Pause"
       m._addEventToQueue(m._createEvent("adpause"))
     else if eventType = "Start"
@@ -829,11 +829,11 @@ function muxAnalytics() as Object
         ' CHECK FOR PREROLL
         m._viewPrerollPlayedCount++
       end if
-      m._advertProperties = m._getAdvertProperites(ctx)
+      m._advertProperties = m._getAdvertProperties(ctx)
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Resume"
-      m._advertProperties = m._getAdvertProperites(ctx)
+      m._advertProperties = m._getAdvertProperties(ctx)
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Complete"
@@ -870,7 +870,7 @@ function muxAnalytics() as Object
   prototype._renderStitchedStreamRafEventHandler = sub(eventType, ctx, adMetadata)
     if eventType = "AdStateChange"
       state = ctx.state
-      m._advertProperties = m._getAdvertProperites(adMetadata)
+      m._advertProperties = m._getAdvertProperties(adMetadata)
       if state = "buffering"
         ' the buffering state is the first event we get in a new ad pod, so start
         ' our ad break here if we're not already in one
@@ -1008,7 +1008,7 @@ function muxAnalytics() as Object
 
   prototype._addEventToQueue = sub(_event as Object)
     m._logEvent(_event)
-    ' If the hearbeat is running restart it.
+    ' If the heartbeat is running restart it.
     if m.heartbeatTimer.control = "start"
       m.heartbeatTimer.control = "stop"
       m.heartbeatTimer.control = "start"
@@ -1377,7 +1377,7 @@ function muxAnalytics() as Object
   end function
 
   ' called once per advert session'
-  prototype._getAdvertProperites = function(adData as Object) as Object
+  prototype._getAdvertProperties = function(adData as Object) as Object
     props = {}
     if adData <> Invalid
       ad = adData.ad
@@ -1409,7 +1409,7 @@ function muxAnalytics() as Object
   ' called once per event
   ' Note - when a number that _should_ be an integer is copied over,
   ' we force it into that format to help FormatJson do its job correctly
-  ' later. Aslo, timestamps need to be `FormatJson`d immediately to
+  ' later. Also, timestamps need to be `FormatJson`d immediately to
   ' try to make sure those don't get into scientific notation
   prototype._getDynamicProperties = function() as Object
     props = {}
@@ -1756,10 +1756,10 @@ function muxAnalytics() as Object
 
   prototype._generateViewID = function () as String
     pattern = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
-    randomiseX = function() as String
+    randomizeX = function() as String
       return StrI(Rnd(0) * 16, 16)
     end function
-    randomiseY = function() as String
+    randomizeY = function() as String
       randomNumber = Rnd(0) * 16
       randomNumber = randomNumber + 3
       if randomNumber >= 16
@@ -1771,9 +1771,9 @@ function muxAnalytics() as Object
     viewId = ""
     for each char in patternArray
       if char = "x"
-        viewId = viewId + randomiseX()
+        viewId = viewId + randomizeX()
       else if char = "y"
-        viewId = viewId + randomiseY()
+        viewId = viewId + randomizeY()
       else
         viewId = viewId + char
       end if
