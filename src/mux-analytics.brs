@@ -413,7 +413,7 @@ function muxAnalytics() as Object
     date = m._getDateTime()
     m._startTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
     m._playerViewCount = 0
-    m._sessionProperties = m._getSessionProperites()
+    m._sessionProperties = m._getSessionProperties()
     m._addEventToQueue(m._createEvent("playerready"))
   end sub
 
@@ -1254,7 +1254,7 @@ function muxAnalytics() as Object
   end function
 
   ' called once per application session'
-  prototype._getSessionProperites = function() as Object
+  prototype._getSessionProperties = function() as Object
     props = {}
     deviceInfo = m._getDeviceInfo()
     appInfo = m._getAppInfo()
