@@ -351,6 +351,7 @@ function muxAnalytics() as Object
     m._viewSequence = Invalid
     m._viewId = Invalid
     m._viewTimeToFirstFrame = Invalid
+    m._playerTimeToFirstFrame = Invalid
     m._contentPlaybackTime = Invalid
     m._viewWatchTime = Invalid
     m._viewRebufferCount = Invalid
@@ -1162,6 +1163,7 @@ function muxAnalytics() as Object
       m._viewStartTimestamp = Invalid
       m._viewSequence = Invalid
       m._viewTimeToFirstFrame = Invalid
+      m._playerTimeToFirstFrame = Invalid
       m._contentPlaybackTime = Invalid
       m._viewWatchTime = Invalid
       m._viewRebufferCount = Invalid
@@ -1417,8 +1419,12 @@ function muxAnalytics() as Object
       else
         props.player_is_paused = "false"
       end if
-      if m.video.timeToStartStreaming <> Invalid AND m.video.timeToStartStreaming <> 0
-        props.player_time_to_first_frame = Int(m.video.timeToStartStreaming * 1000)
+      if m._playerTimeToFirstFrame = Invalid AND m.video.timeToStartStreaming <> Invalid AND m.video.timeToStartStreaming <> 0
+        m._playerTimeToFirstFrame = Int(m.video.timeToStartStreaming * 1000)
+        props.player_time_to_first_frame = m._playerTimeToFirstFrame
+      end if
+      if m.video.position <> Invalid
+        props.player_playhead_time = Int(m.video.position * 1000)
       end if
     end if
     if m.drmType <> Invalid 
@@ -1526,11 +1532,6 @@ function muxAnalytics() as Object
             props.view_aggregate_startup_time = Int(m._viewTimeToFirstFrame + (m._startTimestamp - playerInitTime))
           end if
         end if
-      end if
-    end if
-    if m.video <> Invalid
-      if m.video.position <> Invalid
-        props.player_playhead_time = Int(m.video.position * 1000)
       end if
     end if
 
