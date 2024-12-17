@@ -1,3 +1,7 @@
+'TODO: 
+' 2) beacon retry logic
+' 
+
 sub init()
   m.MUX_SDK_VERSION = "1.7.1"
   m.top.id = "mux"
@@ -10,12 +14,12 @@ function runBeaconLoop()
 
   m.MAX_BEACON_SIZE = 300 'controls size of a single beacon (in events)
   m.MAX_QUEUE_LENGTH = 3600 '1 minute to clean a full queue
-  m.BASE_TIME_BETWEEN_BEACONS = 5000
+  m.BASE_TIME_BETWEEN_BEACONS = 10000
   m.HEARTBEAT_INTERVAL = 10000
   m.POSITION_TIMER_INTERVAL = 250 '250
   m.SEEK_THRESHOLD = 1250 'ms jump in position before a seek is considered'
-  m.HTTP_RETRIES = 5 'number of times to reattempt http call'
-  m.HTTP_TIMEOUT = 10000 'time before an http call is cancelled (ms)'
+  m.HTTP_RETRIES = 10 'number of times to reattempt http call'
+  m.HTTP_TIMEOUT = 5000 'time before an http call is cancelled (ms)'
 
   m.pollTimer = CreateObject("roSGNode", "Timer")
   m.pollTimer.id = "pollTimer"
@@ -400,6 +404,9 @@ function muxAnalytics() as Object
     m._Flag_rssInAdBreak = false
     m._Flag_rssAdEnded = false
     m._Flag_rssContentPlayingAfterAds = false
+
+    ' Flag for a beacon currently being retried
+    m._Flag_beaconRequestInProgress = false
 
     ' kick off analytics
     date = m._getDateTime()
@@ -1005,7 +1012,12 @@ function muxAnalytics() as Object
       m.heartbeatTimer.control = "stop"
       m.heartbeatTimer.control = "start"
     end if
-    m._eventQueue.push(_event)
+
+    ' Only queue up the event if we have not reached
+    ' the max queue size
+    if m._eventQueue.count() <= m.MAX_QUEUE_LENGTH
+      m._eventQueue.push(_event)
+    end if
   end sub
 
   prototype.isQueueEmpty = function() as Boolean
@@ -1013,6 +1025,12 @@ function muxAnalytics() as Object
   end function
 
   prototype.LIGHT_THE_BEACONS = sub()
+    ' If a request is already in progress, do nothing
+    if m._Flag_beaconRequestInProgress
+      Print "Debugging - request in progress, so holding before sending another beacon" 
+      return
+    end if
+
     queueSize = m._eventQueue.count()
     if queueSize >= m.MAX_BEACON_SIZE
       beacon = []
@@ -1028,6 +1046,8 @@ function muxAnalytics() as Object
   end sub
 
   prototype._makeRequest = sub(beacon as Object)
+    m._Flag_beaconRequestInProgress = true
+    
     m._beaconCount++
     if m.dryRun = true
       m._logBeacon(beacon, "DRY-BEACON")
@@ -1050,7 +1070,19 @@ function muxAnalytics() as Object
           m.connection.AsyncPostFromString(fBody)
           event = wait(timeout%, m.httpPort)
           if type(event) = "roUrlEvent"
-            exit while
+            ' Only exit if 2xx
+            statusCode = event.GetResponseCode()
+            if statusCode >= 200 and statusCode < 300
+              exit while
+            end if
+
+            ' Otherwise clean it up and retry again, but with a delay
+            base = m._min(m.HEARTBEAT_INTERVAL, 2^(m.HTTP_RETRIES - retryCountdown%) * 1000)
+            delay = Fix(base / 2 + Rnd(0) * base / 2)
+            Print "Debugging - delaying " + delay.toStr() + " milliseconds before retrying"
+            event = wait(delay, m.httpPort)
+            Print "Debugging - retrying"
+            m.connection = _createConnection(m.httpPort)
           else if event = Invalid
             m.connection.AsyncCancel()
             ' reset the connection after a timeout
@@ -1062,6 +1094,8 @@ function muxAnalytics() as Object
         end while
       end if
     end if
+
+    m._Flag_beaconRequestInProgress = false
   end sub
 
   prototype._startView = sub(setByClient = false as Boolean)
@@ -2006,6 +2040,14 @@ function muxAnalytics() as Object
     else
       return var + addValue
     end if
+  end function
+
+  prototype._powerOfTwo = function(a) as object
+    powers = [1, 2, 4, 8, 16]
+    if a = Invalid then return 1
+    if a < 0 or a > 4 then return 1
+
+    return powers[a]
   end function
 
   return prototype
