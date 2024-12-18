@@ -1,9 +1,5 @@
-'TODO: 
-' 2) beacon retry logic
-' 
-
 sub init()
-  m.MUX_SDK_VERSION = "1.7.1"
+  m.MUX_SDK_VERSION = "1.8.0-dev.1"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -19,7 +15,6 @@ function runBeaconLoop()
   m.POSITION_TIMER_INTERVAL = 250 '250
   m.SEEK_THRESHOLD = 1250 'ms jump in position before a seek is considered'
   m.HTTP_RETRIES = 10 'number of times to reattempt http call'
-  m.HTTP_TIMEOUT = 5000 'time before an http call is cancelled (ms)'
 
   m.pollTimer = CreateObject("roSGNode", "Timer")
   m.pollTimer.id = "pollTimer"
@@ -38,6 +33,8 @@ function runBeaconLoop()
   m.beaconTimer.duration = m.BASE_TIME_BETWEEN_BEACONS / 1000
   m.beaconTimer.control = "start"
 
+  m.httpPort = _createPort()
+
   m.mxa = muxAnalytics()
   m.mxa.MUX_SDK_VERSION = m.MUX_SDK_VERSION
 
@@ -47,13 +44,12 @@ function runBeaconLoop()
     MAX_BEACON_SIZE: m.MAX_BEACON_SIZE,
     MAX_QUEUE_LENGTH: m.MAX_QUEUE_LENGTH,
     HTTP_RETRIES: m.HTTP_RETRIES,
-    HTTP_TIMEOUT: m.HTTP_TIMEOUT,
     BASE_TIME_BETWEEN_BEACONS: m.BASE_TIME_BETWEEN_BEACONS,
     HEARTBEAT_INTERVAL: m.HEARTBEAT_INTERVAL,
     POSITION_TIMER_INTERVAL: m.POSITION_TIMER_INTERVAL,
     SEEK_THRESHOLD: m.SEEK_THRESHOLD
   }
-  m.mxa.init(appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.pollTimer)
+  m.mxa.init(appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.pollTimer, m.httpPort)
 
   m.top.ObserveField("rafEvent", m.messagePort)
 
@@ -110,13 +106,17 @@ function runBeaconLoop()
   running = true
   while running
     exitMsg = wait(10, m.exitPort)
-    msg = wait(40, m.messagePort)
+    httpMsg = wait(10, m.httpPort)
+    msg = wait(30, m.messagePort)
     if exitMsg <> Invalid
       data = exitMsg.getData()
       if data = true
         running = false
       end if
     end if
+    if httpMsg <> Invalid
+      m.mxa._handleHttpEvent(httpMsg)
+    end  if
     if msg <> Invalid
       msgType = type(msg)
       if msgType = "roSGNodeEvent"
@@ -181,6 +181,9 @@ function runBeaconLoop()
         ' handleResponse(msg)
       end if
     end if
+
+    ' Check to see if we need to retry
+    m.mxa._retryBeacon()
   end while
   m.beaconTimer.control = "stop"
   m.heartbeatTimer.control = "stop"
@@ -280,8 +283,8 @@ function muxAnalytics() as Object
   prototype.MUX_API_VERSION = "2.1" ' 2.1 because of GUIDs for player instance IDs
   prototype.PLAYER_IS_FULLSCREEN = "true"
 
-  prototype.init = sub(appInfo as Object, systemConfig as Object, customerConfig as Object, hbt as Object, pp as Object)
-    m.httpPort = _createPort()
+  prototype.init = sub(appInfo as Object, systemConfig as Object, customerConfig as Object, hbt as Object, pp as Object, hp as Object)
+    m.httpPort = hp
     m.connection = _createConnection(m.httpPort)
     m.httpRetries = 5
     m.httpTimeout = 1500
@@ -330,7 +333,6 @@ function muxAnalytics() as Object
     m.MAX_BEACON_SIZE = systemConfig.MAX_BEACON_SIZE
     m.MAX_QUEUE_LENGTH = systemConfig.MAX_QUEUE_LENGTH
     m.HTTP_RETRIES = systemConfig.HTTP_RETRIES
-    m.HTTP_TIMEOUT = systemConfig.HTTP_TIMEOUT
     m.BASE_TIME_BETWEEN_BEACONS = systemConfig.BASE_TIME_BETWEEN_BEACONS
     m.HEARTBEAT_INTERVAL = systemConfig.HEARTBEAT_INTERVAL
     m.POSITION_TIMER_INTERVAL = systemConfig.POSITION_TIMER_INTERVAL
@@ -1030,12 +1032,11 @@ function muxAnalytics() as Object
 
   prototype.LIGHT_THE_BEACONS = sub()
     ' If a request is already in progress, do nothing
-    if m._Flag_beaconRequestInProgress
-      Print "Debugging - request in progress, so holding before sending another beacon" 
-      return
-    end if
+    if m._Flag_beaconRequestInProgress then return
 
     queueSize = m._eventQueue.count()
+    if queueSize = 0 then return
+
     if queueSize >= m.MAX_BEACON_SIZE
       beacon = []
       for i = 0 To m.MAX_BEACON_SIZE - 1  Step 1
@@ -1046,60 +1047,77 @@ function muxAnalytics() as Object
       beacon.Append(m._eventQueue)
       m._eventQueue.Clear()
     end if
-    m._makeRequest(beacon)
+    m._sendBeacon(beacon)
   end sub
 
-  prototype._makeRequest = sub(beacon as Object)
-    m._Flag_beaconRequestInProgress = true
-    
+  prototype._sendBeacon = sub(beacon as Object)
     m._beaconCount++
     if m.dryRun = true
       m._logBeacon(beacon, "DRY-BEACON")
     else
       if beacon.count() > 0
         m._logBeacon(beacon, "BEACON")
-        minifiedBeacon = []
+        m._minifiedBeacon = []
         for each b in beacon
-          minifiedBeacon.push(m._minify(b))
+          m._minifiedBeacon.push(m._minify(b))
         end for
-        retryCountdown% = m.HTTP_RETRIES
-        timeout% = m.HTTP_TIMEOUT
-        m.connection.AsyncCancel()
-        m.connection.SetUrl(m.beaconUrl)
-        m.requestId = m.connection.GetIdentity()
-        requestBody = {}
-        requestBody.events = minifiedBeacon
-        fBody = FormatJson(requestBody)
-        while retryCountdown% > 0
-          m.connection.AsyncPostFromString(fBody)
-          event = wait(timeout%, m.httpPort)
-          if type(event) = "roUrlEvent"
-            ' Only exit if 2xx
-            statusCode = event.GetResponseCode()
-            if statusCode >= 200 and statusCode < 300
-              exit while
-            end if
-
-            ' Otherwise clean it up and retry again, but with a delay
-            base = m._min(m.HEARTBEAT_INTERVAL, 2^(m.HTTP_RETRIES - retryCountdown%) * 1000)
-            delay = Fix(base / 2 + Rnd(0) * base / 2)
-            Print "Debugging - delaying " + delay.toStr() + " milliseconds before retrying"
-            event = wait(delay, m.httpPort)
-            Print "Debugging - retrying"
-            m.connection = _createConnection(m.httpPort)
-          else if event = Invalid
-            m.connection.AsyncCancel()
-            ' reset the connection after a timeout
-            m.connection = _createConnection(m.httpPort)
-          else
-            Print "[mux-analytics] Unknown port event"
-          end if
-          retryCountdown% = retryCountdown% - 1
-        end while
+        m._retryCountdown = m.HTTP_RETRIES
+        m._Flag_beaconRequestInProgress = true
+        m._makeRequest()
       end if
     end if
+  end sub
 
-    m._Flag_beaconRequestInProgress = false
+  prototype._makeRequest = sub()
+    m._beaconRetryDelay = Invalid
+    m._beaconAttemptTimespan = Invalid
+    m.connection.AsyncCancel()
+    m.connection.SetUrl(m.beaconUrl)
+    m.requestId = m.connection.GetIdentity()
+    requestBody = {}
+    requestBody.events = m._minifiedBeacon
+    fBody = FormatJson(requestBody)
+    m.connection.AsyncPostFromString(fBody)
+  end sub
+
+  prototype._handleHttpEvent = sub(event as Object)
+    if not m._Flag_beaconRequestInProgress
+      Print "[mux-analytics] HTTP port event received when no request in progress"
+      return
+    end if
+
+    if type(event) <> "roUrlEvent"
+      Print "[mux-analytics] Unknown HTTP port event"
+      return 
+    end if
+
+    ' Successful exit if a 2xx is returned
+    statusCode = event.GetResponseCode()
+    if statusCode >= 200 and statusCode < 300
+      m._Flag_beaconRequestInProgress = false
+      return
+    end if
+
+    ' Otherwise clean it up and set our delay and timer if we're not done
+    if m._retryCountdown <= 0
+      Print "[mux-analytics] Retries exceeded for beacon, giving up"
+      m._Flag_beaconRequestInProgress = false
+      return
+    end if
+
+    base = m._min(m.HEARTBEAT_INTERVAL, 2^(m.HTTP_RETRIES - m._retryCountdown) * 1000)
+    m._beaconRetryDelay = Fix(base / 2 + Rnd(0) * base / 2)
+    m._beaconAttemptTimespan = CreateObject("roTimespan")
+    m._retryCountdown = m._retryCountdown - 1
+  end sub
+
+  prototype._retryBeacon = sub()
+    ' If we have a retry, do it when ready
+    if m._beaconRetryDelay = Invalid or m._beaconAttemptTimespan = Invalid then return
+
+    if m._beaconAttemptTimespan.TotalMilliseconds() >= m._beaconRetryDelay
+      m._makeRequest()
+    end if
   end sub
 
   prototype._startView = sub(setByClient = false as Boolean)
@@ -2044,14 +2062,6 @@ function muxAnalytics() as Object
     else
       return var + addValue
     end if
-  end function
-
-  prototype._powerOfTwo = function(a) as object
-    powers = [1, 2, 4, 8, 16]
-    if a = Invalid then return 1
-    if a < 0 or a > 4 then return 1
-
-    return powers[a]
   end function
 
   return prototype
