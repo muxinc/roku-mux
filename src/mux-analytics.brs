@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "1.7.1"
+  m.MUX_SDK_VERSION = "1.8.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -10,12 +10,11 @@ function runBeaconLoop()
 
   m.MAX_BEACON_SIZE = 300 'controls size of a single beacon (in events)
   m.MAX_QUEUE_LENGTH = 3600 '1 minute to clean a full queue
-  m.BASE_TIME_BETWEEN_BEACONS = 5000
+  m.BASE_TIME_BETWEEN_BEACONS = 10000
   m.HEARTBEAT_INTERVAL = 10000
   m.POSITION_TIMER_INTERVAL = 250 '250
   m.SEEK_THRESHOLD = 1250 'ms jump in position before a seek is considered'
-  m.HTTP_RETRIES = 5 'number of times to reattempt http call'
-  m.HTTP_TIMEOUT = 10000 'time before an http call is cancelled (ms)'
+  m.HTTP_RETRIES = 10 'number of times to reattempt http call'
 
   m.pollTimer = CreateObject("roSGNode", "Timer")
   m.pollTimer.id = "pollTimer"
@@ -34,6 +33,8 @@ function runBeaconLoop()
   m.beaconTimer.duration = m.BASE_TIME_BETWEEN_BEACONS / 1000
   m.beaconTimer.control = "start"
 
+  m.httpPort = _createPort()
+
   m.mxa = muxAnalytics()
   m.mxa.MUX_SDK_VERSION = m.MUX_SDK_VERSION
 
@@ -43,13 +44,12 @@ function runBeaconLoop()
     MAX_BEACON_SIZE: m.MAX_BEACON_SIZE,
     MAX_QUEUE_LENGTH: m.MAX_QUEUE_LENGTH,
     HTTP_RETRIES: m.HTTP_RETRIES,
-    HTTP_TIMEOUT: m.HTTP_TIMEOUT,
     BASE_TIME_BETWEEN_BEACONS: m.BASE_TIME_BETWEEN_BEACONS,
     HEARTBEAT_INTERVAL: m.HEARTBEAT_INTERVAL,
     POSITION_TIMER_INTERVAL: m.POSITION_TIMER_INTERVAL,
     SEEK_THRESHOLD: m.SEEK_THRESHOLD
   }
-  m.mxa.init(appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.pollTimer)
+  m.mxa.init(appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.pollTimer, m.httpPort)
 
   m.top.ObserveField("rafEvent", m.messagePort)
 
@@ -106,13 +106,17 @@ function runBeaconLoop()
   running = true
   while running
     exitMsg = wait(10, m.exitPort)
-    msg = wait(40, m.messagePort)
+    httpMsg = wait(10, m.httpPort)
+    msg = wait(30, m.messagePort)
     if exitMsg <> Invalid
       data = exitMsg.getData()
       if data = true
         running = false
       end if
     end if
+    if httpMsg <> Invalid
+      m.mxa._handleHttpEvent(httpMsg)
+    end  if
     if msg <> Invalid
       msgType = type(msg)
       if msgType = "roSGNodeEvent"
@@ -173,10 +177,11 @@ function runBeaconLoop()
             m.mxa.heartbeatIntervalHandler(msg)
           end if
         end if
-      else if msgType = "roUrlEvent"
-        ' handleResponse(msg)
       end if
     end if
+
+    ' Check to see if we need to retry
+    m.mxa._retryBeacon()
   end while
   m.beaconTimer.control = "stop"
   m.heartbeatTimer.control = "stop"
@@ -190,6 +195,8 @@ function runBeaconLoop()
   m.top.UnobserveField("config")
   m.top.UnobserveField("control")
   m.top.UnobserveField("view")
+  m.top.UnobserveField("useRenderStitchedStream")
+  m.top.UnobserveField("useSSAI")
 
   if m.top.exitType = "soft"
     while NOT m.mxa.isQueueEmpty()
@@ -276,8 +283,8 @@ function muxAnalytics() as Object
   prototype.MUX_API_VERSION = "2.1" ' 2.1 because of GUIDs for player instance IDs
   prototype.PLAYER_IS_FULLSCREEN = "true"
 
-  prototype.init = sub(appInfo as Object, systemConfig as Object, customerConfig as Object, hbt as Object, pp as Object)
-    m.httpPort = _createPort()
+  prototype.init = sub(appInfo as Object, systemConfig as Object, customerConfig as Object, hbt as Object, pp as Object, hp as Object)
+    m.httpPort = hp
     m.connection = _createConnection(m.httpPort)
     m.httpRetries = 5
     m.httpTimeout = 1500
@@ -326,7 +333,6 @@ function muxAnalytics() as Object
     m.MAX_BEACON_SIZE = systemConfig.MAX_BEACON_SIZE
     m.MAX_QUEUE_LENGTH = systemConfig.MAX_QUEUE_LENGTH
     m.HTTP_RETRIES = systemConfig.HTTP_RETRIES
-    m.HTTP_TIMEOUT = systemConfig.HTTP_TIMEOUT
     m.BASE_TIME_BETWEEN_BEACONS = systemConfig.BASE_TIME_BETWEEN_BEACONS
     m.HEARTBEAT_INTERVAL = systemConfig.HEARTBEAT_INTERVAL
     m.POSITION_TIMER_INTERVAL = systemConfig.POSITION_TIMER_INTERVAL
@@ -346,7 +352,9 @@ function muxAnalytics() as Object
     m._playerViewCount = Invalid
     m._viewSequence = Invalid
     m._viewId = Invalid
+    m._playerPlayheadTime = Invalid
     m._viewTimeToFirstFrame = Invalid
+    m._playerTimeToFirstFrame = Invalid
     m._contentPlaybackTime = Invalid
     m._viewWatchTime = Invalid
     m._viewRebufferCount = Invalid
@@ -379,7 +387,7 @@ function muxAnalytics() as Object
     m._viewAverageRequestThroughput = Invalid
     m._viewRequestCount = Invalid
 
-    ' Calculate player width and heitht
+    ' Calculate player width and height
     deviceInfo = m._getDeviceInfo()
     videoMode = deviceInfo.GetVideoMode()
     m._lastPlayerWidth = Val(m._getVideoPlaybackMetric(videoMode, "width"))
@@ -401,11 +409,14 @@ function muxAnalytics() as Object
     m._Flag_rssAdEnded = false
     m._Flag_rssContentPlayingAfterAds = false
 
+    ' Flag for a beacon currently being retried
+    m._Flag_beaconRequestInProgress = false
+
     ' kick off analytics
     date = m._getDateTime()
     m._startTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
     m._playerViewCount = 0
-    m._sessionProperties = m._getSessionProperites()
+    m._sessionProperties = m._getSessionProperties()
     m._addEventToQueue(m._createEvent("playerready"))
   end sub
 
@@ -431,9 +442,9 @@ function muxAnalytics() as Object
     m.video = video
 
     if video <> Invalid
-      maximimumPossiblePositionChange = ((video.notificationInterval * 1000) + m.POSITION_TIMER_INTERVAL) / 1000
-      if m._seekThreshold < maximimumPossiblePositionChange
-        m._seekThreshold = maximimumPossiblePositionChange
+      maximumPossiblePositionChange = ((video.notificationInterval * 1000) + m.POSITION_TIMER_INTERVAL) / 1000
+      if m._seekThreshold < maximumPossiblePositionChange
+        m._seekThreshold = maximumPossiblePositionChange
       end if
     end if
   end sub
@@ -441,13 +452,13 @@ function muxAnalytics() as Object
   prototype.videoStateChangeHandler = sub(videoState as String)
     m.video_state = videoState
     previouslyLastReportedPosition = m._Flag_lastReportedPosition
-    positionNow = m.video.position
-    m._Flag_lastReportedPosition = positionNow
+    m._playerPlayheadTime = m.video.position
+    m._Flag_lastReportedPosition = m._playerPlayheadTime
 
     ' Need to actually infer seek all the way out here
     if m._Flag_isSeeking <> true
       ' If we've gone backwards at all or forwards by more than the threshold
-      if (positionNow < previouslyLastReportedPosition) OR (positionNow > (previouslyLastReportedPosition + m._seekThreshold))
+      if (m._playerPlayheadTime < previouslyLastReportedPosition) OR (m._playerPlayheadTime > (previouslyLastReportedPosition + m._seekThreshold))
         if videoState = "buffering"
           m._addEventToQueue(m._createEvent("pause"))
         end if
@@ -785,7 +796,7 @@ function muxAnalytics() as Object
   prototype._rafEventhandler = sub(eventType, ctx, adMetadata)
     m._Flag_isPaused = (eventType = "Pause")
     if eventType = "PodStart"
-      m._advertProperties = m._getAdvertProperites(adMetadata)
+      m._advertProperties = m._getAdvertProperties(adMetadata)
       m._addEventToQueue(m._createEvent("adbreakstart"))
       ' In the case that this is SSAI, we need to signal an adplay and adplaying event
       if m._Flag_useSSAI = true
@@ -802,7 +813,7 @@ function muxAnalytics() as Object
         m._addEventToQueue(m._createEvent("playing"))
       end if
     else if eventType = "Impression"
-      m._addEventToQueue(m._createEvent("adimpresion"))
+      m._addEventToQueue(m._createEvent("adimpression"))
     else if eventType = "Pause"
       m._addEventToQueue(m._createEvent("adpause"))
     else if eventType = "Start"
@@ -821,11 +832,11 @@ function muxAnalytics() as Object
         ' CHECK FOR PREROLL
         m._viewPrerollPlayedCount++
       end if
-      m._advertProperties = m._getAdvertProperites(ctx)
+      m._advertProperties = m._getAdvertProperties(ctx)
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Resume"
-      m._advertProperties = m._getAdvertProperites(ctx)
+      m._advertProperties = m._getAdvertProperties(ctx)
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Complete"
@@ -862,7 +873,7 @@ function muxAnalytics() as Object
   prototype._renderStitchedStreamRafEventHandler = sub(eventType, ctx, adMetadata)
     if eventType = "AdStateChange"
       state = ctx.state
-      m._advertProperties = m._getAdvertProperites(adMetadata)
+      m._advertProperties = m._getAdvertProperties(adMetadata)
       if state = "buffering"
         ' the buffering state is the first event we get in a new ad pod, so start
         ' our ad break here if we're not already in one
@@ -952,6 +963,8 @@ function muxAnalytics() as Object
     if m.video = Invalid then return
     if m._Flag_isPaused = true then return
 
+    m._playerPlayheadTime = m.video.position
+
     m._setBufferingMetrics()
     m._updateContentPlaybackTime()
 
@@ -964,16 +977,16 @@ function muxAnalytics() as Object
   ' ' //////////////////////////////////////////////////////////////
 
   prototype._updateLastReportedPositionFlag = sub()
-    if m.video.position = m._Flag_lastReportedPosition then return
-    m._Flag_lastReportedPosition = m.video.position
+    if m._playerPlayheadTime = m._Flag_lastReportedPosition then return
+    m._Flag_lastReportedPosition = m._playerPlayheadTime
   end sub
 
   prototype._updateContentPlaybackTime = sub()
-    if m.video.position <= m._Flag_lastReportedPosition then return
+    if m._playerPlayheadTime <= m._Flag_lastReportedPosition then return
     if m.video_state <> "playing" then return
     if m._contentPlaybackTime = Invalid then return
 
-    m._contentPlaybackTime = m._contentPlaybackTime + ((m.video.position - m._Flag_lastReportedPosition) * 1000)
+    m._contentPlaybackTime = m._contentPlaybackTime + ((m._playerPlayheadTime - m._Flag_lastReportedPosition) * 1000)
   end sub
 
   prototype._updateTotalWatchTime = sub()
@@ -1000,12 +1013,17 @@ function muxAnalytics() as Object
 
   prototype._addEventToQueue = sub(_event as Object)
     m._logEvent(_event)
-    ' If the hearbeat is running restart it.
+    ' If the heartbeat is running restart it.
     if m.heartbeatTimer.control = "start"
       m.heartbeatTimer.control = "stop"
       m.heartbeatTimer.control = "start"
     end if
-    m._eventQueue.push(_event)
+
+    ' Only queue up the event if we have not reached
+    ' the max queue size
+    if m._eventQueue.count() <= m.MAX_QUEUE_LENGTH
+      m._eventQueue.push(_event)
+    end if
   end sub
 
   prototype.isQueueEmpty = function() as Boolean
@@ -1013,7 +1031,12 @@ function muxAnalytics() as Object
   end function
 
   prototype.LIGHT_THE_BEACONS = sub()
+    ' If a request is already in progress, do nothing
+    if m._Flag_beaconRequestInProgress then return
+
     queueSize = m._eventQueue.count()
+    if queueSize = 0 then return
+
     if queueSize >= m.MAX_BEACON_SIZE
       beacon = []
       for i = 0 To m.MAX_BEACON_SIZE - 1  Step 1
@@ -1024,43 +1047,76 @@ function muxAnalytics() as Object
       beacon.Append(m._eventQueue)
       m._eventQueue.Clear()
     end if
-    m._makeRequest(beacon)
+    m._sendBeacon(beacon)
   end sub
 
-  prototype._makeRequest = sub(beacon as Object)
+  prototype._sendBeacon = sub(beacon as Object)
     m._beaconCount++
     if m.dryRun = true
       m._logBeacon(beacon, "DRY-BEACON")
     else
       if beacon.count() > 0
         m._logBeacon(beacon, "BEACON")
-        minifiedBeacon = []
+        m._minifiedBeacon = []
         for each b in beacon
-          minifiedBeacon.push(m._minify(b))
+          m._minifiedBeacon.push(m._minify(b))
         end for
-        retryCountdown% = m.HTTP_RETRIES
-        timeout% = m.HTTP_TIMEOUT
-        m.connection.AsyncCancel()
-        m.connection.SetUrl(m.beaconUrl)
-        m.requestId = m.connection.GetIdentity()
-        requestBody = {}
-        requestBody.events = minifiedBeacon
-        fBody = FormatJson(requestBody)
-        while retryCountdown% > 0
-          m.connection.AsyncPostFromString(fBody)
-          event = wait(timeout%, m.httpPort)
-          if type(event) = "roUrlEvent"
-            exit while
-          else if event = Invalid
-            m.connection.AsyncCancel()
-            ' reset the connection after a timeout
-            m.connection = _createConnection(m.httpPort)
-          else
-            Print "[mux-analytics] Unknown port event"
-          end if
-          retryCountdown% = retryCountdown% - 1
-        end while
+        m._retryCountdown = m.HTTP_RETRIES
+        m._Flag_beaconRequestInProgress = true
+        m._makeRequest()
       end if
+    end if
+  end sub
+
+  prototype._makeRequest = sub()
+    m._beaconRetryDelay = Invalid
+    m._beaconAttemptTimespan = Invalid
+    m.connection.AsyncCancel()
+    m.connection.SetUrl(m.beaconUrl)
+    m.requestId = m.connection.GetIdentity()
+    requestBody = {}
+    requestBody.events = m._minifiedBeacon
+    fBody = FormatJson(requestBody)
+    m.connection.AsyncPostFromString(fBody)
+  end sub
+
+  prototype._handleHttpEvent = sub(event as Object)
+    if not m._Flag_beaconRequestInProgress
+      Print "[mux-analytics] HTTP port event received when no request in progress"
+      return
+    end if
+
+    if type(event) <> "roUrlEvent"
+      Print "[mux-analytics] Unknown HTTP port event"
+      return 
+    end if
+
+    ' Successful exit if a 2xx is returned
+    statusCode = event.GetResponseCode()
+    if statusCode >= 200 and statusCode < 300
+      m._Flag_beaconRequestInProgress = false
+      return
+    end if
+
+    ' Otherwise clean it up and set our delay and timer if we're not done
+    if m._retryCountdown <= 0
+      Print "[mux-analytics] Retries exceeded for beacon, giving up"
+      m._Flag_beaconRequestInProgress = false
+      return
+    end if
+
+    base = m._min(m.HEARTBEAT_INTERVAL, 2^(m.HTTP_RETRIES - m._retryCountdown) * 1000)
+    m._beaconRetryDelay = Fix(base / 2 + Rnd(0) * base / 2)
+    m._beaconAttemptTimespan = CreateObject("roTimespan")
+    m._retryCountdown = m._retryCountdown - 1
+  end sub
+
+  prototype._retryBeacon = sub()
+    ' If we have a retry, do it when ready
+    if m._beaconRetryDelay = Invalid or m._beaconAttemptTimespan = Invalid then return
+
+    if m._beaconAttemptTimespan.TotalMilliseconds() >= m._beaconRetryDelay
+      m._makeRequest()
     end if
   end sub
 
@@ -1127,7 +1183,9 @@ function muxAnalytics() as Object
       m._viewId = Invalid
       m._viewStartTimestamp = Invalid
       m._viewSequence = Invalid
+      m._playerPlayheadTime = Invalid
       m._viewTimeToFirstFrame = Invalid
+      m._playerTimeToFirstFrame = Invalid
       m._contentPlaybackTime = Invalid
       m._viewWatchTime = Invalid
       m._viewRebufferCount = Invalid
@@ -1159,7 +1217,6 @@ function muxAnalytics() as Object
       m._viewAverageRequestThroughput = Invalid
       m._viewRequestCount = Invalid
       m._segmentRequestFailedCount = Invalid
-      m.video.position = 0
     end if
   end sub
 
@@ -1218,7 +1275,7 @@ function muxAnalytics() as Object
   end function
 
   ' called once per application session'
-  prototype._getSessionProperites = function() as Object
+  prototype._getSessionProperties = function() as Object
     props = {}
     deviceInfo = m._getDeviceInfo()
     appInfo = m._getAppInfo()
@@ -1341,7 +1398,7 @@ function muxAnalytics() as Object
   end function
 
   ' called once per advert session'
-  prototype._getAdvertProperites = function(adData as Object) as Object
+  prototype._getAdvertProperties = function(adData as Object) as Object
     props = {}
     if adData <> Invalid
       ad = adData.ad
@@ -1373,7 +1430,7 @@ function muxAnalytics() as Object
   ' called once per event
   ' Note - when a number that _should_ be an integer is copied over,
   ' we force it into that format to help FormatJson do its job correctly
-  ' later. Aslo, timestamps need to be `FormatJson`d immediately to
+  ' later. Also, timestamps need to be `FormatJson`d immediately to
   ' try to make sure those don't get into scientific notation
   prototype._getDynamicProperties = function() as Object
     props = {}
@@ -1383,8 +1440,12 @@ function muxAnalytics() as Object
       else
         props.player_is_paused = "false"
       end if
-      if m.video.timeToStartStreaming <> Invalid AND m.video.timeToStartStreaming <> 0
-        props.player_time_to_first_frame = Int(m.video.timeToStartStreaming * 1000)
+      if m._playerTimeToFirstFrame = Invalid AND m.video.timeToStartStreaming <> Invalid AND m.video.timeToStartStreaming <> 0
+        m._playerTimeToFirstFrame = Int(m.video.timeToStartStreaming * 1000)
+        props.player_time_to_first_frame = m._playerTimeToFirstFrame
+      end if
+      if m._playerPlayheadTime <> Invalid
+        props.player_playhead_time = Int(m._playerPlayheadTime * 1000)
       end if
     end if
     if m.drmType <> Invalid 
@@ -1492,11 +1553,6 @@ function muxAnalytics() as Object
             props.view_aggregate_startup_time = Int(m._viewTimeToFirstFrame + (m._startTimestamp - playerInitTime))
           end if
         end if
-      end if
-    end if
-    if m.video <> Invalid
-      if m.video.position <> Invalid
-        props.player_playhead_time = Int(m.video.position * 1000)
       end if
     end if
 
@@ -1721,10 +1777,10 @@ function muxAnalytics() as Object
 
   prototype._generateViewID = function () as String
     pattern = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
-    randomiseX = function() as String
+    randomizeX = function() as String
       return StrI(Rnd(0) * 16, 16)
     end function
-    randomiseY = function() as String
+    randomizeY = function() as String
       randomNumber = Rnd(0) * 16
       randomNumber = randomNumber + 3
       if randomNumber >= 16
@@ -1736,9 +1792,9 @@ function muxAnalytics() as Object
     viewId = ""
     for each char in patternArray
       if char = "x"
-        viewId = viewId + randomiseX()
+        viewId = viewId + randomizeX()
       else if char = "y"
-        viewId = viewId + randomiseY()
+        viewId = viewId + randomizeY()
       else
         viewId = viewId + char
       end if

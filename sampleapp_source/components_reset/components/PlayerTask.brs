@@ -105,8 +105,8 @@ sub playContent()
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
   else if selectionId = "live"
-    contentNode.URL = "http://dash.akamaized.net/dash264/TestCasesUHD/2b/2/MultiRate.mpd"
-    contentNode.StreamFormat = "dash"
+    contentNode.URL = "https://stream.mux.com/v69RSHhFelSm4701snP22dYz2jICy4E4FUyk02rW4gxRM.m3u8"
+    contentNode.StreamFormat = "hls"
     contentNode.LIVE = true
     contentInfo.length = 596
     contentInfo.contentId = "BIG BUCK BUNNY"
