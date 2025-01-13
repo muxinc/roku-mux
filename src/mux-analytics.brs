@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "1.8.0-dev.1"
+  m.MUX_SDK_VERSION = "1.8.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -177,8 +177,6 @@ function runBeaconLoop()
             m.mxa.heartbeatIntervalHandler(msg)
           end if
         end if
-      else if msgType = "roUrlEvent"
-        ' handleResponse(msg)
       end if
     end if
 
@@ -197,6 +195,8 @@ function runBeaconLoop()
   m.top.UnobserveField("config")
   m.top.UnobserveField("control")
   m.top.UnobserveField("view")
+  m.top.UnobserveField("useRenderStitchedStream")
+  m.top.UnobserveField("useSSAI")
 
   if m.top.exitType = "soft"
     while NOT m.mxa.isQueueEmpty()
