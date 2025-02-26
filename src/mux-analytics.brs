@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "1.9.0-dev.1"
+  m.MUX_SDK_VERSION = "1.8.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -542,8 +542,13 @@ function muxAnalytics() as Object
       m._Flag_atLeastOnePlayEventForContent = true
     else if videoState = "stopped"
     else if videoState = "finished"
-      m._addEventToQueue(m._createEvent("ended"))
-      m._endView()
+      ' Only send ended event if it played to completion
+      completedStreamInfo = m.video.completedStreamInfo
+      if completedStreamInfo <> invalid
+        if completedStreamInfo.isFullResult
+          m._addEventToQueue(m._createEvent("ended"))
+        end if
+      end if
     else if videoState = "error"
       ' Bail out if we aren't supposed to track automatic errors
       if not m._Flag_automaticErrorTracking then return
