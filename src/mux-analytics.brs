@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "1.8.0"
+  m.MUX_SDK_VERSION = "1.9.0-dev.1"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -90,6 +90,11 @@ function runBeaconLoop()
   end if
   m.top.ObserveField("useSSAI", m.messagePort)
 
+  if m.top.automaticErrorTracking <> Invalid
+    m.mxa.automaticErrorTrackingHandler(m.top.automaticErrorTracking)
+  end if
+  m.top.ObserveField("automaticErrorTracking", m.messagePort)
+
   if m.top.error <> Invalid
     m.mxa.videoErrorHandler(m.top.error)
   end if
@@ -144,6 +149,8 @@ function runBeaconLoop()
           m.mxa.useRenderStitchedStreamHandler(msg.getData())
         else if field = "useSSAI"
           m.mxa.useSSAIHandler(msg.getData())
+        else if field = "automaticErrorTracking"
+          m.mxa.automaticErrorTrackingHandler(msg.getData())
         else if field = "error"
           m.mxa.videoErrorHandler(msg.getData())
         else if field = "control"
@@ -197,6 +204,7 @@ function runBeaconLoop()
   m.top.UnobserveField("view")
   m.top.UnobserveField("useRenderStitchedStream")
   m.top.UnobserveField("useSSAI")
+  m.top.UnobserveField("automaticErrorTracking")
 
   if m.top.exitType = "soft"
     while NOT m.mxa.isQueueEmpty()
@@ -402,6 +410,7 @@ function muxAnalytics() as Object
     m._Flag_lastReportedPosition = 0
     m._Flag_FailedAdsErrorSet = false
     m._Flag_useSSAI = false
+    m._Flag_automaticErrorTracking = true
 
     ' Flags specifically for when renderStitchedStream is used
     m._Flag_useRenderStitchedStream = false
@@ -536,6 +545,9 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("ended"))
       m._endView()
     else if videoState = "error"
+      ' Bail out if we aren't supposed to track automatic errors
+      if not m._Flag_automaticErrorTracking then return
+
       errorCode = ""
       errorMessage = ""
       errorContext = ""
@@ -744,6 +756,12 @@ function muxAnalytics() as Object
   prototype.useSSAIHandler = sub(useSSAI as String)
     if useSSAI <> Invalid
       m._Flag_useSSAI = (useSSAI = "true")
+    end if
+  end sub
+
+  prototype.automaticErrorTrackingHandler = sub(automaticErrorTracking as String)
+    if automaticErrorTracking <> Invalid
+      m._Flag_automaticErrorTracking = (automaticErrorTracking = "true")
     end if
   end sub
 
@@ -1285,7 +1303,7 @@ function muxAnalytics() as Object
     props.player_sequence_number = 1
     props.player_software_name = m.PLAYER_SOFTWARE_NAME
     props.player_software_version = firmwareVersion
-    props.viewer_application_name = appInfo.GetTitle()
+    props.viewer_application_name = appInfo.GetTitle() ' let them override
     props.viewer_application_version = appInfo.GetVersion()
     props.viewer_device_name = deviceInfo.GetModelDisplayName()
     props.viewer_device_category = "tv"

@@ -165,6 +165,7 @@ sub PlayContentOnlyNoAds(contentInfo as Object)
           video.control = "stop"
           mux = GetGlobalAA().global.findNode("mux")
           mux.setField("view", "end")
+          mux.setField("exit", true)
         end if
       end if
     end if

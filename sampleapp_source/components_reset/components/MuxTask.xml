@@ -9,6 +9,7 @@
     <field id="exitType" type="String" alwaysNotify="true" value="hard"/>
     <field id="useRenderStitchedStream" type="String" alwaysNotify="true" value="false"/>
     <field id="useSSAI" type="String" alwaysNotify="true" value="false"/>
+    <field id="automaticErrorTracking" type="String" alwaysNotify="true" value="true"/>
   </interface>
   <script type="text/brightscript" uri="pkg:/libs/mux-analytics.brs"/>
 </component>
