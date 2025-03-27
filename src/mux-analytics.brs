@@ -774,6 +774,8 @@ function muxAnalytics() as Object
     errorCode = "0"
     errorMessage = "Unknown"
     errorContext = "No additional information"
+    errorSeverity = "fatal"
+    isBusinessException = false
     if error <> Invalid
       if error.errorCode <> Invalid
         errorCode = error.errorCode
@@ -786,9 +788,17 @@ function muxAnalytics() as Object
       end if
       if error.errorContext <> Invalid
         errorContext = error.errorContext
-      end if 
+      end if
+      if error.errorSeverity <> Invalid
+        if error.errorSeverity = "warning"
+          errorSeverity = "warning"
+        end if
+      end if
+      if error.isBusinessException <> Invalid
+        isBusinessException = (error.isBusinessException = "true")
+      end if
     end if
-    m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage, player_error_context:errorContext}))
+    m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage, player_error_context:errorContext, player_error_severity:errorSeverity, player_error_business_exception:isBusinessException}))
   end sub
 
   prototype.rafEventHandler = sub(rafEvent)
