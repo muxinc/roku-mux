@@ -96,10 +96,10 @@ function runBeaconLoop()
   end if
   m.top.ObserveField("useSSAI", m.messagePort)
 
-  if m.top.automaticErrorTracking <> Invalid
-    m.mxa.automaticErrorTrackingHandler(m.top.automaticErrorTracking)
+  if m.top.disableAutomaticErrorTracking <> Invalid
+    m.mxa.disableAutomaticErrorTrackingHandler(m.top.disableAutomaticErrorTracking)
   end if
-  m.top.ObserveField("automaticErrorTracking", m.messagePort)
+  m.top.ObserveField("disableAutomaticErrorTracking", m.messagePort)
 
   if m.top.error <> Invalid
     m.mxa.videoErrorHandler(m.top.error)
@@ -210,7 +210,7 @@ function runBeaconLoop()
   m.top.UnobserveField("view")
   m.top.UnobserveField("useRenderStitchedStream")
   m.top.UnobserveField("useSSAI")
-  m.top.UnobserveField("automaticErrorTracking")
+  m.top.UnobserveField("disableAutomaticErrorTracking")
 
   if m.top.exitType = "soft"
     while NOT m.mxa.isQueueEmpty()
@@ -761,21 +761,21 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype.useRenderStitchedStreamHandler = sub(useRenderStitchedStream as String)
+  prototype.useRenderStitchedStreamHandler = sub(useRenderStitchedStream as Boolean)
     if useRenderStitchedStream <> Invalid
-      m._Flag_useRenderStitchedStream = (useRenderStitchedStream = "true")
+      m._Flag_useRenderStitchedStream = useRenderStitchedStream
     end if
   end sub
 
-  prototype.useSSAIHandler = sub(useSSAI as String)
+  prototype.useSSAIHandler = sub(useSSAI as Boolean)
     if useSSAI <> Invalid
-      m._Flag_useSSAI = (useSSAI = "true")
+      m._Flag_useSSAI = useSSAI
     end if
   end sub
 
-  prototype.automaticErrorTrackingHandler = sub(automaticErrorTracking as String)
-    if automaticErrorTracking <> Invalid
-      m._Flag_automaticErrorTracking = (automaticErrorTracking = "true")
+  prototype.disableAutomaticErrorTrackingHandler = sub(disableAutomaticErrorTracking as Boolean)
+    if disableAutomaticErrorTracking <> Invalid
+      m._Flag_automaticErrorTracking = (not disableAutomaticErrorTracking)
     end if
   end sub
 
@@ -804,7 +804,7 @@ function muxAnalytics() as Object
         end if
       end if
       if error.isBusinessException <> Invalid
-        isBusinessException = (error.isBusinessException = "true")
+        isBusinessException = (error.isBusinessException = "true" or error.isBusinessException)
       end if
     end if
     m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage, player_error_context:errorContext, player_error_severity:errorSeverity, player_error_business_exception:isBusinessException}))
