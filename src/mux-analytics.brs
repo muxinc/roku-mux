@@ -35,6 +35,11 @@ function runBeaconLoop()
 
   m.httpPort = _createPort()
 
+  useRandomMuxViewerId = false
+  if m.top.randomMuxViewerId <> invalid
+    useRandomMuxViewerId = m.top.randomMuxViewerId
+  end if
+
   m.mxa = muxAnalytics()
   m.mxa.MUX_SDK_VERSION = m.MUX_SDK_VERSION
 
@@ -47,7 +52,8 @@ function runBeaconLoop()
     BASE_TIME_BETWEEN_BEACONS: m.BASE_TIME_BETWEEN_BEACONS,
     HEARTBEAT_INTERVAL: m.HEARTBEAT_INTERVAL,
     POSITION_TIMER_INTERVAL: m.POSITION_TIMER_INTERVAL,
-    SEEK_THRESHOLD: m.SEEK_THRESHOLD
+    SEEK_THRESHOLD: m.SEEK_THRESHOLD,
+    USE_RANDOM_MUX_VIEWER_ID: useRandomMuxViewerId
   }
   m.mxa.init(appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.pollTimer, m.httpPort)
 
@@ -420,6 +426,9 @@ function muxAnalytics() as Object
 
     ' Flag for a beacon currently being retried
     m._Flag_beaconRequestInProgress = false
+
+    ' Flag for whether or not to use a random mux viewer ID
+    m._Flag_useRandomMuxViewerId = systemConfig.USE_RANDOM_MUX_VIEWER_ID
 
     ' kick off analytics
     date = m._getDateTime()
@@ -1165,7 +1174,7 @@ function muxAnalytics() as Object
       if m._playerViewCount <> Invalid
         m._playerViewCount++
       end if
-      m._viewId = m._generateViewID()
+      m._viewId = m._generateGUID()
       m._viewWatchTime = 0
       m._contentPlaybackTime = 0
       m._viewRebufferCount = 0
@@ -1343,9 +1352,11 @@ function muxAnalytics() as Object
     props.beacon_domain = m._getDomain(m.beaconUrl)
 
     ' We are moving towards using GUID style instance IDs
-    props.player_instance_id = m._generateViewID()
+    props.player_instance_id = m._generateGUID()
     ' DEVICE INFO
-    if deviceInfo.IsRIDADisabled() = true
+    if m._Flag_useRandomMuxViewerId
+      props.mux_viewer_id = m._generateGUID()
+    else if deviceInfo.IsRIDADisabled()
       props.mux_viewer_id = deviceInfo.GetChannelClientId()
     else
       props.mux_viewer_id = deviceInfo.GetRIDA()
@@ -1808,7 +1819,7 @@ function muxAnalytics() as Object
     return result
   end function
 
-  prototype._generateViewID = function () as String
+  prototype._generateGUID = function () as String
     pattern = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
     randomizeX = function() as String
       return StrI(Rnd(0) * 16, 16)
