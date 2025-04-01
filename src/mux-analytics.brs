@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "1.8.0"
+  m.MUX_SDK_VERSION = "2.0.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -35,6 +35,11 @@ function runBeaconLoop()
 
   m.httpPort = _createPort()
 
+  useRandomMuxViewerId = false
+  if m.top.randomMuxViewerId <> invalid
+    useRandomMuxViewerId = m.top.randomMuxViewerId
+  end if
+
   m.mxa = muxAnalytics()
   m.mxa.MUX_SDK_VERSION = m.MUX_SDK_VERSION
 
@@ -47,7 +52,8 @@ function runBeaconLoop()
     BASE_TIME_BETWEEN_BEACONS: m.BASE_TIME_BETWEEN_BEACONS,
     HEARTBEAT_INTERVAL: m.HEARTBEAT_INTERVAL,
     POSITION_TIMER_INTERVAL: m.POSITION_TIMER_INTERVAL,
-    SEEK_THRESHOLD: m.SEEK_THRESHOLD
+    SEEK_THRESHOLD: m.SEEK_THRESHOLD,
+    USE_RANDOM_MUX_VIEWER_ID: useRandomMuxViewerId
   }
   m.mxa.init(appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.pollTimer, m.httpPort)
 
@@ -89,6 +95,11 @@ function runBeaconLoop()
     m.mxa.useSSAIHandler(m.top.useSSAI)
   end if
   m.top.ObserveField("useSSAI", m.messagePort)
+
+  if m.top.disableAutomaticErrorTracking <> Invalid
+    m.mxa.disableAutomaticErrorTrackingHandler(m.top.disableAutomaticErrorTracking)
+  end if
+  m.top.ObserveField("disableAutomaticErrorTracking", m.messagePort)
 
   if m.top.error <> Invalid
     m.mxa.videoErrorHandler(m.top.error)
@@ -144,6 +155,8 @@ function runBeaconLoop()
           m.mxa.useRenderStitchedStreamHandler(msg.getData())
         else if field = "useSSAI"
           m.mxa.useSSAIHandler(msg.getData())
+        else if field = "automaticErrorTracking"
+          m.mxa.automaticErrorTrackingHandler(msg.getData())
         else if field = "error"
           m.mxa.videoErrorHandler(msg.getData())
         else if field = "control"
@@ -197,6 +210,7 @@ function runBeaconLoop()
   m.top.UnobserveField("view")
   m.top.UnobserveField("useRenderStitchedStream")
   m.top.UnobserveField("useSSAI")
+  m.top.UnobserveField("disableAutomaticErrorTracking")
 
   if m.top.exitType = "soft"
     while NOT m.mxa.isQueueEmpty()
@@ -402,6 +416,7 @@ function muxAnalytics() as Object
     m._Flag_lastReportedPosition = 0
     m._Flag_FailedAdsErrorSet = false
     m._Flag_useSSAI = false
+    m._Flag_automaticErrorTracking = true
 
     ' Flags specifically for when renderStitchedStream is used
     m._Flag_useRenderStitchedStream = false
@@ -411,6 +426,9 @@ function muxAnalytics() as Object
 
     ' Flag for a beacon currently being retried
     m._Flag_beaconRequestInProgress = false
+
+    ' Flag for whether or not to use a random mux viewer ID
+    m._Flag_useRandomMuxViewerId = systemConfig.USE_RANDOM_MUX_VIEWER_ID
 
     ' kick off analytics
     date = m._getDateTime()
@@ -533,9 +551,17 @@ function muxAnalytics() as Object
       m._Flag_atLeastOnePlayEventForContent = true
     else if videoState = "stopped"
     else if videoState = "finished"
-      m._addEventToQueue(m._createEvent("ended"))
-      m._endView()
+      ' Only send ended event if it played to completion
+      completedStreamInfo = m.video.completedStreamInfo
+      if completedStreamInfo <> invalid
+        if completedStreamInfo.isFullResult
+          m._addEventToQueue(m._createEvent("ended"))
+        end if
+      end if
     else if videoState = "error"
+      ' Bail out if we aren't supposed to track automatic errors
+      if not m._Flag_automaticErrorTracking then return
+
       errorCode = ""
       errorMessage = ""
       errorContext = ""
@@ -735,15 +761,21 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype.useRenderStitchedStreamHandler = sub(useRenderStitchedStream as String)
+  prototype.useRenderStitchedStreamHandler = sub(useRenderStitchedStream as Boolean)
     if useRenderStitchedStream <> Invalid
-      m._Flag_useRenderStitchedStream = (useRenderStitchedStream = "true")
+      m._Flag_useRenderStitchedStream = useRenderStitchedStream
     end if
   end sub
 
-  prototype.useSSAIHandler = sub(useSSAI as String)
+  prototype.useSSAIHandler = sub(useSSAI as Boolean)
     if useSSAI <> Invalid
-      m._Flag_useSSAI = (useSSAI = "true")
+      m._Flag_useSSAI = useSSAI
+    end if
+  end sub
+
+  prototype.disableAutomaticErrorTrackingHandler = sub(disableAutomaticErrorTracking as Boolean)
+    if disableAutomaticErrorTracking <> Invalid
+      m._Flag_automaticErrorTracking = (not disableAutomaticErrorTracking)
     end if
   end sub
 
@@ -751,6 +783,8 @@ function muxAnalytics() as Object
     errorCode = "0"
     errorMessage = "Unknown"
     errorContext = "No additional information"
+    errorSeverity = "fatal"
+    isBusinessException = false
     if error <> Invalid
       if error.errorCode <> Invalid
         errorCode = error.errorCode
@@ -763,9 +797,17 @@ function muxAnalytics() as Object
       end if
       if error.errorContext <> Invalid
         errorContext = error.errorContext
-      end if 
+      end if
+      if error.errorSeverity <> Invalid
+        if error.errorSeverity = "warning"
+          errorSeverity = "warning"
+        end if
+      end if
+      if error.isBusinessException <> Invalid
+        isBusinessException = (error.isBusinessException = "true" or error.isBusinessException)
+      end if
     end if
-    m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage, player_error_context:errorContext}))
+    m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage, player_error_context:errorContext, player_error_severity:errorSeverity, player_error_business_exception:isBusinessException}))
   end sub
 
   prototype.rafEventHandler = sub(rafEvent)
@@ -1132,7 +1174,7 @@ function muxAnalytics() as Object
       if m._playerViewCount <> Invalid
         m._playerViewCount++
       end if
-      m._viewId = m._generateViewID()
+      m._viewId = m._generateGUID()
       m._viewWatchTime = 0
       m._contentPlaybackTime = 0
       m._viewRebufferCount = 0
@@ -1285,7 +1327,7 @@ function muxAnalytics() as Object
     props.player_sequence_number = 1
     props.player_software_name = m.PLAYER_SOFTWARE_NAME
     props.player_software_version = firmwareVersion
-    props.viewer_application_name = appInfo.GetTitle()
+    props.viewer_application_name = appInfo.GetTitle() ' let them override
     props.viewer_application_version = appInfo.GetVersion()
     props.viewer_device_name = deviceInfo.GetModelDisplayName()
     props.viewer_device_category = "tv"
@@ -1310,9 +1352,11 @@ function muxAnalytics() as Object
     props.beacon_domain = m._getDomain(m.beaconUrl)
 
     ' We are moving towards using GUID style instance IDs
-    props.player_instance_id = m._generateViewID()
+    props.player_instance_id = m._generateGUID()
     ' DEVICE INFO
-    if deviceInfo.IsRIDADisabled() = true
+    if m._Flag_useRandomMuxViewerId
+      props.mux_viewer_id = m._generateGUID()
+    else if deviceInfo.IsRIDADisabled()
       props.mux_viewer_id = deviceInfo.GetChannelClientId()
     else
       props.mux_viewer_id = deviceInfo.GetRIDA()
@@ -1775,7 +1819,7 @@ function muxAnalytics() as Object
     return result
   end function
 
-  prototype._generateViewID = function () as String
+  prototype._generateGUID = function () as String
     pattern = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
     randomizeX = function() as String
       return StrI(Rnd(0) * 16, 16)
