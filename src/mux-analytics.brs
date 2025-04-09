@@ -155,8 +155,8 @@ function runBeaconLoop()
           m.mxa.useRenderStitchedStreamHandler(msg.getData())
         else if field = "useSSAI"
           m.mxa.useSSAIHandler(msg.getData())
-        else if field = "automaticErrorTracking"
-          m.mxa.automaticErrorTrackingHandler(msg.getData())
+        else if field = "disableAutomaticErrorTracking"
+          m.mxa.disableAutomaticErrorTrackingHandler(msg.getData())
         else if field = "error"
           m.mxa.videoErrorHandler(msg.getData())
         else if field = "control"
