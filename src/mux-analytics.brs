@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "2.0.0"
+  m.MUX_SDK_VERSION = "2.0.1"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -155,8 +155,8 @@ function runBeaconLoop()
           m.mxa.useRenderStitchedStreamHandler(msg.getData())
         else if field = "useSSAI"
           m.mxa.useSSAIHandler(msg.getData())
-        else if field = "automaticErrorTracking"
-          m.mxa.automaticErrorTrackingHandler(msg.getData())
+        else if field = "disableAutomaticErrorTracking"
+          m.mxa.disableAutomaticErrorTrackingHandler(msg.getData())
         else if field = "error"
           m.mxa.videoErrorHandler(msg.getData())
         else if field = "control"
@@ -1898,34 +1898,40 @@ function muxAnalytics() as Object
 
   prototype._firstWords = {
     "property": "a",
-    "env": "a",
+    "env": "a", ' account
     "beacon": "b",
     "custom": "c",
     "ad": "d",
     "event": "e",
-    "experiment": "f",
+    "experiment": "f", ' nothing better to use...
+    "internal": "i",
     "mux": "m",
+    "response": "n",
     "player": "p",
-    "retry": "r",
+    "request": "q",
+    "retry": "r", ' placeholder for beacons adding retry counts
     "session": "s",
     "timestamp": "t",
-    "viewer": "u",
+    "viewer": "u", ' user
     "video": "v",
-    "page": "w",
+    "page": "w", ' web page
     "view": "x",
-    "sub": "y"
+    "sub": "y" ' cause nowhere else to fit it
   }
 
   prototype._subsequentWords = {
     "ad": "ad",
+    "affiliate": "af",
     "aggregate": "ag",
     "api": "ap",
     "application": "al",
+    "audio": "ao",
     "architecture": "ar",
     "asset": "as",
     "autoplay": "au",
     "average": "av",
     "bitrate": "bi",
+    "brand": "bn",
     "break": "br",
     "browser": "bw",
     "bytes": "by",
@@ -1936,13 +1942,16 @@ function muxAnalytics() as Object
     "code": "cd",
     "category": "cg",
     "changed": "ch",
+    "client": "ci",
     "clicked": "ck",
     "canceled": "cl",
     "config": "cn",
     "count": "co",
     "counter": "ce",
     "complete": "cp",
+    "creator": "cq",
     "creative": "cr",
+    "captions": "cs",
     "content": "ct",
     "current": "cu",
     "connection": "cx",
@@ -1955,6 +1964,8 @@ function muxAnalytics() as Object
     "dropped": "dp",
     "duration": "du",
     "device": "dv",
+    "dynamic": "dy",
+    "enabled": "eb",
     "encoding": "ec",
     "edge": "ed",
     "end": "en",
@@ -2010,6 +2021,7 @@ function muxAnalytics() as Object
     "name": "nm",
     "number": "no",
     "on": "on",
+    "origin": "or",
     "os": "os",
     "paused": "pa",
     "playback": "pb",
@@ -2022,14 +2034,18 @@ function muxAnalytics() as Object
     "preroll": "pl",
     "playing": "pn",
     "poster": "po",
+    "pip": "pp",
     "preload": "pr",
     "position": "ps",
     "part": "pt",
     "property": "py",
+    "pop": "px",
+    "plan": "pz",
     "rate": "ra",
     "requested": "rd",
     "rebuffer": "re",
     "rendition": "rf",
+    "range": "rg",
     "remote": "rm",
     "ratio": "ro",
     "response": "rp",
@@ -2038,11 +2054,13 @@ function muxAnalytics() as Object
     "sample": "sa",
     "skipped": "sd",
     "session": "se",
+    "shift": "sh",
     "seek": "sk",
     "stream": "sm",
     "source": "so",
     "sequence": "sq",
     "series": "sr",
+    "status": "ss",
     "start": "st",
     "startup": "su",
     "server": "sv",
