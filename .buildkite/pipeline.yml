@@ -1,0 +1,3 @@
+steps:
+  - label: ':shipit: Deploy to S3'
+    command: './bin/run.sh -- npm run deploy'

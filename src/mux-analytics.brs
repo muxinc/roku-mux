@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "2.0.1"
+  m.MUX_SDK_VERSION = "2.0.2"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -1356,8 +1356,6 @@ function muxAnalytics() as Object
     ' DEVICE INFO
     if m._Flag_useRandomMuxViewerId
       props.mux_viewer_id = m._generateGUID()
-    else if deviceInfo.IsRIDADisabled()
-      props.mux_viewer_id = deviceInfo.GetChannelClientId()
     else
       props.mux_viewer_id = deviceInfo.GetRIDA()
     end if
