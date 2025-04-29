@@ -1,13 +1,18 @@
 {
+  "version": "2.0.2",
+  "main": "./src/mux-analytics.brs",
   "dependencies": {
     "@rokucommunity/bslint": "^0.8.9",
     "@snyk/protect": "latest",
+    "aws-sdk": "^2.1692.0",
     "brighterscript": "^0.65.5",
     "build": "^0.1.4"
   },
   "scripts": {
     "prepare": "npm run snyk-protect",
-    "snyk-protect": "snyk-protect"
+    "snyk-protect": "snyk-protect",
+    "deploy": "node ./scripts/deploy.js"
   },
-  "snyk": true
+  "snyk": true,
+  "type": "module"
 }
