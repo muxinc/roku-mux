@@ -13,4 +13,6 @@ docker run \
   -v $(pwd):/app \
   -e AWS_ACCESS_KEY_ID \
   -e AWS_SECRET_ACCESS_KEY \
+  -e S3_BUCKET \
+  -e CF_DISTRIBUTION_ID \
   $IMAGE_NAME /bin/sh -cx "npm install && $CMD"

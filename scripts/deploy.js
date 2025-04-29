@@ -5,7 +5,7 @@ import path from 'path';
 async function deploy(scope, root, pkg) {
   const bucket = new AWS.S3({
     params: {
-      Bucket: 'mux-sdks-test'
+      Bucket: process.env.S3_BUCKET
     },
   });
   const cloudFront = new AWS.CloudFront({
@@ -39,7 +39,7 @@ async function deploy(scope, root, pkg) {
   const invalidateCloudfront = () => {
     return new Promise((resolve, reject) => {
       const params = {
-        DistributionId: 'EQ2SDW3HVTEIS',
+        DistributionId: process.env.CF_DISTRIBUTION_ID,
         InvalidationBatch: {
           CallerReference: 'roku-mux-buildkite-pipeline',
           Paths: {
