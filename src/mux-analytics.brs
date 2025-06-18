@@ -440,7 +440,13 @@ function muxAnalytics() as Object
 
   prototype.beaconIntervalHandler = sub(beaconIntervalEvent)
     data = beaconIntervalEvent.getData()
+    m.updateSessionPropertiesConnectionType()
     m.LIGHT_THE_BEACONS()
+  end sub
+
+  prototype.updateSessionPropertiesConnectionType = sub()
+    deviceInfo = m._getDeviceInfo()
+    m._sessionProperties.viewer_connection_type = _getConnectionType(deviceInfo)
   end sub
 
   prototype.heartbeatIntervalHandler = sub(heartbeatIntervalEvent)
