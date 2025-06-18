@@ -278,6 +278,9 @@ end function
 
 function _getConnectionType(deviceInfo as Object)
   connectionType = deviceInfo.GetConnectionType()
+  if connectionType = ""
+    return Invalid
+  end if
   if connectionType = "WiFiConnection"
     return "wifi"
   end if
@@ -285,7 +288,7 @@ function _getConnectionType(deviceInfo as Object)
     return "ethernet"
   end if
 
-  return "none"
+  return "other"
 end function
 
 function muxAnalytics() as Object
@@ -446,7 +449,10 @@ function muxAnalytics() as Object
 
   prototype.updateSessionPropertiesConnectionType = sub()
     deviceInfo = m._getDeviceInfo()
-    m._sessionProperties.viewer_connection_type = _getConnectionType(deviceInfo)
+    connectionType = _getConnectionType(deviceInfo)
+    if connectionType <> Invalid
+      m._sessionProperties.viewer_connection_type = connectionType
+    end if
   end sub
 
   prototype.heartbeatIntervalHandler = sub(heartbeatIntervalEvent)
@@ -1346,7 +1352,10 @@ function muxAnalytics() as Object
     props.viewer_device_model = seriesModel
     props.viewer_os_family = "Roku OS"
     props.viewer_os_version = firmwareVersion
-    props.viewer_connection_type = _getConnectionType(deviceInfo)
+    connectionType = _getConnectionType(deviceInfo)
+    if connectionType <> Invalid
+      props.viewer_connection_type = connectionType
+    end if
     props.mux_api_version = m.MUX_API_VERSION
     props.player_mux_plugin_name = m.MUX_SDK_NAME
     props.player_mux_plugin_version = m.MUX_SDK_VERSION
