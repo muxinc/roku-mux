@@ -405,8 +405,8 @@ function muxAnalytics() as Object
     m._viewRequestCount = Invalid
 
     ' Calculate player width and height
-    deviceInfo = m._getDeviceInfo()
-    videoMode = deviceInfo.GetVideoMode()
+    m.deviceInfo = m._getDeviceInfo()
+    videoMode = m.deviceInfo.GetVideoMode()
     m._lastPlayerWidth = Val(m._getVideoPlaybackMetric(videoMode, "width"))
     m._lastPlayerHeight = Val(m._getVideoPlaybackMetric(videoMode, "height"))
 
@@ -448,8 +448,7 @@ function muxAnalytics() as Object
   end sub
 
   prototype.updateSessionPropertiesConnectionType = sub()
-    deviceInfo = m._getDeviceInfo()
-    connectionType = _getConnectionType(deviceInfo)
+    connectionType = _getConnectionType(m.deviceInfo)
     if connectionType <> Invalid
       m._sessionProperties.viewer_connection_type = connectionType
     end if
