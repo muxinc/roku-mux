@@ -386,7 +386,7 @@ function muxAnalytics() as Object
     m._viewPrerollPlayedCount = Invalid
     m._videoSourceFormat = Invalid
     m._videoSourceDuration = Invalid
-    m._videoSourceURL = Invalid
+    m._videoCurrentCdn = Invalid
     m._viewPrerollPlayedCount = Invalid
 
     m._lastSourceWidth = Invalid
@@ -603,11 +603,14 @@ function muxAnalytics() as Object
   end sub
 
   prototype.cndSwitchHandler = sub(cdnData as Object)
-    previousCdn = m._videoSourceURL
+    currentCdn = ""
+    if m._videoCurrentCdn <> Invalid
+      currentCdn = m._videoCurrentCdn
+    end if
     newCdn = m._getUrlWithoutMetadata(cdnData.URLFilter)
 
-    m._addEventToQueue(m._createEvent("cdnchange", { video_cdn: newCdn, video_previous_cdn: previousCdn }))
-    previousCdn = newCdn
+    m._addEventToQueue(m._createEvent("cdnchange", { video_cdn: newCdn, video_previous_cdn: currentCdn }))
+    m._videoCurrentCdn = newCdn
   end sub
 
   prototype._triggerPlayEvent = sub()
@@ -1253,7 +1256,7 @@ function muxAnalytics() as Object
       m._viewPrerollPlayedCount = Invalid
       m._videoSourceFormat = Invalid
       m._videoSourceDuration = Invalid
-      m._videoSourceURL = Invalid
+      m._videoCurrentCdn = Invalid
       m.drmType = Invalid
       m.droppedFrames = Invalid
 
@@ -1432,7 +1435,6 @@ function muxAnalytics() as Object
         props.video_source_hostname = m._getHostname(content.URL)
         props.video_source_domain = m._getDomain(content.URL)
         m._videoSourceFormat = m._getVideoFormat(content.URL)
-        m._videoSourceURL = content.URL
       end if
 
       if content.StreamFormat <> Invalid AND (type(content.StreamFormat) = "String" OR type(content.StreamFormat) = "roString") AND content.StreamFormat <> "(null)"
