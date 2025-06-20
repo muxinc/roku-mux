@@ -70,6 +70,7 @@ function runBeaconLoop()
     m.top.video.ObserveField("contentIndex", m.messagePort)
     m.top.video.ObserveField("downloadedSegment", m.messagePort)
     m.top.video.ObserveField("streamingSegment", m.messagePort)
+    m.top.video.ObserveField("cdnSwitch", m.messagePort)
     if m.top.video.enableDecoderStats <> Invalid
       m.top.video.enableDecoderStats = true
       m.top.video.ObserveField("decoderStats", m.messagePort)
@@ -144,6 +145,7 @@ function runBeaconLoop()
             m.top.video.ObserveField("contentIndex", m.messagePort)
             m.top.video.ObserveField("downloadedSegment", m.messagePort)
             m.top.video.ObserveField("streamingSegment", m.messagePort)
+            m.top.video.ObserveField("cdnSwitch", m.messagePort)
             if m.top.video.enableDecoderStats <> Invalid
               m.top.video.enableDecoderStats = true
               m.top.video.ObserveField("decoderStats", m.messagePort)
@@ -189,6 +191,9 @@ function runBeaconLoop()
           else if node = "heartbeatTimer"
             m.mxa.heartbeatIntervalHandler(msg)
           end if
+        else if field = "cdnSwitch"
+          print "HERE HERE"
+          m.mxa.cndSwitchHandler(msg.getData())
         end if
       end if
     end if
@@ -595,6 +600,10 @@ function muxAnalytics() as Object
     else if view = "start"
       m._startView(true)
     end if
+  end sub
+
+  prototype.cndSwitchHandler = sub(cdnData as Object)
+    print cdnData
   end sub
 
   prototype._triggerPlayEvent = sub()
