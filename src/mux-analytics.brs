@@ -192,7 +192,6 @@ function runBeaconLoop()
             m.mxa.heartbeatIntervalHandler(msg)
           end if
         else if field = "cdnSwitch"
-          print "HERE HERE"
           m.mxa.cndSwitchHandler(msg.getData())
         end if
       end if
