@@ -386,6 +386,7 @@ function muxAnalytics() as Object
     m._viewPrerollPlayedCount = Invalid
     m._videoSourceFormat = Invalid
     m._videoSourceDuration = Invalid
+    m._videoSourceURL = Invalid
     m._viewPrerollPlayedCount = Invalid
 
     m._lastSourceWidth = Invalid
@@ -602,7 +603,11 @@ function muxAnalytics() as Object
   end sub
 
   prototype.cndSwitchHandler = sub(cdnData as Object)
-    print cdnData
+    previousCdn = m._videoSourceURL
+    newCdn = m._getUrlWithoutMetadata(cdnData.URLFilter)
+
+    m._addEventToQueue(m._createEvent("cdnchange", { video_cdn: newCdn, video_previous_cdn: previousCdn }))
+    previousCdn = newCdn
   end sub
 
   prototype._triggerPlayEvent = sub()
@@ -1248,6 +1253,7 @@ function muxAnalytics() as Object
       m._viewPrerollPlayedCount = Invalid
       m._videoSourceFormat = Invalid
       m._videoSourceDuration = Invalid
+      m._videoSourceURL = Invalid
       m.drmType = Invalid
       m.droppedFrames = Invalid
 
@@ -1426,6 +1432,7 @@ function muxAnalytics() as Object
         props.video_source_hostname = m._getHostname(content.URL)
         props.video_source_domain = m._getDomain(content.URL)
         m._videoSourceFormat = m._getVideoFormat(content.URL)
+        m._videoSourceURL = content.URL
       end if
 
       if content.StreamFormat <> Invalid AND (type(content.StreamFormat) = "String" OR type(content.StreamFormat) = "roString") AND content.StreamFormat <> "(null)"
@@ -1664,6 +1671,19 @@ function muxAnalytics() as Object
       end if
     end if
     return hostAndPath
+  end function
+
+  prototype._getUrlWithoutMetadata = function(url as String) as String
+    regex = CreateObject("roRegex", ">(.+)", "")
+    match = regex.Match(url)
+
+    if match <> invalid and match.Count() > 1
+      cleanUrl = match[1]
+    else
+      cleanUrl = rawUrl
+    end if
+
+    return cleanUrl
   end function
 
   prototype._convertStreamFormat = function(format as String) as String
@@ -2034,6 +2054,7 @@ function muxAnalytics() as Object
     "producer": "pd",
     "percentage": "pe",
     "played": "pf",
+    "previous": "pv",
     "program": "pg",
     "playhead": "ph",
     "plugin": "pi",
