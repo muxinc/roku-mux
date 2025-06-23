@@ -788,23 +788,38 @@ function muxAnalytics() as Object
     if error <> Invalid
       if error.errorCode <> Invalid
         errorCode = error.errorCode
+      else if error.player_error_code <> Invalid
+        errorCode = error.player_error_code
       end if
+
       if error.errorMsg <> Invalid
         errorMessage = error.errorMsg
-      end if
-      if error.errorMessage <> Invalid
+      else if error.errorMessage <> Invalid
         errorMessage = error.errorMessage
+      else if error.player_error_messsage <> Invalid
+        errorMessage = error.player_error_message
       end if
+
       if error.errorContext <> Invalid
         errorContext = error.errorContext
+      else if error.player_error_context <> Invalid
+        errorContext = error.player_error_context
       end if
+
       if error.errorSeverity <> Invalid
         if error.errorSeverity = "warning"
           errorSeverity = "warning"
         end if
+      else if error.player_error_severity <> Invalid
+        if error.player_error_severity = "warning"
+          errorSeverity = "warning"
+        end if
       end if
+
       if error.isBusinessException <> Invalid
-        isBusinessException = (error.isBusinessException = "true" or error.isBusinessException)
+        isBusinessException = error.isBusinessException
+      else if error.player_error_business_exception <> Invalid
+        isBusinessException = error.player_error_business_exception
       end if
     end if
     m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage, player_error_context:errorContext, player_error_severity:errorSeverity, player_error_business_exception:isBusinessException}))
