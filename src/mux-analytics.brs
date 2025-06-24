@@ -192,7 +192,7 @@ function runBeaconLoop()
             m.mxa.heartbeatIntervalHandler(msg)
           end if
         else if field = "cdnSwitch"
-          m.mxa.cndSwitchHandler(msg.getData())
+          m.mxa.cdnSwitchHandler(msg.getData())
         end if
       end if
     end if
@@ -602,7 +602,7 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype.cndSwitchHandler = sub(cdnData as Object)
+  prototype.cdnSwitchHandler = sub(cdnData as Object)
     currentCdn = ""
     if m._videoCurrentCdn <> Invalid
       currentCdn = m._videoCurrentCdn
