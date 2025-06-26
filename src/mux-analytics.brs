@@ -605,15 +605,15 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype.cdnChangeHandler = sub(cdnData as Object)
+  prototype.cdnChangeHandler = sub(cdn as String)
     previousCdn = ""
     if m._videoCurrentCdn <> Invalid
       previousCdn = m._videoCurrentCdn
     end if
 
-    if cdnData.newCdn <> Invalid and cdnData.newCdn <> previousCdn
-      m._addEventToQueue(m._createEvent("cdnchange", { video_cdn: cdnData.newCdn, video_previous_cdn: previousCdn }))
-      m._videoCurrentCdn = cdnData.newCdn
+    if cdn <> Invalid and cdn <> previousCdn
+      m._addEventToQueue(m._createEvent("cdnchange", { video_cdn: cdn, video_previous_cdn: previousCdn }))
+      m._videoCurrentCdn = cdn
     end if
   end sub
 
