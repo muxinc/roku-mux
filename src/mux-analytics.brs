@@ -70,7 +70,6 @@ function runBeaconLoop()
     m.top.video.ObserveField("contentIndex", m.messagePort)
     m.top.video.ObserveField("downloadedSegment", m.messagePort)
     m.top.video.ObserveField("streamingSegment", m.messagePort)
-    m.top.video.ObserveField("cdnSwitch", m.messagePort)
     if m.top.video.enableDecoderStats <> Invalid
       m.top.video.enableDecoderStats = true
       m.top.video.ObserveField("decoderStats", m.messagePort)
@@ -106,6 +105,11 @@ function runBeaconLoop()
     m.mxa.videoErrorHandler(m.top.error)
   end if
   m.top.ObserveField("error", m.messagePort)
+
+  if m.top.cdn <> invalid
+    m.mxa.cdnChangeHandler(m.top.cdn)
+  end if
+  m.top.ObserveField("cdn", m.messagePort)
 
   m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
@@ -145,7 +149,6 @@ function runBeaconLoop()
             m.top.video.ObserveField("contentIndex", m.messagePort)
             m.top.video.ObserveField("downloadedSegment", m.messagePort)
             m.top.video.ObserveField("streamingSegment", m.messagePort)
-            m.top.video.ObserveField("cdnSwitch", m.messagePort)
             if m.top.video.enableDecoderStats <> Invalid
               m.top.video.enableDecoderStats = true
               m.top.video.ObserveField("decoderStats", m.messagePort)
@@ -191,8 +194,8 @@ function runBeaconLoop()
           else if node = "heartbeatTimer"
             m.mxa.heartbeatIntervalHandler(msg)
           end if
-        else if field = "cdnSwitch"
-          m.mxa.cdnSwitchHandler(msg.getData())
+        else if field = "cdn"
+          m.mxa.cdnChangeHandler(msg.getData())
         end if
       end if
     end if
@@ -602,15 +605,11 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype.cdnSwitchHandler = sub(cdnData as Object)
-    currentCdn = ""
-    if m._videoCurrentCdn <> Invalid
-      currentCdn = m._videoCurrentCdn
+  prototype.cdnChangeHandler = sub(cdnData as Object)
+    if cdnData.newCdn <> Invalid and cdnData.newCdn <> m._videoCurrentCdn
+      m._addEventToQueue(m._createEvent("cdnchange", { video_cdn: cdnData.newCdn, video_previous_cdn: m._videoCurrentCdn }))
+      m._videoCurrentCdn = cdnData.newCdn
     end if
-    newCdn = m._getUrlWithoutMetadata(cdnData.URLFilter)
-
-    m._addEventToQueue(m._createEvent("cdnchange", { video_cdn: newCdn, video_previous_cdn: currentCdn }))
-    m._videoCurrentCdn = newCdn
   end sub
 
   prototype._triggerPlayEvent = sub()
@@ -1673,19 +1672,6 @@ function muxAnalytics() as Object
       end if
     end if
     return hostAndPath
-  end function
-
-  prototype._getUrlWithoutMetadata = function(url as String) as String
-    regex = CreateObject("roRegex", ">(.+)", "")
-    match = regex.Match(url)
-
-    if match <> invalid and match.Count() > 1
-      cleanUrl = match[1]
-    else
-      cleanUrl = rawUrl
-    end if
-
-    return cleanUrl
   end function
 
   prototype._convertStreamFormat = function(format as String) as String
