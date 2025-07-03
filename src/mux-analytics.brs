@@ -106,6 +106,11 @@ function runBeaconLoop()
   end if
   m.top.ObserveField("error", m.messagePort)
 
+  if m.top.cdn <> invalid
+    m.mxa.cdnChangeHandler(m.top.cdn)
+  end if
+  m.top.ObserveField("cdn", m.messagePort)
+
   m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
   m.heartbeatTimer.ObserveField("fire", m.messagePort)
@@ -189,6 +194,8 @@ function runBeaconLoop()
           else if node = "heartbeatTimer"
             m.mxa.heartbeatIntervalHandler(msg)
           end if
+        else if field = "cdn"
+          m.mxa.cdnChangeHandler(msg.getData())
         end if
       end if
     end if
@@ -385,6 +392,7 @@ function muxAnalytics() as Object
     m._viewPrerollPlayedCount = Invalid
     m._videoSourceFormat = Invalid
     m._videoSourceDuration = Invalid
+    m._videoCurrentCdn = Invalid
     m._viewPrerollPlayedCount = Invalid
 
     m._lastSourceWidth = Invalid
@@ -605,6 +613,18 @@ function muxAnalytics() as Object
       m._endView(true)
     else if view = "start"
       m._startView(true)
+    end if
+  end sub
+
+  prototype.cdnChangeHandler = sub(cdn as String)
+    previousCdn = ""
+    if m._videoCurrentCdn <> Invalid
+      previousCdn = m._videoCurrentCdn
+    end if
+
+    if cdn <> Invalid and cdn <> previousCdn
+      m._addEventToQueue(m._createEvent("cdnchange", { video_cdn: cdn, video_previous_cdn: previousCdn }))
+      m._videoCurrentCdn = cdn
     end if
   end sub
 
@@ -1272,6 +1292,7 @@ function muxAnalytics() as Object
       m._viewPrerollPlayedCount = Invalid
       m._videoSourceFormat = Invalid
       m._videoSourceDuration = Invalid
+      m._videoCurrentCdn = Invalid
       m.drmType = Invalid
       m.droppedFrames = Invalid
 
@@ -2061,6 +2082,7 @@ function muxAnalytics() as Object
     "producer": "pd",
     "percentage": "pe",
     "played": "pf",
+    "previous": "pv",
     "program": "pg",
     "playhead": "ph",
     "plugin": "pi",
