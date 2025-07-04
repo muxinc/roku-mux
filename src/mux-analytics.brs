@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "2.0.2"
+  m.MUX_SDK_VERSION = "2.1.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -106,6 +106,11 @@ function runBeaconLoop()
   end if
   m.top.ObserveField("error", m.messagePort)
 
+  if m.top.cdn <> invalid
+    m.mxa.cdnChangeHandler(m.top.cdn)
+  end if
+  m.top.ObserveField("cdn", m.messagePort)
+
   m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
   m.heartbeatTimer.ObserveField("fire", m.messagePort)
@@ -189,6 +194,8 @@ function runBeaconLoop()
           else if node = "heartbeatTimer"
             m.mxa.heartbeatIntervalHandler(msg)
           end if
+        else if field = "cdn"
+          m.mxa.cdnChangeHandler(msg.getData())
         end if
       end if
     end if
@@ -278,6 +285,9 @@ end function
 
 function _getConnectionType(deviceInfo as Object)
   connectionType = deviceInfo.GetConnectionType()
+  if connectionType = ""
+    return Invalid
+  end if
   if connectionType = "WiFiConnection"
     return "wifi"
   end if
@@ -285,7 +295,7 @@ function _getConnectionType(deviceInfo as Object)
     return "ethernet"
   end if
 
-  return "none"
+  return "other"
 end function
 
 function muxAnalytics() as Object
@@ -382,6 +392,7 @@ function muxAnalytics() as Object
     m._viewPrerollPlayedCount = Invalid
     m._videoSourceFormat = Invalid
     m._videoSourceDuration = Invalid
+    m._videoCurrentCdn = Invalid
     m._viewPrerollPlayedCount = Invalid
 
     m._lastSourceWidth = Invalid
@@ -402,8 +413,8 @@ function muxAnalytics() as Object
     m._viewRequestCount = Invalid
 
     ' Calculate player width and height
-    deviceInfo = m._getDeviceInfo()
-    videoMode = deviceInfo.GetVideoMode()
+    m.deviceInfo = m._getDeviceInfo()
+    videoMode = m.deviceInfo.GetVideoMode()
     m._lastPlayerWidth = Val(m._getVideoPlaybackMetric(videoMode, "width"))
     m._lastPlayerHeight = Val(m._getVideoPlaybackMetric(videoMode, "height"))
 
@@ -440,7 +451,15 @@ function muxAnalytics() as Object
 
   prototype.beaconIntervalHandler = sub(beaconIntervalEvent)
     data = beaconIntervalEvent.getData()
+    m.updateSessionPropertiesConnectionType()
     m.LIGHT_THE_BEACONS()
+  end sub
+
+  prototype.updateSessionPropertiesConnectionType = sub()
+    connectionType = _getConnectionType(m.deviceInfo)
+    if connectionType <> Invalid
+      m._sessionProperties.viewer_connection_type = connectionType
+    end if
   end sub
 
   prototype.heartbeatIntervalHandler = sub(heartbeatIntervalEvent)
@@ -594,6 +613,18 @@ function muxAnalytics() as Object
       m._endView(true)
     else if view = "start"
       m._startView(true)
+    end if
+  end sub
+
+  prototype.cdnChangeHandler = sub(cdn as String)
+    previousCdn = ""
+    if m._videoCurrentCdn <> Invalid
+      previousCdn = m._videoCurrentCdn
+    end if
+
+    if cdn <> Invalid and cdn <> previousCdn
+      m._addEventToQueue(m._createEvent("cdnchange", { video_cdn: cdn, video_previous_cdn: previousCdn }))
+      m._videoCurrentCdn = cdn
     end if
   end sub
 
@@ -789,22 +820,43 @@ function muxAnalytics() as Object
       if error.errorCode <> Invalid
         errorCode = error.errorCode
       end if
+      if error.player_error_code <> Invalid
+        errorCode = error.player_error_code
+      end if
+
       if error.errorMsg <> Invalid
         errorMessage = error.errorMsg
       end if
       if error.errorMessage <> Invalid
         errorMessage = error.errorMessage
       end if
+      if error.player_error_messsage <> Invalid
+        errorMessage = error.player_error_message
+      end if
+
       if error.errorContext <> Invalid
         errorContext = error.errorContext
       end if
+      if error.player_error_context <> Invalid
+        errorContext = error.player_error_context
+      end if
+
       if error.errorSeverity <> Invalid
         if error.errorSeverity = "warning"
           errorSeverity = "warning"
         end if
       end if
+      if error.player_error_severity <> Invalid
+        if error.player_error_severity = "warning"
+          errorSeverity = "warning"
+        end if
+      end if
+
       if error.isBusinessException <> Invalid
-        isBusinessException = (error.isBusinessException = "true" or error.isBusinessException)
+        isBusinessException = error.isBusinessException
+      end if
+      if error.player_error_business_exception <> Invalid
+        isBusinessException = error.player_error_business_exception
       end if
     end if
     m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage, player_error_context:errorContext, player_error_severity:errorSeverity, player_error_business_exception:isBusinessException}))
@@ -1240,6 +1292,7 @@ function muxAnalytics() as Object
       m._viewPrerollPlayedCount = Invalid
       m._videoSourceFormat = Invalid
       m._videoSourceDuration = Invalid
+      m._videoCurrentCdn = Invalid
       m.drmType = Invalid
       m.droppedFrames = Invalid
 
@@ -1340,7 +1393,10 @@ function muxAnalytics() as Object
     props.viewer_device_model = seriesModel
     props.viewer_os_family = "Roku OS"
     props.viewer_os_version = firmwareVersion
-    props.viewer_connection_type = _getConnectionType(deviceInfo)
+    connectionType = _getConnectionType(deviceInfo)
+    if connectionType <> Invalid
+      props.viewer_connection_type = connectionType
+    end if
     props.mux_api_version = m.MUX_API_VERSION
     props.player_mux_plugin_name = m.MUX_SDK_NAME
     props.player_mux_plugin_version = m.MUX_SDK_VERSION
@@ -2026,6 +2082,7 @@ function muxAnalytics() as Object
     "producer": "pd",
     "percentage": "pe",
     "played": "pf",
+    "previous": "pv",
     "program": "pg",
     "playhead": "ph",
     "plugin": "pi",
