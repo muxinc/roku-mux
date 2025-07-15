@@ -11,6 +11,9 @@
     <field id="disableAutomaticErrorTracking" type="Boolean" alwaysNotify="true" value="false"/>
     <field id="randomMuxViewerId" type="Boolean" value="false"/>
     <field id="cdn" type="String" alwaysNotify="true" />
+    <field id="disableAutomaticRebufferTracking" type="Boolean" alwaysNotify="true" value="false" />
+    <field id="rebufferstart" alwaysNotify="true" />
+    <field id="rebufferend" alwaysNotify="true" />
   </interface>
   <script type="text/brightscript" uri="pkg:/libs/mux-analytics.brs"/>
 </component>

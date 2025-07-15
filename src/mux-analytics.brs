@@ -111,6 +111,21 @@ function runBeaconLoop()
   end if
   m.top.ObserveField("cdn", m.messagePort)
 
+  if m.top.disableAutomaticRebufferTracking <> invalid
+    m.mxa.disableAutomaticRebufferTrackingHandler(m.top.disableAutomaticRebufferTracking)
+  end if
+  m.top.ObserveField("disableAutomaticRebufferTracking", m.messagePort)
+
+  if m.top.rebufferstart <> Invalid
+    m.mxa.rebufferStartHandler(m.top.rebufferstart)
+  end if
+  m.top.ObserveField("rebufferstart", m.messagePort)
+
+  if m.top.rebufferend <> Invalid
+    m.mxa.rebufferEndHandler(m.top.rebufferend, m.messagePort)
+  end if
+  m.top.ObserveField("rebufferend")
+
   m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
   m.heartbeatTimer.ObserveField("fire", m.messagePort)
@@ -428,6 +443,7 @@ function muxAnalytics() as Object
     m._Flag_FailedAdsErrorSet = false
     m._Flag_useSSAI = false
     m._Flag_automaticErrorTracking = true
+    m._Flag_automaticRebufferTracking = true
 
     ' Flags specifically for when renderStitchedStream is used
     m._Flag_useRenderStitchedStream = false
@@ -512,6 +528,9 @@ function muxAnalytics() as Object
     m._Flag_isPaused = (videoState = "paused")
 
     if videoState = "buffering"
+      ' Bail out if we aren't supposed to track automatic rebuffer events
+      if not m._Flag_automaticRebufferTracking then return
+
       if m._Flag_atLeastOnePlayEventForContent = true
         m._addEventToQueue(m._createEvent("rebufferstart"))
         m._Flag_RebufferingStarted = true
@@ -527,7 +546,7 @@ function muxAnalytics() as Object
     else if videoState = "playing"
       m._videoProperties = m._getVideoProperties(m.video)
 
-      if m._Flag_lastVideoState = "buffering"
+      if m._Flag_lastVideoState = "buffering" and m._Flag_automaticRebufferTracking
         if m._Flag_RebufferingStarted = true
           m._addEventToQueue(m._createEvent("rebufferend"))
           m._Flag_RebufferingStarted = false
@@ -860,6 +879,20 @@ function muxAnalytics() as Object
       end if
     end if
     m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage, player_error_context:errorContext, player_error_severity:errorSeverity, player_error_business_exception:isBusinessException}))
+  end sub
+
+  prototype.disableAutomaticRebufferTrackingHandler = sub(disableAutomaticRebufferTracking as Boolean)
+    if disableAutomaticRebufferTracking <> Invalid
+      m._Flag_automaticRebufferTracking = (not disableAutomaticRebufferTracking)
+    end if
+  end sub
+
+  prototype.rebufferStartHandler = sub()
+    m._addEventToQueue(m._createEvent("rebufferstart"))
+  end sub
+
+  prototype.rebufferEndHandler = sub()
+    m._addEventToQueue(m._createEvent("rebufferend"))
   end sub
 
   prototype.rafEventHandler = sub(rafEvent)
