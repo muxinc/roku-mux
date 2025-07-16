@@ -106,15 +106,15 @@ function runBeaconLoop()
   end if
   m.top.ObserveField("error", m.messagePort)
 
-  if m.top.cdn <> invalid
+  if m.top.cdn <> Invalid
     m.mxa.cdnChangeHandler(m.top.cdn)
   end if
   m.top.ObserveField("cdn", m.messagePort)
 
-  if m.top.disableAutomaticRebufferTracking <> invalid
-    m.mxa.disableAutomaticRebufferTrackingHandler(m.top.disableAutomaticRebufferTracking)
+  if m.top.disablePlayheadRebufferTracking <> Invalid
+    m.mxa.disablePlayheadRebufferTrackingHandler(m.top.disablePlayheadRebufferTracking)
   end if
-  m.top.ObserveField("disableAutomaticRebufferTracking", m.messagePort)
+  m.top.ObserveField("disablePlayheadRebufferTracking", m.messagePort)
 
   if m.top.rebufferstart <> Invalid
     m.mxa.rebufferStartHandler(m.top.rebufferstart)
@@ -881,9 +881,9 @@ function muxAnalytics() as Object
     m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage, player_error_context:errorContext, player_error_severity:errorSeverity, player_error_business_exception:isBusinessException}))
   end sub
 
-  prototype.disableAutomaticRebufferTrackingHandler = sub(disableAutomaticRebufferTracking as Boolean)
-    if disableAutomaticRebufferTracking <> Invalid
-      m._Flag_automaticRebufferTracking = (not disableAutomaticRebufferTracking)
+  prototype.disablePlayheadRebufferTrackingHandler = sub(disablePlayheadRebufferTracking as Boolean)
+    if disablePlayheadRebufferTracking <> Invalid
+      m._Flag_automaticRebufferTracking = (not disablePlayheadRebufferTracking)
     end if
   end sub
 
