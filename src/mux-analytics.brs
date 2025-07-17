@@ -116,15 +116,8 @@ function runBeaconLoop()
   end if
   m.top.ObserveField("disablePlayheadRebufferTracking", m.messagePort)
 
-  if m.top.rebufferstart <> Invalid
-    m.mxa.rebufferStartHandler(m.top.rebufferstart)
-  end if
   m.top.ObserveField("rebufferstart", m.messagePort)
-
-  if m.top.rebufferend <> Invalid
-    m.mxa.rebufferEndHandler(m.top.rebufferend, m.messagePort)
-  end if
-  m.top.ObserveField("rebufferend")
+  m.top.ObserveField("rebufferend", m.messagePort)
 
   m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
@@ -211,6 +204,12 @@ function runBeaconLoop()
           end if
         else if field = "cdn"
           m.mxa.cdnChangeHandler(msg.getData())
+        else if field = "disablePlayheadRebufferTracking"
+          m.mxa.disablePlayheadRebufferTrackingHandler(msg.getData())
+        else if field = "rebufferstart"
+          m.mxa.rebufferStartHandler()
+        else if field = "rebufferend"
+          m.mxa.rebufferEndHandler()
         end if
       end if
     end if
