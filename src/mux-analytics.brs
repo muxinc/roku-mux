@@ -15,6 +15,7 @@ function runBeaconLoop()
   m.POSITION_TIMER_INTERVAL = 250 '250
   m.SEEK_THRESHOLD = 1250 'ms jump in position before a seek is considered'
   m.HTTP_RETRIES = 10 'number of times to reattempt http call'
+  m.MAX_VIDEO_POSITION_JUMP = 1000000000
 
   m.pollTimer = CreateObject("roSGNode", "Timer")
   m.pollTimer.id = "pollTimer"
@@ -489,7 +490,9 @@ function muxAnalytics() as Object
   prototype.videoStateChangeHandler = sub(videoState as String)
     m.video_state = videoState
     previouslyLastReportedPosition = m._Flag_lastReportedPosition
-    m._playerPlayheadTime = m.video.position
+    if m.video.position < m.MAX_VIDEO_POSITION_JUMP
+      m._playerPlayheadTime = m.video.position
+    end if
     m._Flag_lastReportedPosition = m._playerPlayheadTime
 
     ' Need to actually infer seek all the way out here
@@ -1057,7 +1060,9 @@ function muxAnalytics() as Object
     if m.video = Invalid then return
     if m._Flag_isPaused = true then return
 
-    m._playerPlayheadTime = m.video.position
+    if m.video.position < m.MAX_VIDEO_POSITION_JUMP
+      m._playerPlayheadTime = m.video.position
+    end if
 
     m._setBufferingMetrics()
     m._updateContentPlaybackTime()
