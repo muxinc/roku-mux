@@ -15,7 +15,7 @@ function runBeaconLoop()
   m.POSITION_TIMER_INTERVAL = 250 '250
   m.SEEK_THRESHOLD = 1250 'ms jump in position before a seek is considered'
   m.HTTP_RETRIES = 10 'number of times to reattempt http call'
-  m.MAX_VIDEO_POSITION_JUMP = 1000000000
+  m.MAX_VIDEO_POSITION_JUMP = 2000000000
 
   m.pollTimer = CreateObject("roSGNode", "Timer")
   m.pollTimer.id = "pollTimer"
