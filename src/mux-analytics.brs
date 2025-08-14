@@ -698,7 +698,7 @@ function muxAnalytics() as Object
         end if
         if videoSegment.width <> Invalid AND videoSegment.height <> Invalid AND videoSegment.segBitrateBps <> Invalid
           if m._lastSourceWidth <> Invalid AND m._lastSourceWidth <> videoSegment.width OR m._lastSourceHeight <> Invalid AND m._lastSourceHeight <> videoSegment.height OR m._lastVideoSegmentBitrate <> Invalid AND m._lastVideoSegmentBitrate <> videoSegment.segBitrateBps
-            details = { video_source_width : videoSegment.width, video_source_height : videoSegment.height, video_source_bitrate : videoSegment.segBitrateBps, video_source_codec: m._videoSourceFormat, audio_source_codec: m._audioSourceFormat }
+            details = { video_source_width : videoSegment.width, video_source_height : videoSegment.height, video_source_bitrate : videoSegment.segBitrateBps, video_codec: m._videoSourceFormat, video_audio_codec: m._audioSourceFormat }
             m._addEventToQueue(m._createEvent("renditionchange", details))
           end if
         end if
@@ -1478,7 +1478,7 @@ function muxAnalytics() as Object
         props.video_source_url = content.URL
         props.video_source_hostname = m._getHostname(content.URL)
         props.video_source_domain = m._getDomain(content.URL)
-        if m._videoSourceFormat <> Invalid AND m._videoSourceFormat <> ""
+        if m._videoSourceFormat = Invalid OR m._videoSourceFormat = ""
           m._videoSourceFormat = m._getVideoFormat(content.URL)
         end if
       end if
@@ -1615,9 +1615,6 @@ function muxAnalytics() as Object
     end if
     if m._videoSourceFormat <> Invalid
       props.video_source_format = m._videoSourceFormat
-    end if
-    if m._audioSourceFormat <> Invalid
-      props.audio_source_format = m._audioSourceFormat
     end if
     if m._videoSourceDuration <> Invalid
       props.video_source_duration = Int(m._videoSourceDuration)
