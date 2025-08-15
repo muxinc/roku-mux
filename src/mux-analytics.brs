@@ -405,6 +405,7 @@ function muxAnalytics() as Object
     m._viewAdPlayedCount = Invalid
     m._viewPrerollPlayedCount = Invalid
     m._videoSourceFormat = Invalid
+    m._audioSourceFormat = invalid
     m._videoSourceDuration = Invalid
     m._videoCurrentCdn = Invalid
     m._viewPrerollPlayedCount = Invalid
@@ -715,7 +716,7 @@ function muxAnalytics() as Object
         end if
         if videoSegment.width <> Invalid AND videoSegment.height <> Invalid AND videoSegment.segBitrateBps <> Invalid
           if m._lastSourceWidth <> Invalid AND m._lastSourceWidth <> videoSegment.width OR m._lastSourceHeight <> Invalid AND m._lastSourceHeight <> videoSegment.height OR m._lastVideoSegmentBitrate <> Invalid AND m._lastVideoSegmentBitrate <> videoSegment.segBitrateBps
-            details = { video_source_width : videoSegment.width, video_source_height : videoSegment.height, video_source_bitrate : videoSegment.segBitrateBps }
+            details = { video_source_width : videoSegment.width, video_source_height : videoSegment.height, video_source_bitrate : videoSegment.segBitrateBps, video_codec: m._videoSourceFormat, video_audio_codec: m._audioSourceFormat }
             m._addEventToQueue(m._createEvent("renditionchange", details))
           end if
         end if
@@ -1461,6 +1462,10 @@ function muxAnalytics() as Object
       if video.videoFormat <> Invalid AND video.videoFormat <> ""
         m._videoSourceFormat = video.videoFormat
       end if
+
+      if video.audioFormat <> Invalid AND video.audioFormat <> ""
+        m._audioSourceFormat = video.audioFormat
+      end if
     end if
 
     return props
@@ -1505,7 +1510,9 @@ function muxAnalytics() as Object
         props.video_source_url = content.URL
         props.video_source_hostname = m._getHostname(content.URL)
         props.video_source_domain = m._getDomain(content.URL)
-        m._videoSourceFormat = m._getVideoFormat(content.URL)
+        if m._videoSourceFormat = Invalid OR m._videoSourceFormat = ""
+          m._videoSourceFormat = m._getVideoFormat(content.URL)
+        end if
       end if
 
       if content.StreamFormat <> Invalid AND (type(content.StreamFormat) = "String" OR type(content.StreamFormat) = "roString") AND content.StreamFormat <> "(null)"
