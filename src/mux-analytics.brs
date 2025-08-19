@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "2.1.0"
+  m.MUX_SDK_VERSION = "2.2.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -107,10 +107,18 @@ function runBeaconLoop()
   end if
   m.top.ObserveField("error", m.messagePort)
 
-  if m.top.cdn <> invalid
+  if m.top.cdn <> Invalid
     m.mxa.cdnChangeHandler(m.top.cdn)
   end if
   m.top.ObserveField("cdn", m.messagePort)
+
+  if m.top.disablePlayheadRebufferTracking <> Invalid
+    m.mxa.disablePlayheadRebufferTrackingHandler(m.top.disablePlayheadRebufferTracking)
+  end if
+  m.top.ObserveField("disablePlayheadRebufferTracking", m.messagePort)
+
+  m.top.ObserveField("rebufferstart", m.messagePort)
+  m.top.ObserveField("rebufferend", m.messagePort)
 
   m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
@@ -197,6 +205,12 @@ function runBeaconLoop()
           end if
         else if field = "cdn"
           m.mxa.cdnChangeHandler(msg.getData())
+        else if field = "disablePlayheadRebufferTracking"
+          m.mxa.disablePlayheadRebufferTrackingHandler(msg.getData())
+        else if field = "rebufferstart"
+          m.mxa.rebufferStartHandler()
+        else if field = "rebufferend"
+          m.mxa.rebufferEndHandler()
         end if
       end if
     end if
@@ -392,6 +406,7 @@ function muxAnalytics() as Object
     m._viewAdPlayedCount = Invalid
     m._viewPrerollPlayedCount = Invalid
     m._videoSourceFormat = Invalid
+    m._audioSourceFormat = Invalid
     m._videoSourceDuration = Invalid
     m._videoCurrentCdn = Invalid
     m._viewPrerollPlayedCount = Invalid
@@ -429,6 +444,7 @@ function muxAnalytics() as Object
     m._Flag_FailedAdsErrorSet = false
     m._Flag_useSSAI = false
     m._Flag_automaticErrorTracking = true
+    m._Flag_automaticRebufferTracking = true
 
     ' Flags specifically for when renderStitchedStream is used
     m._Flag_useRenderStitchedStream = false
@@ -515,6 +531,9 @@ function muxAnalytics() as Object
     m._Flag_isPaused = (videoState = "paused")
 
     if videoState = "buffering"
+      ' Bail out if we aren't supposed to track automatic rebuffer events
+      if not m._Flag_automaticRebufferTracking then return
+
       if m._Flag_atLeastOnePlayEventForContent = true
         m._addEventToQueue(m._createEvent("rebufferstart"))
         m._Flag_RebufferingStarted = true
@@ -530,7 +549,7 @@ function muxAnalytics() as Object
     else if videoState = "playing"
       m._videoProperties = m._getVideoProperties(m.video)
 
-      if m._Flag_lastVideoState = "buffering"
+      if m._Flag_lastVideoState = "buffering" and m._Flag_automaticRebufferTracking
         if m._Flag_RebufferingStarted = true
           m._addEventToQueue(m._createEvent("rebufferend"))
           m._Flag_RebufferingStarted = false
@@ -700,7 +719,7 @@ function muxAnalytics() as Object
         end if
         if videoSegment.width <> Invalid AND videoSegment.height <> Invalid AND videoSegment.segBitrateBps <> Invalid
           if m._lastSourceWidth <> Invalid AND m._lastSourceWidth <> videoSegment.width OR m._lastSourceHeight <> Invalid AND m._lastSourceHeight <> videoSegment.height OR m._lastVideoSegmentBitrate <> Invalid AND m._lastVideoSegmentBitrate <> videoSegment.segBitrateBps
-            details = { video_source_width : videoSegment.width, video_source_height : videoSegment.height, video_source_bitrate : videoSegment.segBitrateBps }
+            details = { video_source_width : videoSegment.width, video_source_height : videoSegment.height, video_source_bitrate : videoSegment.segBitrateBps, video_codec: m._videoSourceFormat, video_audio_codec: m._audioSourceFormat }            
             m._addEventToQueue(m._createEvent("renditionchange", details))
           end if
         end if
@@ -863,6 +882,20 @@ function muxAnalytics() as Object
       end if
     end if
     m._addEventToQueue(m._createEvent("error", {player_error_code: errorCode, player_error_message:errorMessage, player_error_context:errorContext, player_error_severity:errorSeverity, player_error_business_exception:isBusinessException}))
+  end sub
+
+  prototype.disablePlayheadRebufferTrackingHandler = sub(disablePlayheadRebufferTracking as Boolean)
+    if disablePlayheadRebufferTracking <> Invalid
+      m._Flag_automaticRebufferTracking = (not disablePlayheadRebufferTracking)
+    end if
+  end sub
+
+  prototype.rebufferStartHandler = sub()
+    m._addEventToQueue(m._createEvent("rebufferstart"))
+  end sub
+
+  prototype.rebufferEndHandler = sub()
+    m._addEventToQueue(m._createEvent("rebufferend"))
   end sub
 
   prototype.rafEventHandler = sub(rafEvent)
@@ -1434,6 +1467,10 @@ function muxAnalytics() as Object
       if video.videoFormat <> Invalid AND video.videoFormat <> ""
         m._videoSourceFormat = video.videoFormat
       end if
+
+      if video.audioFormat <> Invalid AND video.audioFormat <> ""
+        m._audioSourceFormat = video.audioFormat
+      end if
     end if
 
     return props
@@ -1478,7 +1515,9 @@ function muxAnalytics() as Object
         props.video_source_url = content.URL
         props.video_source_hostname = m._getHostname(content.URL)
         props.video_source_domain = m._getDomain(content.URL)
-        m._videoSourceFormat = m._getVideoFormat(content.URL)
+        if m._videoSourceFormat = Invalid OR m._videoSourceFormat = ""
+          m._videoSourceFormat = m._getVideoFormat(content.URL)
+        end if
       end if
 
       if content.StreamFormat <> Invalid AND (type(content.StreamFormat) = "String" OR type(content.StreamFormat) = "roString") AND content.StreamFormat <> "(null)"
