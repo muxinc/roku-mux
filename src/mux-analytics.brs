@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "2.2.0"
+  m.MUX_SDK_VERSION = "2.2.1"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -49,6 +49,7 @@ function runBeaconLoop()
   systemConfig = {
     MAX_BEACON_SIZE: m.MAX_BEACON_SIZE,
     MAX_QUEUE_LENGTH: m.MAX_QUEUE_LENGTH,
+    MAX_VIDEO_POSITION_JUMP: m.MAX_VIDEO_POSITION_JUMP,
     HTTP_RETRIES: m.HTTP_RETRIES,
     BASE_TIME_BETWEEN_BEACONS: m.BASE_TIME_BETWEEN_BEACONS,
     HEARTBEAT_INTERVAL: m.HEARTBEAT_INTERVAL,
@@ -371,6 +372,7 @@ function muxAnalytics() as Object
 
     m.MAX_BEACON_SIZE = systemConfig.MAX_BEACON_SIZE
     m.MAX_QUEUE_LENGTH = systemConfig.MAX_QUEUE_LENGTH
+    m.MAX_VIDEO_POSITION_JUMP = systemConfig.MAX_VIDEO_POSITION_JUMP
     m.HTTP_RETRIES = systemConfig.HTTP_RETRIES
     m.BASE_TIME_BETWEEN_BEACONS = systemConfig.BASE_TIME_BETWEEN_BEACONS
     m.HEARTBEAT_INTERVAL = systemConfig.HEARTBEAT_INTERVAL
