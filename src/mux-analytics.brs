@@ -1123,7 +1123,7 @@ function muxAnalytics() as Object
     timeDelta = m._playerPlayheadTime - m._Flag_lastReportedPosition
 
     ' Guard against suspiciously large jumps
-    if timeDelta > 10 then
+    if timeDelta > 100 then
       return
     end if
 
