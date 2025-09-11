@@ -1120,7 +1120,14 @@ function muxAnalytics() as Object
     if m.video_state <> "playing" then return
     if m._contentPlaybackTime = Invalid then return
 
-    m._contentPlaybackTime = m._contentPlaybackTime + ((m._playerPlayheadTime - m._Flag_lastReportedPosition) * 1000)
+    timeDelta = m._playerPlayheadTime - m._Flag_lastReportedPosition
+
+    ' Guard against suspiciously large jumps
+    if timeDelta > 100 then
+      return
+    end if
+
+    m._contentPlaybackTime = m._contentPlaybackTime + (timeDelta * 1000)
   end sub
 
   prototype._updateTotalWatchTime = sub()
