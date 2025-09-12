@@ -212,6 +212,8 @@ function runBeaconLoop()
           m.mxa.rebufferStartHandler()
         else if field = "rebufferend"
           m.mxa.rebufferEndHandler()
+        else if field = "request"
+          m.mxa.requestHandler(msg.getData())
         end if
       end if
     end if
@@ -898,6 +900,38 @@ function muxAnalytics() as Object
 
   prototype.rebufferEndHandler = sub()
     m._addEventToQueue(m._createEvent("rebufferend"))
+  end sub
+
+  prototype.requestHandler = sub(message as Object)
+    requestVariant = message.request_variant
+
+    props = {}
+    props.request_start = message.request_start
+    props.request_type = message.request_type ' optional
+    props.request_hostname = message.request_hostname
+    props.request_id = message.request_id ' optional
+
+    if requestVariant = "completed"
+      props.request_bytes_loaded = message.request_bytes_loaded
+      props.request_response_start = message.request_response_start
+      props.request_response_end = message.request_response_end
+      props.request_url = message.request_url ' optional
+      props.request_labeled_bitrate = message.request_labeled_bitrate ' optional
+      props.request_response_headers = message.request_response_headers ' optional
+      props.request_media_duration = message.request_media_duration ' optional
+      props.request_media_width = message.request_media_width ' optional
+      props.request_video_height = message.request_video_height ' optional
+      m._addEventToQueue(m._createEvent("requestcompleted", props))
+    else if requestVariant = "failed"
+      props.request_error = message.request_error
+      props.request_error_code = message.request_error_code
+      props.request_error_test = message.request_error_text
+      m._addEventToQueue(m._createEvent("requestfailed", props))
+    else if requestVariant = "canceled"
+      m._addEventToQueue(m._createEvent("requestcanceled", props))
+    else
+      ' what do i do here
+    end if
   end sub
 
   prototype.rafEventHandler = sub(rafEvent)
