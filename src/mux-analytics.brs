@@ -945,8 +945,6 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("requestfailed", props))
     else if requestVariant = "canceled"
       m._addEventToQueue(m._createEvent("requestcanceled", props))
-    else
-      ' what do i do here
     end if
   end sub
 
