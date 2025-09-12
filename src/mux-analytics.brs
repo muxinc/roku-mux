@@ -907,20 +907,36 @@ function muxAnalytics() as Object
 
     props = {}
     props.request_start = message.request_start
-    props.request_type = message.request_type ' optional
     props.request_hostname = message.request_hostname
-    props.request_id = message.request_id ' optional
+    if message.request_type <> Invalid
+      props.request_type = message.request_type
+    end if
+    if message.request_id <> Invalid 
+      props.request_id = message.request_id
+    end if
 
     if requestVariant = "completed"
       props.request_bytes_loaded = message.request_bytes_loaded
       props.request_response_start = message.request_response_start
       props.request_response_end = message.request_response_end
-      props.request_url = message.request_url ' optional
-      props.request_labeled_bitrate = message.request_labeled_bitrate ' optional
-      props.request_response_headers = message.request_response_headers ' optional
-      props.request_media_duration = message.request_media_duration ' optional
-      props.request_media_width = message.request_media_width ' optional
-      props.request_video_height = message.request_video_height ' optional
+      if props.request_url <> Invalid
+        props.request_url = message.request_url
+      end if
+      if props.request_labeled_bitrate <> Invalid
+        props.request_labeled_bitrate = message.request_labeled_bitrate
+      end if
+      if props.request_response_headers <> Invalid
+        props.request_response_headers = message.request_response_headers
+      end if
+      if props.request_media_duration <> Invalid
+        props.request_media_duration = message.request_media_duration
+      end if
+      if props.request_media_width <> Invalid
+        props.request_media_width = message.request_media_width
+      end if
+      if props.request_video_height <> Invalid
+        props.request_video_height = message.request_video_height
+      end if
       m._addEventToQueue(m._createEvent("requestcompleted", props))
     else if requestVariant = "failed"
       props.request_error = message.request_error
