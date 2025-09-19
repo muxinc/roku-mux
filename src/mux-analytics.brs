@@ -926,8 +926,20 @@ function muxAnalytics() as Object
   end sub
 
   prototype._rafEventhandler = sub(eventType, ctx, adMetadata)
+    date = m._getDateTime()
+    now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+
+    if m._adWatchTime = Invalid
+      m._adWatchTime = 0
+    end if
+    if m._lastAdResumeTime = Invalid
+      m._lastAdResumeTime = Invalid
+    end if
+
     m._Flag_isPaused = (eventType = "Pause")
     if eventType = "PodStart"
+      m._adWatchTime = 0
+      m._lastAdResumeTime = now
       m._advertProperties = m._getAdvertProperties(adMetadata)
       m._addEventToQueue(m._createEvent("adbreakstart"))
       ' In the case that this is SSAI, we need to signal an adplay and adplaying event
@@ -936,6 +948,11 @@ function muxAnalytics() as Object
         m._addEventToQueue(m._createEvent("adplaying"))
       end if
     else if eventType = "PodComplete"
+      if m._lastAdResumeTime <> Invalid
+        m._adWatchTime += now - m._lastAdResumeTime
+        m._lastAdResumeTime = Invalid
+      end if
+      print "Total ads watch time this break: "; m._adWatchTime; " ms"
       m._addEventToQueue(m._createEvent("adbreakend"))
       m._Flag_FailedAdsErrorSet = false
       ' In the case that this is SSAI, we need to signal a play and playing event
@@ -947,6 +964,10 @@ function muxAnalytics() as Object
     else if eventType = "Impression"
       m._addEventToQueue(m._createEvent("adimpression"))
     else if eventType = "Pause"
+      if m._lastAdResumeTime <> Invalid
+        m._adWatchTime += now - m._lastAdResumeTime
+        m._lastAdResumeTime = Invalid
+      end if
       m._addEventToQueue(m._createEvent("adpause"))
     else if eventType = "Start"
       if m._viewTimeToFirstFrame = Invalid
@@ -968,6 +989,7 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Resume"
+      m._lastAdResumeTime = now
       m._advertProperties = m._getAdvertProperties(ctx)
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
@@ -997,6 +1019,11 @@ function muxAnalytics() as Object
     else if eventType = "ThirdQuartile"
       m._addEventToQueue(m._createEvent("adthirdquartile"))
     else if eventType = "Skip"
+      if m._lastAdResumeTime <> Invalid
+        m._adWatchTime += now - m._lastAdResumeTime
+        m._lastAdResumeTime = Invalid
+      end if
+      print "Total ads watch time: "; m._adWatchTime; " ms"
       m._addEventToQueue(m._createEvent("adskipped"))
       m._addEventToQueue(m._createEvent("adended"))
     end if
@@ -1275,6 +1302,8 @@ function muxAnalytics() as Object
       end if
       m._viewId = m._generateGUID()
       m._viewWatchTime = 0
+      m._adWatchTime = 0
+      m._lastAdResumeTime = Invalid
       m._contentPlaybackTime = 0
       m._viewRebufferCount = 0
       m._viewRebufferDuration = 0
@@ -1329,6 +1358,8 @@ function muxAnalytics() as Object
       m._playerTimeToFirstFrame = Invalid
       m._contentPlaybackTime = Invalid
       m._viewWatchTime = Invalid
+      m._adWatchTime = Invalid
+      m._lastAdResumeTime = Invalid
       m._viewRebufferCount = Invalid
       m._viewRebufferDuration = Invalid
       m._viewRebufferFrequency! = Invalid
