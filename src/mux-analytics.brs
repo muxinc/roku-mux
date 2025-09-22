@@ -932,9 +932,6 @@ function muxAnalytics() as Object
     if m._adWatchTime = Invalid
       m._adWatchTime = 0
     end if
-    if m._lastAdResumeTime = Invalid
-      m._lastAdResumeTime = Invalid
-    end if
 
     m._Flag_isPaused = (eventType = "Pause")
     if eventType = "PodStart"
@@ -1030,6 +1027,13 @@ function muxAnalytics() as Object
   end sub
 
   prototype._renderStitchedStreamRafEventHandler = sub(eventType, ctx, adMetadata)
+    date = m._getDateTime()
+    now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+
+    if m._adWatchTime = Invalid
+      m._adWatchTime = 0
+    end if
+
     if eventType = "AdStateChange"
       state = ctx.state
       m._advertProperties = m._getAdvertProperties(adMetadata)
@@ -1038,6 +1042,8 @@ function muxAnalytics() as Object
         ' our ad break here if we're not already in one
         if not m._Flag_rssInAdBreak
           m._Flag_rssInAdBreak = true
+          m._adWatchTime = 0
+          m._lastAdResumeTime = now
           m._addEventToQueue(m._createEvent("adbreakstart"))
         end if
 
@@ -1048,11 +1054,16 @@ function muxAnalytics() as Object
         ' in the playing state, if we either resuming, we need adplay first
         if m._Flag_isPaused
           m._Flag_isPaused = false
+          m._lastAdResumeTime = now
           m._addEventToQueue(m._createEvent("adplay"))
         end if
         ' and always emit adplaying
         m._addEventToQueue(m._createEvent("adplaying"))
       else if state = "paused"
+        if m._lastAdResumeTime <> Invalid
+          m._adWatchTime += now - m._lastAdResumeTime
+          m._lastAdResumeTime = Invalid
+        end if
         m._Flag_isPaused = true
         m._addEventToQueue(m._createEvent("adpause"))
       end if
@@ -1060,6 +1071,8 @@ function muxAnalytics() as Object
       ' Need to handle PodStart for non-pre-rolls
       if not m._Flag_rssInAdBreak
         m._Flag_rssInAdBreak = true
+        m._adWatchTime = 0
+        m._lastAdResumeTime = now
         if not m._Flag_isPaused
           m._Flag_isPaused = true
           m._addEventToQueue(m._createEvent("pause"))
@@ -1068,6 +1081,11 @@ function muxAnalytics() as Object
       end if
     else if eventType = "Complete"
       ' Complete signals an ad has finished playback
+      if m._lastAdResumeTime <> Invalid
+        m._adWatchTime += now - m._lastAdResumeTime
+        m._lastAdResumeTime = Invalid
+      end if
+      print "Total ads watch time: "; m._adWatchTime; " ms"
       m._Flag_rssAdEnded = true
       m._addEventToQueue(m._createEvent("adended"))
     else if eventType = "Impression"
@@ -1076,10 +1094,15 @@ function muxAnalytics() as Object
       ' event to know that a new ad was played
       if m._Flag_rssAdEnded
         m._Flag_rssAdEnded = false
+        m._lastAdResumeTime = now
         m._addEventToQueue(m._createEvent("adplay"))
         m._addEventToQueue(m._createEvent("adplaying"))
       end if
     else if eventType = "PodComplete"
+      if m._lastAdResumeTime <> Invalid
+        m._adWatchTime += now - m._lastAdResumeTime
+        m._lastAdResumeTime = Invalid
+      end if
       m._Flag_rssInAdBreak = false
       m._Flag_isPaused = true
       m._addEventToQueue(m._createEvent("adbreakend"))
