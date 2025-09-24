@@ -415,6 +415,7 @@ function muxAnalytics() as Object
     m._totalAdWatchTime = Invalid
     m._adWatchTime = Invalid
     m._cumulativePlayingTime = Invalid
+    m._lastAdResumeTime = Invalid
 
     m._lastSourceWidth = Invalid
     m._lastSourceHeight = Invalid
@@ -1326,7 +1327,6 @@ function muxAnalytics() as Object
       m._viewId = m._generateGUID()
       m._viewWatchTime = 0
       m._adWatchTime = 0
-      m._lastAdResumeTime = Invalid
       m._totalAdWatchTime = 0
       m._cumulativePlayingTime = 0
       m._contentPlaybackTime = 0
@@ -1386,6 +1386,7 @@ function muxAnalytics() as Object
       m._adWatchTime = Invalid
       m._lastAdResumeTime = Invalid
       m._totalAdWatchTime = Invalid
+      m._cumulativePlayingTime = Invalid
       m._viewRebufferCount = Invalid
       m._viewRebufferDuration = Invalid
       m._viewRebufferFrequency! = Invalid
