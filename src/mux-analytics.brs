@@ -2127,7 +2127,7 @@ function muxAnalytics() as Object
     "current": "cu",
     "connection": "cx",
     "context": "cz",
-    "cumulative": "cm",
+    "cumulative": "cv",
     "downscaling": "dg",
     "domain": "dm",
     "cdn": "dn",
