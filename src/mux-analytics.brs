@@ -949,7 +949,7 @@ function muxAnalytics() as Object
         m._adWatchTime += now - m._lastAdResumeTime
         m._lastAdResumeTime = Invalid
       end if
-      print "Total ads watch time this break: "; m._adWatchTime; " ms"
+      m._totalAdWatchTime += m._adWatchTime
       m._addEventToQueue(m._createEvent("adbreakend"))
       m._Flag_FailedAdsErrorSet = false
       ' In the case that this is SSAI, we need to signal a play and playing event
@@ -1020,7 +1020,7 @@ function muxAnalytics() as Object
         m._adWatchTime += now - m._lastAdResumeTime
         m._lastAdResumeTime = Invalid
       end if
-      print "Total ads watch time: "; m._adWatchTime; " ms"
+      m._totalAdWatchTime += m._adWatchTime
       m._addEventToQueue(m._createEvent("adskipped"))
       m._addEventToQueue(m._createEvent("adended"))
     end if
@@ -1081,11 +1081,6 @@ function muxAnalytics() as Object
       end if
     else if eventType = "Complete"
       ' Complete signals an ad has finished playback
-      if m._lastAdResumeTime <> Invalid
-        m._adWatchTime += now - m._lastAdResumeTime
-        m._lastAdResumeTime = Invalid
-      end if
-      print "Total ads watch time: "; m._adWatchTime; " ms"
       m._Flag_rssAdEnded = true
       m._addEventToQueue(m._createEvent("adended"))
     else if eventType = "Impression"
@@ -1103,6 +1098,7 @@ function muxAnalytics() as Object
         m._adWatchTime += now - m._lastAdResumeTime
         m._lastAdResumeTime = Invalid
       end if
+      m._totalAdWatchTime += m._adWatchTime
       m._Flag_rssInAdBreak = false
       m._Flag_isPaused = true
       m._addEventToQueue(m._createEvent("adbreakend"))
@@ -1327,6 +1323,7 @@ function muxAnalytics() as Object
       m._viewWatchTime = 0
       m._adWatchTime = 0
       m._lastAdResumeTime = Invalid
+      m._totalAdWatchTime = 0
       m._contentPlaybackTime = 0
       m._viewRebufferCount = 0
       m._viewRebufferDuration = 0
@@ -1383,6 +1380,7 @@ function muxAnalytics() as Object
       m._viewWatchTime = Invalid
       m._adWatchTime = Invalid
       m._lastAdResumeTime = Invalid
+      m._totalAdWatchTime = Invalid
       m._viewRebufferCount = Invalid
       m._viewRebufferDuration = Invalid
       m._viewRebufferFrequency! = Invalid
