@@ -412,6 +412,9 @@ function muxAnalytics() as Object
     m._videoSourceDuration = Invalid
     m._videoCurrentCdn = Invalid
     m._viewPrerollPlayedCount = Invalid
+    m._totalAdWatchTime = Invalid
+    m._adWatchTime = Invalid
+    m._cumulativePlayingTime = Invalid
 
     m._lastSourceWidth = Invalid
     m._lastSourceHeight = Invalid
@@ -1185,6 +1188,7 @@ function muxAnalytics() as Object
     if m._contentPlaybackTime = Invalid then return
 
     m._viewWatchTime = m._viewTimeToFirstFrame + m._viewRebufferDuration + m._contentPlaybackTime
+    m._cumulativePlayingTime = m._viewWatchTime + m._totalAdWatchTime
   end sub
 
   prototype._setBufferingMetrics = sub()
@@ -1324,6 +1328,7 @@ function muxAnalytics() as Object
       m._adWatchTime = 0
       m._lastAdResumeTime = Invalid
       m._totalAdWatchTime = 0
+      m._cumulativePlayingTime = 0
       m._contentPlaybackTime = 0
       m._viewRebufferCount = 0
       m._viewRebufferDuration = 0
@@ -1741,6 +1746,12 @@ function muxAnalytics() as Object
     if m._viewRequestCount <> Invalid
       props.view_request_count = m._viewRequestCount
     end if
+    if m._cumulativePlayingTime <> Invalid AND m._cumulativePlayingTime > 0
+      props.view_playing_time_ms_cumulative = m._cumulativePlayingTime
+    end if
+    if m._totalAdWatchTime <> Invalid AND m._totalAdWatchTime > 0
+      props.ad_playing_time_active_ms_cumulative = m._totalAdWatchTime
+    end if
     if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
       playerInitTime = Invalid
       if Type(m._configProperties.player_init_time) = "roString"
@@ -2089,6 +2100,7 @@ function muxAnalytics() as Object
     "asset": "as",
     "autoplay": "au",
     "average": "av",
+    "active": "ac",
     "bitrate": "bi",
     "brand": "bn",
     "break": "br",
@@ -2115,6 +2127,7 @@ function muxAnalytics() as Object
     "current": "cu",
     "connection": "cx",
     "context": "cz",
+    "cumulative": "cm",
     "downscaling": "dg",
     "domain": "dm",
     "cdn": "dn",
@@ -2176,6 +2189,7 @@ function muxAnalytics() as Object
     "manufacturer": "mn",
     "model": "mo",
     "mux": "mx",
+    "ms": "ms",
     "newest": "ne",
     "name": "nm",
     "number": "no",
