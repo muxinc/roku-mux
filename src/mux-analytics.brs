@@ -1751,7 +1751,7 @@ function muxAnalytics() as Object
       props.view_playing_time_ms_cumulative = m._cumulativePlayingTime
     end if
     if m._totalAdWatchTime <> Invalid AND m._totalAdWatchTime > 0
-      props.ad_playing_time_active_ms_cumulative = m._totalAdWatchTime
+      props.ad_playing_time_ms_cumulative = m._totalAdWatchTime
     end if
     if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
       playerInitTime = Invalid
@@ -2101,7 +2101,6 @@ function muxAnalytics() as Object
     "asset": "as",
     "autoplay": "au",
     "average": "av",
-    "active": "ac",
     "bitrate": "bi",
     "brand": "bn",
     "break": "br",
