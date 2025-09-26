@@ -943,6 +943,7 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adbreakstart"))
       ' In the case that this is SSAI, we need to signal an adplay and adplaying event
       if m._Flag_useSSAI = true
+        m._lastAdResumeTime = now
         m._addEventToQueue(m._createEvent("adplay"))
         m._addEventToQueue(m._createEvent("adplaying"))
       end if
