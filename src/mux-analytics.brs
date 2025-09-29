@@ -212,6 +212,8 @@ function runBeaconLoop()
           m.mxa.rebufferStartHandler()
         else if field = "rebufferend"
           m.mxa.rebufferEndHandler()
+        else if field = "playback_mode"
+          m.mxa.playbackModeHandler()
         end if
       end if
     end if
@@ -902,6 +904,16 @@ function muxAnalytics() as Object
 
   prototype.rebufferEndHandler = sub()
     m._addEventToQueue(m._createEvent("rebufferend"))
+  end sub
+
+  prototye.playbackModeHandler = sub(playbackMode as Object)
+    props = {}
+    props.player_playback_mode = playbackMode.mode
+    props.player_playback_mode_data = playbackMode.player_playback_mode_data
+    props.view_playing_time_ms_cumulative = m._cumulativePlayingTime
+    props.ad_playing_time_ms_cumulative = m._totalAdWatchTime
+
+    m._addEventToQueue(m._createEvent("playbackmodechange"), props)
   end sub
 
   prototype.rafEventHandler = sub(rafEvent)
