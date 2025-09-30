@@ -972,7 +972,7 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adimpression"))
     else if eventType = "Pause"
       if m._lastAdResumeTime <> Invalid
-        m._adWatchTime += now - m._lastAdResumeTime
+        m._adWatchTime += max(0, now - m._lastAdResumeTime)
         m._lastAdResumeTime = Invalid
       end if
       m._addEventToQueue(m._createEvent("adpause"))
@@ -1004,7 +1004,7 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Complete"
       if m._lastAdResumeTime <> Invalid
-        m._adWatchTime += now - m._lastAdResumeTime
+        m._adWatchTime += max(0, now - m._lastAdResumeTime)
         m._lastAdResumeTime = Invalid
       end if
       m._totalAdWatchTime += m._adWatchTime
@@ -1034,7 +1034,7 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adthirdquartile"))
     else if eventType = "Skip"
       if m._lastAdResumeTime <> Invalid
-        m._adWatchTime += now - m._lastAdResumeTime
+        m._adWatchTime += max(0, now - m._lastAdResumeTime)
         m._lastAdResumeTime = Invalid
       end if
       m._totalAdWatchTime += m._adWatchTime
@@ -1066,19 +1066,20 @@ function muxAnalytics() as Object
         m._Flag_isPaused = false
         m._addEventToQueue(m._createEvent("adplay"))
       else if state = "playing"
-        ' in the playing state, if we either resuming, we need adplay first
+        ' in the playing state, if we are resuming, we need adplay first
         if m._Flag_isPaused
           m._Flag_isPaused = false
-          m._lastAdResumeTime = now
           m._addEventToQueue(m._createEvent("adplay"))
+        else
+          ' starting fresh: reset watch time
+          m._adWatchTime = 0
         end if
         ' and always emit adplaying
-          m._adWatchTime = 0
-          m._lastAdResumeTime = now
+        m._lastAdResumeTime = now
         m._addEventToQueue(m._createEvent("adplaying"))
       else if state = "paused"
         if m._lastAdResumeTime <> Invalid
-          m._adWatchTime += now - m._lastAdResumeTime
+          m._adWatchTime += max(0, now - m._lastAdResumeTime)
           m._lastAdResumeTime = Invalid
         end if
         m._Flag_isPaused = true
@@ -1100,7 +1101,7 @@ function muxAnalytics() as Object
       ' Complete signals an ad has finished playback
       m._Flag_rssAdEnded = true
       if m._lastAdResumeTime <> Invalid
-        m._adWatchTime += now - m._lastAdResumeTime
+        m._adWatchTime += max(0, now - m._lastAdResumeTime)
         m._lastAdResumeTime = Invalid
       end if
       m._totalAdWatchTime += m._adWatchTime
