@@ -908,8 +908,25 @@ function muxAnalytics() as Object
 
   prototye.playbackModeHandler = sub(playbackMode as Object)
     props = {}
+
+    if playbackMode.mode = Invalid
+      print "[mux-analytics] warning: playback_mode mode property not set."
+      return
+    end if
     props.player_playback_mode = playbackMode.mode
+
+    if playbackMode.player_playback_mode_data = Invalid
+      print "[mux-analytics] warning: playback_mode player_playback_mode_data property not set."
+      return
+    end if
+
+    parsedData = ParseJson(playbackMode.player_playback_mode_data)
+    if parsedData = Invalid then
+      print "[mux-analytics] warning: player_playback_mode_data is not valid JSON"
+      return
+    end if
     props.player_playback_mode_data = playbackMode.player_playback_mode_data
+
     props.view_playing_time_ms_cumulative = m._cumulativePlayingTime
     props.ad_playing_time_ms_cumulative = m._totalAdWatchTime
 
