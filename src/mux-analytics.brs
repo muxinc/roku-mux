@@ -1054,15 +1054,16 @@ function muxAnalytics() as Object
         m._Flag_isPaused = false
         m._addEventToQueue(m._createEvent("adplay"))
       else if state = "playing"
-        ' in the playing state, if we either resuming, we need adplay first
+        ' in the playing state, if we are resuming, we need adplay first
         if m._Flag_isPaused
           m._Flag_isPaused = false
-          m._lastAdResumeTime = now
           m._addEventToQueue(m._createEvent("adplay"))
+        else
+          ' starting fresh: reset watch time
+          m._adWatchTime = 0
         end if
         ' and always emit adplaying
-          m._adWatchTime = 0
-          m._lastAdResumeTime = now
+        m._lastAdResumeTime = now
         m._addEventToQueue(m._createEvent("adplaying"))
       else if state = "paused"
         if m._lastAdResumeTime <> Invalid
