@@ -1129,6 +1129,7 @@ function muxAnalytics() as Object
       ' event to know that a new ad was played
       if m._Flag_rssAdEnded
         m._Flag_rssAdEnded = false
+        m._adWatchTime = 0
         m._lastAdResumeTime = now
         m._addEventToQueue(m._createEvent("adplay"))
         m._addEventToQueue(m._createEvent("adplaying"))
