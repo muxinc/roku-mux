@@ -920,6 +920,7 @@ function muxAnalytics() as Object
       return
     end if
 
+    ' ParseJson returns invalid if provided string is not parse-able JSON
     parsedData = ParseJson(playbackMode.player_playback_mode_data)
     if parsedData = Invalid then
       print "[mux-analytics] warning: player_playback_mode_data is not valid JSON"
