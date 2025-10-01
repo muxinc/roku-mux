@@ -931,7 +931,7 @@ function muxAnalytics() as Object
     props.view_playing_time_ms_cumulative = m._cumulativePlayingTime
     props.ad_playing_time_ms_cumulative = m._totalAdWatchTime
 
-    m._addEventToQueue(m._createEvent("playbackmodechange"), props)
+    m._addEventToQueue(m._createEvent("playbackmodechange", props))
   end sub
 
   prototype.rafEventHandler = sub(rafEvent)
