@@ -121,6 +121,11 @@ function runBeaconLoop()
   m.top.ObserveField("rebufferstart", m.messagePort)
   m.top.ObserveField("rebufferend", m.messagePort)
 
+  if m.top.playback_mode <> Invalid
+    m.mxa.playbackModeHandler(m.top.playback_mode)
+  end if
+  m.top.ObserveField("playback_mode", m.messagePort)
+
   m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
   m.heartbeatTimer.ObserveField("fire", m.messagePort)
@@ -213,7 +218,7 @@ function runBeaconLoop()
         else if field = "rebufferend"
           m.mxa.rebufferEndHandler()
         else if field = "playback_mode"
-          m.mxa.playbackModeHandler()
+          m.mxa.playbackModeHandler(msg.getData())
         end if
       end if
     end if
@@ -906,7 +911,7 @@ function muxAnalytics() as Object
     m._addEventToQueue(m._createEvent("rebufferend"))
   end sub
 
-  prototye.playbackModeHandler = sub(playbackMode as Object)
+  prototype.playbackModeHandler = sub(playbackMode as Object)
     props = {}
 
     if playbackMode.mode = Invalid
@@ -915,18 +920,15 @@ function muxAnalytics() as Object
     end if
     props.player_playback_mode = playbackMode.mode
 
-    if playbackMode.player_playback_mode_data = Invalid
-      print "[mux-analytics] warning: playback_mode player_playback_mode_data property not set."
-      return
+    if playbackMode.player_playback_mode_data <> Invalid
+      ' ParseJson returns invalid if provided string is not parse-able JSON
+      parsedData = ParseJson(playbackMode.player_playback_mode_data)
+      if parsedData = Invalid then
+        print "[mux-analytics] warning: player_playback_mode_data is not valid JSON"
+        return
+      end if
+      props.player_playback_mode_data = playbackMode.player_playback_mode_data
     end if
-
-    ' ParseJson returns invalid if provided string is not parse-able JSON
-    parsedData = ParseJson(playbackMode.player_playback_mode_data)
-    if parsedData = Invalid then
-      print "[mux-analytics] warning: player_playback_mode_data is not valid JSON"
-      return
-    end if
-    props.player_playback_mode_data = playbackMode.player_playback_mode_data
 
     props.view_playing_time_ms_cumulative = m._cumulativePlayingTime
     props.ad_playing_time_ms_cumulative = m._totalAdWatchTime
