@@ -1397,6 +1397,7 @@ function muxAnalytics() as Object
       end if
 
       ' Send playbackmodechange event
+      props = {}
       props.player_playback_mode = "standard"
       props.view_playing_time_ms_cumulative = m._cumulativePlayingTime
       props.ad_playing_time_ms_cumulative = m._totalAdWatchTime
