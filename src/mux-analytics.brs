@@ -914,11 +914,11 @@ function muxAnalytics() as Object
   prototype.playbackModeHandler = sub(playbackMode as Object)
     props = {}
 
-    if playbackMode.mode = Invalid
-      print "[mux-analytics] warning: playback_mode mode property not set."
+    if playbackMode.player_playback_mode = Invalid
+      print "[mux-analytics] warning: playback_mode player_playback_mode property not set."
       return
     end if
-    props.player_playback_mode = playbackMode.mode
+    props.player_playback_mode = playbackMode.player_playback_mode
 
     if playbackMode.player_playback_mode_data <> Invalid
       ' ParseJson returns invalid if provided string is not parse-able JSON
