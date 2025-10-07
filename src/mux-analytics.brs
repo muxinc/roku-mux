@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "2.2.2"
+  m.MUX_SDK_VERSION = "2.3.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
 end sub
@@ -121,6 +121,11 @@ function runBeaconLoop()
   m.top.ObserveField("rebufferstart", m.messagePort)
   m.top.ObserveField("rebufferend", m.messagePort)
 
+  if m.top.playback_mode <> Invalid
+    m.mxa.playbackModeHandler(m.top.playback_mode)
+  end if
+  m.top.ObserveField("playback_mode", m.messagePort)
+
   m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
   m.heartbeatTimer.ObserveField("fire", m.messagePort)
@@ -212,6 +217,8 @@ function runBeaconLoop()
           m.mxa.rebufferStartHandler()
         else if field = "rebufferend"
           m.mxa.rebufferEndHandler()
+        else if field = "playback_mode"
+          m.mxa.playbackModeHandler(msg.getData())
         end if
       end if
     end if
@@ -412,6 +419,10 @@ function muxAnalytics() as Object
     m._videoSourceDuration = Invalid
     m._videoCurrentCdn = Invalid
     m._viewPrerollPlayedCount = Invalid
+    m._totalAdWatchTime = Invalid
+    m._adWatchTime = Invalid
+    m._cumulativePlayingTime = Invalid
+    m._lastAdResumeTime = Invalid
 
     m._lastSourceWidth = Invalid
     m._lastSourceHeight = Invalid
@@ -900,6 +911,31 @@ function muxAnalytics() as Object
     m._addEventToQueue(m._createEvent("rebufferend"))
   end sub
 
+  prototype.playbackModeHandler = sub(playbackMode as Object)
+    props = {}
+
+    if playbackMode.player_playback_mode = Invalid
+      print "[mux-analytics] warning: playback_mode player_playback_mode property not set."
+      return
+    end if
+    props.player_playback_mode = playbackMode.player_playback_mode
+
+    if playbackMode.player_playback_mode_data <> Invalid
+      ' ParseJson returns invalid if provided string is not parse-able JSON
+      parsedData = ParseJson(playbackMode.player_playback_mode_data)
+      if parsedData = Invalid then
+        print "[mux-analytics] warning: player_playback_mode_data is not valid JSON"
+        return
+      end if
+      props.player_playback_mode_data = playbackMode.player_playback_mode_data
+    end if
+
+    props.view_playing_time_ms_cumulative = m._cumulativePlayingTime
+    props.ad_playing_time_ms_cumulative = m._totalAdWatchTime
+
+    m._addEventToQueue(m._createEvent("playbackmodechange", props))
+  end sub
+
   prototype.rafEventHandler = sub(rafEvent)
     data = rafEvent.getData()
     eventType = data.eventType
@@ -926,12 +962,20 @@ function muxAnalytics() as Object
   end sub
 
   prototype._rafEventhandler = sub(eventType, ctx, adMetadata)
+    date = m._getDateTime()
+    now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+
+    if m._adWatchTime = Invalid
+      m._adWatchTime = 0
+    end if
+
     m._Flag_isPaused = (eventType = "Pause")
     if eventType = "PodStart"
       m._advertProperties = m._getAdvertProperties(adMetadata)
       m._addEventToQueue(m._createEvent("adbreakstart"))
       ' In the case that this is SSAI, we need to signal an adplay and adplaying event
       if m._Flag_useSSAI = true
+        m._lastAdResumeTime = now
         m._addEventToQueue(m._createEvent("adplay"))
         m._addEventToQueue(m._createEvent("adplaying"))
       end if
@@ -947,6 +991,10 @@ function muxAnalytics() as Object
     else if eventType = "Impression"
       m._addEventToQueue(m._createEvent("adimpression"))
     else if eventType = "Pause"
+      if m._lastAdResumeTime <> Invalid
+        m._adWatchTime += max(0, now - m._lastAdResumeTime)
+        m._lastAdResumeTime = Invalid
+      end if
       m._addEventToQueue(m._createEvent("adpause"))
     else if eventType = "Start"
       if m._viewTimeToFirstFrame = Invalid
@@ -965,13 +1013,21 @@ function muxAnalytics() as Object
         m._viewPrerollPlayedCount++
       end if
       m._advertProperties = m._getAdvertProperties(ctx)
+      m._adWatchTime = 0
+      m._lastAdResumeTime = now
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Resume"
+      m._lastAdResumeTime = now
       m._advertProperties = m._getAdvertProperties(ctx)
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Complete"
+      if m._lastAdResumeTime <> Invalid
+        m._adWatchTime += max(0, now - m._lastAdResumeTime)
+        m._lastAdResumeTime = Invalid
+      end if
+      m._totalAdWatchTime += m._adWatchTime
       m._addEventToQueue(m._createEvent("adended"))
     else if eventType = "NoAdsError"
       if m._Flag_FailedAdsErrorSet <> true
@@ -997,12 +1053,24 @@ function muxAnalytics() as Object
     else if eventType = "ThirdQuartile"
       m._addEventToQueue(m._createEvent("adthirdquartile"))
     else if eventType = "Skip"
+      if m._lastAdResumeTime <> Invalid
+        m._adWatchTime += max(0, now - m._lastAdResumeTime)
+        m._lastAdResumeTime = Invalid
+      end if
+      m._totalAdWatchTime += m._adWatchTime
       m._addEventToQueue(m._createEvent("adskipped"))
       m._addEventToQueue(m._createEvent("adended"))
     end if
   end sub
 
   prototype._renderStitchedStreamRafEventHandler = sub(eventType, ctx, adMetadata)
+    date = m._getDateTime()
+    now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+
+    if m._adWatchTime = Invalid
+      m._adWatchTime = 0
+    end if
+
     if eventType = "AdStateChange"
       state = ctx.state
       m._advertProperties = m._getAdvertProperties(adMetadata)
@@ -1018,14 +1086,22 @@ function muxAnalytics() as Object
         m._Flag_isPaused = false
         m._addEventToQueue(m._createEvent("adplay"))
       else if state = "playing"
-        ' in the playing state, if we either resuming, we need adplay first
+        ' in the playing state, if we are resuming, we need adplay first
         if m._Flag_isPaused
           m._Flag_isPaused = false
           m._addEventToQueue(m._createEvent("adplay"))
+        else
+          ' starting fresh: reset watch time
+          m._adWatchTime = 0
         end if
         ' and always emit adplaying
+        m._lastAdResumeTime = now
         m._addEventToQueue(m._createEvent("adplaying"))
       else if state = "paused"
+        if m._lastAdResumeTime <> Invalid
+          m._adWatchTime += max(0, now - m._lastAdResumeTime)
+          m._lastAdResumeTime = Invalid
+        end if
         m._Flag_isPaused = true
         m._addEventToQueue(m._createEvent("adpause"))
       end if
@@ -1033,6 +1109,8 @@ function muxAnalytics() as Object
       ' Need to handle PodStart for non-pre-rolls
       if not m._Flag_rssInAdBreak
         m._Flag_rssInAdBreak = true
+        m._adWatchTime = 0
+        m._lastAdResumeTime = now
         if not m._Flag_isPaused
           m._Flag_isPaused = true
           m._addEventToQueue(m._createEvent("pause"))
@@ -1042,6 +1120,11 @@ function muxAnalytics() as Object
     else if eventType = "Complete"
       ' Complete signals an ad has finished playback
       m._Flag_rssAdEnded = true
+      if m._lastAdResumeTime <> Invalid
+        m._adWatchTime += max(0, now - m._lastAdResumeTime)
+        m._lastAdResumeTime = Invalid
+      end if
+      m._totalAdWatchTime += m._adWatchTime
       m._addEventToQueue(m._createEvent("adended"))
     else if eventType = "Impression"
       ' When an additional ad is played within an ad pod, we do not get
@@ -1049,6 +1132,8 @@ function muxAnalytics() as Object
       ' event to know that a new ad was played
       if m._Flag_rssAdEnded
         m._Flag_rssAdEnded = false
+        m._adWatchTime = 0
+        m._lastAdResumeTime = now
         m._addEventToQueue(m._createEvent("adplay"))
         m._addEventToQueue(m._createEvent("adplaying"))
       end if
@@ -1139,6 +1224,7 @@ function muxAnalytics() as Object
     if m._contentPlaybackTime = Invalid then return
 
     m._viewWatchTime = m._viewTimeToFirstFrame + m._viewRebufferDuration + m._contentPlaybackTime
+    m._cumulativePlayingTime = m._viewWatchTime + m._totalAdWatchTime
   end sub
 
   prototype._setBufferingMetrics = sub()
@@ -1275,6 +1361,9 @@ function muxAnalytics() as Object
       end if
       m._viewId = m._generateGUID()
       m._viewWatchTime = 0
+      m._adWatchTime = 0
+      m._totalAdWatchTime = 0
+      m._cumulativePlayingTime = 0
       m._contentPlaybackTime = 0
       m._viewRebufferCount = 0
       m._viewRebufferDuration = 0
@@ -1307,6 +1396,13 @@ function muxAnalytics() as Object
         m._videoProperties = m._getVideoProperties(m.video)
       end if
 
+      ' Send playbackmodechange event
+      props = {}
+      props.player_playback_mode = "standard"
+      props.view_playing_time_ms_cumulative = m._cumulativePlayingTime
+      props.ad_playing_time_ms_cumulative = m._totalAdWatchTime
+      m._addEventToQueue(m._createEvent("playbackmodechange", props))
+
       m._addEventToQueue(m._createEvent("viewstart"))
 
       m._inView = true
@@ -1329,6 +1425,10 @@ function muxAnalytics() as Object
       m._playerTimeToFirstFrame = Invalid
       m._contentPlaybackTime = Invalid
       m._viewWatchTime = Invalid
+      m._adWatchTime = Invalid
+      m._lastAdResumeTime = Invalid
+      m._totalAdWatchTime = Invalid
+      m._cumulativePlayingTime = Invalid
       m._viewRebufferCount = Invalid
       m._viewRebufferDuration = Invalid
       m._viewRebufferFrequency! = Invalid
@@ -1688,6 +1788,12 @@ function muxAnalytics() as Object
     end if
     if m._viewRequestCount <> Invalid
       props.view_request_count = m._viewRequestCount
+    end if
+    if m._cumulativePlayingTime <> Invalid AND m._cumulativePlayingTime > 0
+      props.view_playing_time_ms_cumulative = m._cumulativePlayingTime
+    end if
+    if m._totalAdWatchTime <> Invalid AND m._totalAdWatchTime > 0
+      props.ad_playing_time_ms_cumulative = m._totalAdWatchTime
     end if
     if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
       playerInitTime = Invalid
@@ -2063,6 +2169,7 @@ function muxAnalytics() as Object
     "current": "cu",
     "connection": "cx",
     "context": "cz",
+    "cumulative": "cv",
     "downscaling": "dg",
     "domain": "dm",
     "cdn": "dn",
@@ -2124,6 +2231,7 @@ function muxAnalytics() as Object
     "manufacturer": "mn",
     "model": "mo",
     "mux": "mx",
+    "ms": "ms",
     "newest": "ne",
     "name": "nm",
     "number": "no",
