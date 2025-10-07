@@ -1396,6 +1396,13 @@ function muxAnalytics() as Object
         m._videoProperties = m._getVideoProperties(m.video)
       end if
 
+      ' Send playbackmodechange event
+      props = {}
+      props.player_playback_mode = "standard"
+      props.view_playing_time_ms_cumulative = m._cumulativePlayingTime
+      props.ad_playing_time_ms_cumulative = m._totalAdWatchTime
+      m._addEventToQueue(m._createEvent("playbackmodechange", props))
+
       m._addEventToQueue(m._createEvent("viewstart"))
 
       m._inView = true
