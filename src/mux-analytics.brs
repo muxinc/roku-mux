@@ -2,6 +2,9 @@ sub init()
   m.MUX_SDK_VERSION = "2.3.0"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
+  
+  ' Store randomMuxViewerId in m scope to avoid rendezvous in task thread
+  m.randomMuxViewerId = m.top.randomMuxViewerId
 end sub
 
 function runBeaconLoop()
@@ -18,9 +21,11 @@ function runBeaconLoop()
   m.MAX_VIDEO_POSITION_JUMP = 2000000000
 
   m.pollTimer = CreateObject("roSGNode", "Timer")
-  m.pollTimer.id = "pollTimer"
-  m.pollTimer.repeat = true
-  m.pollTimer.duration = m.POSITION_TIMER_INTERVAL / 1000
+  m.pollTimer.setFields({
+    id: "pollTimer",
+    repeat: true,
+    duration: m.POSITION_TIMER_INTERVAL / 1000
+  })
 
   ' m.heartbeatTimer = m.top.findNode("heartbeatTimer")
   m.heartbeatTimer = CreateObject("roSGNode", "Timer")
@@ -37,8 +42,8 @@ function runBeaconLoop()
   m.httpPort = _createPort()
 
   useRandomMuxViewerId = false
-  if m.top.randomMuxViewerId <> invalid
-    useRandomMuxViewerId = m.top.randomMuxViewerId
+  if m.randomMuxViewerId <> invalid
+    useRandomMuxViewerId = m.randomMuxViewerId
   end if
 
   m.mxa = muxAnalytics()
@@ -72,6 +77,7 @@ function runBeaconLoop()
     m.top.video.ObserveField("contentIndex", m.messagePort)
     m.top.video.ObserveField("downloadedSegment", m.messagePort)
     m.top.video.ObserveField("streamingSegment", m.messagePort)
+    m.top.video.ObserveField("position", m.messagePort)
     if m.top.video.enableDecoderStats <> Invalid
       m.top.video.enableDecoderStats = true
       m.top.video.ObserveField("decoderStats", m.messagePort)
@@ -164,6 +170,7 @@ function runBeaconLoop()
             m.top.video.ObserveField("contentIndex", m.messagePort)
             m.top.video.ObserveField("downloadedSegment", m.messagePort)
             m.top.video.ObserveField("streamingSegment", m.messagePort)
+            m.top.video.ObserveField("position", m.messagePort)
             if m.top.video.enableDecoderStats <> Invalid
               m.top.video.enableDecoderStats = true
               m.top.video.ObserveField("decoderStats", m.messagePort)
@@ -198,6 +205,8 @@ function runBeaconLoop()
           if msgData <> Invalid AND type(msgData) = "roString"
             m.mxa.videoStateChangeHandler(msgData)
           end if
+        else if field = "position"
+          m.mxa.videoPositionChangeHandler(msg.getData())
         else if field = "rafEvent"
           m.mxa.rafEventHandler(msg)
         else if field = "fire"
@@ -228,6 +237,7 @@ function runBeaconLoop()
   end while
   m.beaconTimer.control = "stop"
   m.heartbeatTimer.control = "stop"
+  m._Flag_heartbeatTimerRunning = false
   m.pollTimer.control = "stop"
 
   m.beaconTimer.UnobserveField("fire")
@@ -241,6 +251,9 @@ function runBeaconLoop()
   m.top.UnobserveField("useRenderStitchedStream")
   m.top.UnobserveField("useSSAI")
   m.top.UnobserveField("disableAutomaticErrorTracking")
+  if m.top.video <> Invalid
+    m.top.video.UnobserveField("position")
+  end if
 
   if m.top.exitType = "soft"
     while NOT m.mxa.isQueueEmpty()
@@ -471,6 +484,9 @@ function muxAnalytics() as Object
     ' Flag for whether or not to use a random mux viewer ID
     m._Flag_useRandomMuxViewerId = systemConfig.USE_RANDOM_MUX_VIEWER_ID
 
+    ' Flag to track heartbeat timer state to avoid rendezvous
+    m._Flag_heartbeatTimerRunning = false
+
     ' kick off analytics
     date = m._getDateTime()
     m._startTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
@@ -516,12 +532,19 @@ function muxAnalytics() as Object
     end if
   end sub
 
+  prototype.videoPositionChangeHandler = sub(position as Double)
+    if position < m.MAX_VIDEO_POSITION_JUMP
+      m._playerPlayheadTime = position
+    end if
+  end sub
+
   prototype.videoStateChangeHandler = sub(videoState as String)
     m.video_state = videoState
     previouslyLastReportedPosition = m._Flag_lastReportedPosition
-    if m.video.position < m.MAX_VIDEO_POSITION_JUMP
-      m._playerPlayheadTime = m.video.position
-    end if
+    ' Position is now handled by videoPositionChangeHandler to avoid rendezvous
+    ' if m.video.position < m.MAX_VIDEO_POSITION_JUMP
+    '   m._playerPlayheadTime = m.video.position
+    ' end if
     m._Flag_lastReportedPosition = m._playerPlayheadTime
 
     ' Need to actually infer seek all the way out here
@@ -1180,9 +1203,10 @@ function muxAnalytics() as Object
     if m.video = Invalid then return
     if m._Flag_isPaused = true then return
 
-    if m.video.position < m.MAX_VIDEO_POSITION_JUMP
-      m._playerPlayheadTime = m.video.position
-    end if
+    ' Position is now handled by videoPositionChangeHandler to avoid rendezvous
+    ' if m.video.position < m.MAX_VIDEO_POSITION_JUMP
+    '   m._playerPlayheadTime = m.video.position
+    ' end if
 
     m._setBufferingMetrics()
     m._updateContentPlaybackTime()
@@ -1241,7 +1265,7 @@ function muxAnalytics() as Object
   prototype._addEventToQueue = sub(_event as Object)
     m._logEvent(_event)
     ' If the heartbeat is running restart it.
-    if m.heartbeatTimer.control = "start"
+    if m._Flag_heartbeatTimerRunning
       m.heartbeatTimer.control = "stop"
       m.heartbeatTimer.control = "start"
     end if
@@ -1354,6 +1378,7 @@ function muxAnalytics() as Object
     if m._clientOperatedStartAndEnd = true AND setByClient = false then return
     if m._inView = false
       m.heartbeatTimer.control = "start"
+      m._Flag_heartbeatTimerRunning = true
       m.pollTimer.control = "start"
       m._viewSequence = 0
       if m._playerViewCount <> Invalid
@@ -1414,6 +1439,7 @@ function muxAnalytics() as Object
     if m._clientOperatedStartAndEnd = false AND setByClient = true then return
     if m._inView = true
       m.heartbeatTimer.control = "stop"
+      m._Flag_heartbeatTimerRunning = false
       m.pollTimer.control = "stop"
       m._addEventToQueue(m._createEvent("viewend"))
       m._inView = false
