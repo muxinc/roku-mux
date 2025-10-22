@@ -524,6 +524,13 @@ function muxAnalytics() as Object
     end if
     m.video = video
 
+    ' Initialize player playhead time
+    if video <> Invalid AND video.position <> Invalid
+      m._playerPlayheadTime = video.position
+    else
+      m._playerPlayheadTime = 0
+    end if
+
     if video <> Invalid
       maximumPossiblePositionChange = ((video.notificationInterval * 1000) + m.POSITION_TIMER_INTERVAL) / 1000
       if m._seekThreshold < maximumPossiblePositionChange
@@ -545,12 +552,16 @@ function muxAnalytics() as Object
     ' if m.video.position < m.MAX_VIDEO_POSITION_JUMP
     '   m._playerPlayheadTime = m.video.position
     ' end if
-    m._Flag_lastReportedPosition = m._playerPlayheadTime
+    if m._playerPlayheadTime <> Invalid
+      m._Flag_lastReportedPosition = m._playerPlayheadTime
+    else if m._Flag_lastReportedPosition = Invalid
+      m._Flag_lastReportedPosition = 0
+    end if
 
     ' Need to actually infer seek all the way out here
     if m._Flag_isSeeking <> true
       ' If we've gone backwards at all or forwards by more than the threshold
-      if (m._playerPlayheadTime < previouslyLastReportedPosition) OR (m._playerPlayheadTime > (previouslyLastReportedPosition + m._seekThreshold))
+      if m._playerPlayheadTime <> Invalid AND previouslyLastReportedPosition <> Invalid AND ((m._playerPlayheadTime < previouslyLastReportedPosition) OR (m._playerPlayheadTime > (previouslyLastReportedPosition + m._seekThreshold)))
         if videoState = "buffering"
           m._addEventToQueue(m._createEvent("pause"))
         end if
@@ -1221,7 +1232,9 @@ function muxAnalytics() as Object
 
   prototype._updateLastReportedPositionFlag = sub()
     if m._playerPlayheadTime = m._Flag_lastReportedPosition then return
-    m._Flag_lastReportedPosition = m._playerPlayheadTime
+    if m._playerPlayheadTime <> Invalid
+      m._Flag_lastReportedPosition = m._playerPlayheadTime
+    end if
   end sub
 
   prototype._updateContentPlaybackTime = sub()
