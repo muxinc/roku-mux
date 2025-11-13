@@ -453,6 +453,10 @@ function muxAnalytics() as Object
     m._viewMinRequestThroughput = Invalid
     m._viewAverageRequestThroughput = Invalid
     m._viewRequestCount = Invalid
+    
+    ' API/Encryption request tracking for rate limiting
+    m._apiEncryptionRequestCompletedCount = 0
+    m.MAX_API_ENCRYPTION_REQUEST_COMPLETED = 10
 
     ' Calculate player width and height
     m.deviceInfo = m._getDeviceInfo()
@@ -783,7 +787,10 @@ function muxAnalytics() as Object
     m._segmentRequestCount++
     if videoSegment <> Invalid
       props = {}
-      if videoSegment.segType <> Invalid
+      ' Allow request_type to be provided directly (api, encryption), or derive from segType
+      if videoSegment.request_type <> Invalid
+        props.request_type = videoSegment.request_type
+      else if videoSegment.segType <> Invalid
         if videoSegment.segType = 0
           props.request_type = "media"
         else if videoSegment.segType = 1
@@ -797,12 +804,17 @@ function muxAnalytics() as Object
       if videoSegment.segDuration <> Invalid
         props.request_media_duration = videoSegment.segDuration
       end if
+      requestType = props.request_type
       if videoSegment.downloadDuration <> Invalid
         date = m._getDateTime()
         now = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
         props.request_response_end = FormatJson(now)
         resultMilliseconds = now - videoSegment.downloadDuration
         props.request_start = FormatJson(resultMilliseconds)
+        ' Add request_duration for api/encryption request types
+        if requestType = "api" OR requestType = "encryption"
+          props.request_duration = Int(videoSegment.downloadDuration)
+        end if
       end if
       if videoSegment.segUrl <> Invalid
         props.request_hostname = m._getHostname(videoSegment.segUrl)
@@ -818,7 +830,10 @@ function muxAnalytics() as Object
           if videoSegment.height <> Invalid
             props.request_video_height = videoSegment.height
           end if
-          if videoSegment.downloadDuration <> Invalid AND videoSegment.downloadDuration > 0 AND videoSegment.segSize <> Invalid AND videoSegment.segSize > 0
+          
+          ' Only calculate throughput for segment requests (not api/encryption)
+          requestType = props.request_type
+          if (requestType = "media" OR requestType = "audio" OR requestType = "video" OR requestType = "captions") AND videoSegment.downloadDuration <> Invalid AND videoSegment.downloadDuration > 0 AND videoSegment.segSize <> Invalid AND videoSegment.segSize > 0
             loadTime = videoSegment.downloadDuration / 1000
             throughput = (videoSegment.segSize * 8) / loadTime ' in bits / sec
             m._totalBytes = m._safeAdd(m._totalBytes, videoSegment.segSize)
@@ -831,6 +846,19 @@ function muxAnalytics() as Object
             m._viewAverageRequestThroughput = (m._totalBytes * 8) / m._totalLoadTime
             m._viewRequestCount = m._segmentRequestCount
           end if
+          
+          ' Rate limiting for api/encryption requestcompleted events
+          if requestType = "api" OR requestType = "encryption"
+            if m._apiEncryptionRequestCompletedCount = Invalid then 
+              m._apiEncryptionRequestCompletedCount = 0
+            end if
+            
+            if m._apiEncryptionRequestCompletedCount >= m.MAX_API_ENCRYPTION_REQUEST_COMPLETED
+              return
+            end if
+            m._apiEncryptionRequestCompletedCount = m._apiEncryptionRequestCompletedCount + 1
+          end if
+          
           m._addEventToQueue(m._createEvent("requestcompleted", props))
         else
           if m._segmentRequestFailedCount = Invalid then m._segmentRequestFailedCount = 0
@@ -1417,6 +1445,9 @@ function muxAnalytics() as Object
       m._segmentRequestCount = 0
       m._segmentRequestFailedCount = 0
 
+      ' Reset API/Encryption request tracking
+      m._apiEncryptionRequestCompletedCount = 0
+
       m._Flag_lastReportedPosition = 0
       m._Flag_atLeastOnePlayEventForContent = false
       m._Flag_isSeeking = false
@@ -1498,6 +1529,9 @@ function muxAnalytics() as Object
       m._viewAverageRequestThroughput = Invalid
       m._viewRequestCount = Invalid
       m._segmentRequestFailedCount = Invalid
+      
+      ' Clean up API/Encryption request tracking
+      m._apiEncryptionRequestCompletedCount = Invalid
     end if
   end sub
 
@@ -2220,6 +2254,7 @@ function muxAnalytics() as Object
     "dynamic": "dy",
     "enabled": "eb",
     "encoding": "ec",
+    "encryption": "ey",
     "edge": "ed",
     "end": "en",
     "engine": "eg",
