@@ -1444,8 +1444,6 @@ function muxAnalytics() as Object
       m._totalLoadTime = 0
       m._segmentRequestCount = 0
       m._segmentRequestFailedCount = 0
-
-      ' Reset API/Encryption request tracking
       m._apiEncryptionRequestCompletedCount = 0
 
       m._Flag_lastReportedPosition = 0
@@ -1528,9 +1526,7 @@ function muxAnalytics() as Object
       m._viewMinRequestThroughput = Invalid
       m._viewAverageRequestThroughput = Invalid
       m._viewRequestCount = Invalid
-      m._segmentRequestFailedCount = Invalid
-      
-      ' Clean up API/Encryption request tracking
+      m._segmentRequestFailedCount = Invalid      
       m._apiEncryptionRequestCompletedCount = Invalid
     end if
   end sub
