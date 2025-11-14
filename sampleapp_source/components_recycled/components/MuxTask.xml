@@ -14,6 +14,7 @@
     <field id="disablePlayheadRebufferTracking" type="Boolean" alwaysNotify="true" value="true" />
     <field id="rebufferstart" type="Boolean" alwaysNotify="true" />
     <field id="rebufferend" type="Boolean" alwaysNotify="true" />
+    <field id="playback_mode" type="assocarray" alwaysNotify="true" />
     <field id="request" type="assocarray" alwaysNotify="true" />
   </interface>
   <script type="text/brightscript" uri="pkg:/libs/mux-analytics.brs"/>
