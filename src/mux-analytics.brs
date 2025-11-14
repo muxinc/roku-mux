@@ -400,6 +400,7 @@ function muxAnalytics() as Object
     m.HEARTBEAT_INTERVAL = systemConfig.HEARTBEAT_INTERVAL
     m.POSITION_TIMER_INTERVAL = systemConfig.POSITION_TIMER_INTERVAL
     m.SEEK_THRESHOLD = systemConfig.SEEK_THRESHOLD
+    m.MAX_API_ENCRYPTION_REQUESTS_PER_VIEW = 5
 
     m._configProperties = customerConfig
 
@@ -455,6 +456,7 @@ function muxAnalytics() as Object
     m._viewMinRequestThroughput = Invalid
     m._viewAverageRequestThroughput = Invalid
     m._viewRequestCount = Invalid
+    m._viewApiEncryptionRequestCount = Invalid
 
     ' Calculate player width and height
     m.deviceInfo = m._getDeviceInfo()
@@ -1007,6 +1009,20 @@ function muxAnalytics() as Object
       if props.request_video_height <> Invalid
         props.request_video_height = message.request_video_height
       end if
+      ' Calculate request_duration for api and encryption request types
+      ' Limit api/encryption requestcompleted events per view to prevent abuse
+      if props.request_type <> Invalid AND (props.request_type = "api" OR props.request_type = "encryption")
+        if m._viewApiEncryptionRequestCount = Invalid then m._viewApiEncryptionRequestCount = 0
+        if m._viewApiEncryptionRequestCount >= m.MAX_API_ENCRYPTION_REQUESTS_PER_VIEW
+          ' Drop event if limit exceeded
+          return
+        end if
+        m._viewApiEncryptionRequestCount++
+        if props.request_start <> Invalid AND props.request_response_end <> Invalid
+          duration = Val(props.request_response_end) - Val(props.request_start)
+          props.request_duration = duration
+        end if
+      end if
       m._addEventToQueue(m._createEvent("requestcompleted", props))
     else if requestVariant = "failed"
       props.request_error = message.request_error
@@ -1464,6 +1480,7 @@ function muxAnalytics() as Object
       m._totalLoadTime = 0
       m._segmentRequestCount = 0
       m._segmentRequestFailedCount = 0
+      m._viewApiEncryptionRequestCount = 0
 
       m._Flag_lastReportedPosition = 0
       m._Flag_atLeastOnePlayEventForContent = false
@@ -1546,6 +1563,7 @@ function muxAnalytics() as Object
       m._viewAverageRequestThroughput = Invalid
       m._viewRequestCount = Invalid
       m._segmentRequestFailedCount = Invalid
+      m._viewApiEncryptionRequestCount = Invalid
     end if
   end sub
 
