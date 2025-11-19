@@ -978,8 +978,12 @@ function muxAnalytics() as Object
     requestVariant = message.request_variant
 
     props = {}
-    props.request_start = message.request_start
-    props.request_hostname = message.request_hostname
+    if message.request_start <> Invalid
+      props.request_start = message.request_start
+    end if
+    if message.request_hostname <> Invalid
+      props.request_hostname = message.request_hostname
+    end if
     if message.request_type <> Invalid
       props.request_type = message.request_type
     end if
@@ -988,9 +992,15 @@ function muxAnalytics() as Object
     end if
 
     if requestVariant = "completed"
-      props.request_bytes_loaded = message.request_bytes_loaded
-      props.request_response_start = message.request_response_start
-      props.request_response_end = message.request_response_end
+      if message.request_bytes_loaded <> Invalid
+        props.request_bytes_loaded = message.request_bytes_loaded
+      end if
+      if message.request_response_start <> Invalid
+        props.request_response_start = message.request_response_start
+      end if
+      if message.request_response_end <> Invalid
+        props.request_response_end = message.request_response_end
+      end if
       if props.request_url <> Invalid
         props.request_url = message.request_url
       end if
@@ -1025,9 +1035,15 @@ function muxAnalytics() as Object
       end if
       m._addEventToQueue(m._createEvent("requestcompleted", props))
     else if requestVariant = "failed"
-      props.request_error = message.request_error
-      props.request_error_code = message.request_error_code
-      props.request_error_test = message.request_error_text
+      if message.request_error <> Invalid
+        props.request_error = message.request_error
+      end if
+      if message.request_error_code <> Invalid
+        props.request_error_code = message.request_error_code
+      end if
+      if message.request_error_text <> Invalid
+        props.request_error_text = message.request_error_text
+      end if
       m._addEventToQueue(m._createEvent("requestfailed", props))
     else if requestVariant = "canceled"
       m._addEventToQueue(m._createEvent("requestcanceled", props))
