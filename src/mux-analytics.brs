@@ -510,6 +510,10 @@ function muxAnalytics() as Object
     if currentConnectionType <> m._lastConnectionType
       m._fireNetworkChangeEvent(currentConnectionType)
       m._lastConnectionType = currentConnectionType
+      ' Update session properties with new connection type
+      if m._sessionProperties <> Invalid
+        m._sessionProperties.viewer_connection_type = currentConnectionType
+      end if
     end if
   end sub
 
