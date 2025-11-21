@@ -328,7 +328,7 @@ function _getConnectionType(deviceInfo as Object)
     return "wifi"
   end if
   if connectionType = "WiredConnection"
-    return "ethernet"
+    return "wired"
   end if
 
   return "other"
@@ -487,6 +487,9 @@ function muxAnalytics() as Object
     ' Flag to track heartbeat timer state to avoid rendezvous
     m._Flag_heartbeatTimerRunning = false
 
+    ' Network monitoring
+    m._lastConnectionType = Invalid
+
     ' kick off analytics
     date = m._getDateTime()
     m._startTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
@@ -497,15 +500,27 @@ function muxAnalytics() as Object
 
   prototype.beaconIntervalHandler = sub(beaconIntervalEvent)
     data = beaconIntervalEvent.getData()
-    m.updateSessionPropertiesConnectionType()
+    m._checkNetworkChange()
     m.LIGHT_THE_BEACONS()
   end sub
 
-  prototype.updateSessionPropertiesConnectionType = sub()
-    connectionType = _getConnectionType(m.deviceInfo)
-    if connectionType <> Invalid
-      m._sessionProperties.viewer_connection_type = connectionType
+  prototype._checkNetworkChange = sub()
+    currentConnectionType = _getConnectionType(m.deviceInfo)
+    ' Check if connection type has changed
+    if currentConnectionType <> m._lastConnectionType
+      m._fireNetworkChangeEvent(currentConnectionType)
+      m._lastConnectionType = currentConnectionType
     end if
+  end sub
+
+  prototype._fireNetworkChangeEvent = sub(connectionType as Dynamic)
+    props = {}
+    if connectionType = Invalid
+      props.viewer_connection_type = Invalid
+    else
+      props.viewer_connection_type = connectionType
+    end if
+    m._addEventToQueue(m._createEvent("networkchange", props))
   end sub
 
   prototype.heartbeatIntervalHandler = sub(heartbeatIntervalEvent)
@@ -1219,6 +1234,9 @@ function muxAnalytics() as Object
     '   m._playerPlayheadTime = m.video.position
     ' end if
 
+    ' Check for network changes as a backup polling mechanism
+    m._checkNetworkChange()
+
     m._setBufferingMetrics()
     m._updateContentPlaybackTime()
 
@@ -1441,6 +1459,11 @@ function muxAnalytics() as Object
       props.ad_playing_time_ms_cumulative = m._totalAdWatchTime
       m._addEventToQueue(m._createEvent("playbackmodechange", props))
 
+      ' Fire initial networkchange event
+      initialConnectionType = _getConnectionType(m.deviceInfo)
+      m._lastConnectionType = initialConnectionType
+      m._fireNetworkChangeEvent(initialConnectionType)
+
       m._addEventToQueue(m._createEvent("viewstart"))
 
       m._inView = true
@@ -1498,6 +1521,7 @@ function muxAnalytics() as Object
       m._viewAverageRequestThroughput = Invalid
       m._viewRequestCount = Invalid
       m._segmentRequestFailedCount = Invalid
+      m._lastConnectionType = Invalid
     end if
   end sub
 
