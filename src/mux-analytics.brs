@@ -975,7 +975,7 @@ function muxAnalytics() as Object
   end sub
 
   prototype.requestHandler = sub(message as Object)
-    requestVariant = message.request_variant
+    requestVariant = message.type
 
     props = {}
     if message.request_start <> Invalid
