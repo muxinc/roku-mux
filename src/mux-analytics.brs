@@ -2268,6 +2268,7 @@ function muxAnalytics() as Object
     "midroll": "ml",
     "min": "mm",
     "manufacturer": "mn",
+    "mode": "mp",
     "model": "mo",
     "mux": "mx",
     "ms": "ms",
