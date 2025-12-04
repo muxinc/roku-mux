@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "2.3.1"
+  m.MUX_SDK_VERSION = "2.3.2"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
   
@@ -1238,6 +1238,7 @@ function muxAnalytics() as Object
   end sub
 
   prototype._updateContentPlaybackTime = sub()
+    if m._playerPlayheadTime = Invalid then return
     if m._playerPlayheadTime <= m._Flag_lastReportedPosition then return
     if m.video_state <> "playing" then return
     if m._contentPlaybackTime = Invalid then return
@@ -1245,9 +1246,7 @@ function muxAnalytics() as Object
     timeDelta = m._playerPlayheadTime - m._Flag_lastReportedPosition
 
     ' Guard against suspiciously large jumps
-    if timeDelta > 100 then
-      return
-    end if
+    if timeDelta > 100 then return
 
     m._contentPlaybackTime = m._contentPlaybackTime + (timeDelta * 1000)
   end sub
