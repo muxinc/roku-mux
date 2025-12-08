@@ -136,6 +136,37 @@ function runBeaconLoop()
   m.beaconTimer.ObserveField("fire", m.messagePort)
   m.heartbeatTimer.ObserveField("fire", m.messagePort)
 
+  ' Try to enable network events - these methods are available on Roku OS 10+
+  firmwareVersion = m.mxa._sessionProperties.viewer_os_version
+
+  ' Parse major version from firmware string (e.g., "10.1" -> 10, "9.2" -> 9)
+  firmwareParts = firmwareVersion.Tokenize(".")
+  majorVersion = 0
+  if firmwareParts.Count() > 0
+    majorVersion = Val(firmwareParts[0])
+  end if
+
+  linkEventEnabled = Invalid
+  internetEventEnabled = Invalid
+
+  if majorVersion >= 10
+    m.mxa.deviceInfo.SetMessagePort(m.messagePort)
+    linkEventEnabled = m.mxa.deviceInfo.EnableLinkStatusEvent(true)
+    internetEventEnabled = m.mxa.deviceInfo.EnableInternetStatusEvent(true)
+
+    if linkEventEnabled = true AND internetEventEnabled = true
+      print "[mux-analytics] Network status events enabled successfully"
+      m.mxa._networkEventsSupported = true
+    else
+      print "[mux-analytics] WARNING: Network event methods returned false, falling back to polling"
+      print "[mux-analytics] EnableLinkStatusEvent: " ; linkEventEnabled ; ", EnableInternetStatusEvent: " ; internetEventEnabled
+      m.mxa._networkEventsSupported = false
+    end if
+  else
+    print "[mux-analytics] Roku OS " ; firmwareVersion ; " detected. Network events require OS 10+, using polling instead"
+    m.mxa._networkEventsSupported = false
+  end if
+
   ' Track exit on a separate port per Roku's guidance
   m.exitPort = _createPort()
   m.top.ObserveField("exit", m.exitPort)
@@ -229,6 +260,8 @@ function runBeaconLoop()
         else if field = "playback_mode"
           m.mxa.playbackModeHandler(msg.getData())
         end if
+      else if msgType = "roDeviceInfoEvent"
+        m.mxa.networkStatusEventHandler(msg)
       end if
     end if
 
@@ -328,7 +361,7 @@ function _getConnectionType(deviceInfo as Object)
     return "wifi"
   end if
   if connectionType = "WiredConnection"
-    return "ethernet"
+    return "wired"
   end if
 
   return "other"
@@ -487,6 +520,10 @@ function muxAnalytics() as Object
     ' Flag to track heartbeat timer state to avoid rendezvous
     m._Flag_heartbeatTimerRunning = false
 
+    ' Network monitoring
+    m._lastConnectionType = Invalid
+    m._networkEventsSupported = false
+
     ' kick off analytics
     date = m._getDateTime()
     m._startTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
@@ -497,15 +534,37 @@ function muxAnalytics() as Object
 
   prototype.beaconIntervalHandler = sub(beaconIntervalEvent)
     data = beaconIntervalEvent.getData()
-    m.updateSessionPropertiesConnectionType()
     m.LIGHT_THE_BEACONS()
+
+    ' If network events are not supported, poll network status
+    if m._networkEventsSupported = false
+      m.networkStatusEventHandler(Invalid)
+    end if
   end sub
 
-  prototype.updateSessionPropertiesConnectionType = sub()
-    connectionType = _getConnectionType(m.deviceInfo)
-    if connectionType <> Invalid
-      m._sessionProperties.viewer_connection_type = connectionType
+  ' Handler for roDeviceInfoEvent network status changes (or polling)
+  ' event can be Invalid when called from polling
+  prototype.networkStatusEventHandler = sub(event as Dynamic)
+    currentConnectionType = _getConnectionType(m.deviceInfo)
+    ' Check if connection type has changed
+    if currentConnectionType <> m._lastConnectionType
+      m._fireNetworkChangeEvent(currentConnectionType)
+      m._lastConnectionType = currentConnectionType
+      ' Update session properties with new connection type
+      if m._sessionProperties <> Invalid
+        m._sessionProperties.viewer_connection_type = currentConnectionType
+      end if
     end if
+  end sub
+
+  prototype._fireNetworkChangeEvent = sub(connectionType as Dynamic)
+    props = {}
+    if connectionType = Invalid
+      props.viewer_connection_type = Invalid
+    else
+      props.viewer_connection_type = connectionType
+    end if
+    m._addEventToQueue(m._createEvent("networkchange", props))
   end sub
 
   prototype.heartbeatIntervalHandler = sub(heartbeatIntervalEvent)
@@ -1440,6 +1499,11 @@ function muxAnalytics() as Object
       props.ad_playing_time_ms_cumulative = m._totalAdWatchTime
       m._addEventToQueue(m._createEvent("playbackmodechange", props))
 
+      ' Fire initial networkchange event
+      initialConnectionType = _getConnectionType(m.deviceInfo)
+      m._lastConnectionType = initialConnectionType
+      m._fireNetworkChangeEvent(initialConnectionType)
+
       m._addEventToQueue(m._createEvent("viewstart"))
 
       m._inView = true
@@ -1497,6 +1561,7 @@ function muxAnalytics() as Object
       m._viewAverageRequestThroughput = Invalid
       m._viewRequestCount = Invalid
       m._segmentRequestFailedCount = Invalid
+      m._lastConnectionType = Invalid
     end if
   end sub
 
