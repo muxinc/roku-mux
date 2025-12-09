@@ -132,6 +132,8 @@ function runBeaconLoop()
   end if
   m.top.ObserveField("playback_mode", m.messagePort)
 
+  m.top.ObserveField("request", m.messagePort)
+
   m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
   m.heartbeatTimer.ObserveField("fire", m.messagePort)
@@ -975,6 +977,12 @@ function muxAnalytics() as Object
   end sub
 
   prototype.requestHandler = sub(message as Object)
+    ' Require type field as it becomes the event type (e property)
+    if message.type = Invalid
+      print "[mux-analytics] warning: request handler called without required 'type' field"
+      return
+    end if
+    
     requestVariant = message.type
 
     props = {}
@@ -1001,22 +1009,22 @@ function muxAnalytics() as Object
       if message.request_response_end <> Invalid
         props.request_response_end = message.request_response_end
       end if
-      if props.request_url <> Invalid
+      if message.request_url <> Invalid
         props.request_url = message.request_url
       end if
-      if props.request_labeled_bitrate <> Invalid
+      if message.request_labeled_bitrate <> Invalid
         props.request_labeled_bitrate = message.request_labeled_bitrate
       end if
-      if props.request_response_headers <> Invalid
+      if message.request_response_headers <> Invalid
         props.request_response_headers = message.request_response_headers
       end if
-      if props.request_media_duration <> Invalid
+      if message.request_media_duration <> Invalid
         props.request_media_duration = message.request_media_duration
       end if
-      if props.request_media_width <> Invalid
-        props.request_media_width = message.request_media_width
+      if message.request_video_width <> Invalid
+        props.request_video_width = message.request_video_width
       end if
-      if props.request_video_height <> Invalid
+      if message.request_video_height <> Invalid
         props.request_video_height = message.request_video_height
       end if
       ' Calculate request_duration for api and encryption request types
