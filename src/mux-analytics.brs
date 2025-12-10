@@ -132,6 +132,8 @@ function runBeaconLoop()
   end if
   m.top.ObserveField("playback_mode", m.messagePort)
 
+  m.top.ObserveField("request", m.messagePort)
+
   m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
   m.heartbeatTimer.ObserveField("fire", m.messagePort)
@@ -228,6 +230,8 @@ function runBeaconLoop()
           m.mxa.rebufferEndHandler()
         else if field = "playback_mode"
           m.mxa.playbackModeHandler(msg.getData())
+        else if field = "request"
+          m.mxa.requestHandler(msg.getData())
         end if
       end if
     end if
@@ -398,6 +402,7 @@ function muxAnalytics() as Object
     m.HEARTBEAT_INTERVAL = systemConfig.HEARTBEAT_INTERVAL
     m.POSITION_TIMER_INTERVAL = systemConfig.POSITION_TIMER_INTERVAL
     m.SEEK_THRESHOLD = systemConfig.SEEK_THRESHOLD
+    m.MAX_API_ENCRYPTION_REQUESTS_PER_VIEW = 5
 
     m._configProperties = customerConfig
 
@@ -453,6 +458,7 @@ function muxAnalytics() as Object
     m._viewMinRequestThroughput = Invalid
     m._viewAverageRequestThroughput = Invalid
     m._viewRequestCount = Invalid
+    m._viewApiEncryptionRequestCount = Invalid
 
     ' Calculate player width and height
     m.deviceInfo = m._getDeviceInfo()
@@ -970,6 +976,88 @@ function muxAnalytics() as Object
     m._addEventToQueue(m._createEvent("playbackmodechange", props))
   end sub
 
+  prototype.requestHandler = sub(message as Object)
+    ' Require type field as it becomes the event type (e property)
+    if message.type = Invalid
+      print "[mux-analytics] warning: request handler called without required 'type' field"
+      return
+    end if
+    
+    requestVariant = message.type
+
+    props = {}
+    if message.request_start <> Invalid
+      props.request_start = message.request_start
+    end if
+    if message.request_hostname <> Invalid
+      props.request_hostname = message.request_hostname
+    end if
+    if message.request_type <> Invalid
+      props.request_type = message.request_type
+    end if
+    if message.request_id <> Invalid 
+      props.request_id = message.request_id
+    end if
+
+    if requestVariant = "completed"
+      if message.request_bytes_loaded <> Invalid
+        props.request_bytes_loaded = message.request_bytes_loaded
+      end if
+      if message.request_response_start <> Invalid
+        props.request_response_start = message.request_response_start
+      end if
+      if message.request_response_end <> Invalid
+        props.request_response_end = message.request_response_end
+      end if
+      if message.request_url <> Invalid
+        props.request_url = message.request_url
+      end if
+      if message.request_labeled_bitrate <> Invalid
+        props.request_labeled_bitrate = message.request_labeled_bitrate
+      end if
+      if message.request_response_headers <> Invalid
+        props.request_response_headers = message.request_response_headers
+      end if
+      if message.request_media_duration <> Invalid
+        props.request_media_duration = message.request_media_duration
+      end if
+      if message.request_video_width <> Invalid
+        props.request_video_width = message.request_video_width
+      end if
+      if message.request_video_height <> Invalid
+        props.request_video_height = message.request_video_height
+      end if
+      ' Calculate request_duration for api and encryption request types
+      ' Limit api/encryption requestcompleted events per view to prevent abuse
+      if props.request_type <> Invalid AND (props.request_type = "api" OR props.request_type = "encryption")
+        if m._viewApiEncryptionRequestCount = Invalid then m._viewApiEncryptionRequestCount = 0
+        if m._viewApiEncryptionRequestCount >= m.MAX_API_ENCRYPTION_REQUESTS_PER_VIEW
+          ' Drop event if limit exceeded
+          return
+        end if
+        m._viewApiEncryptionRequestCount++
+        if props.request_start <> Invalid AND props.request_response_end <> Invalid
+          duration = Val(props.request_response_end) - Val(props.request_start)
+          props.request_duration = duration
+        end if
+      end if
+      m._addEventToQueue(m._createEvent("requestcompleted", props))
+    else if requestVariant = "failed"
+      if message.request_error <> Invalid
+        props.request_error = message.request_error
+      end if
+      if message.request_error_code <> Invalid
+        props.request_error_code = message.request_error_code
+      end if
+      if message.request_error_text <> Invalid
+        props.request_error_text = message.request_error_text
+      end if
+      m._addEventToQueue(m._createEvent("requestfailed", props))
+    else if requestVariant = "canceled"
+      m._addEventToQueue(m._createEvent("requestcanceled", props))
+    end if
+  end sub
+
   prototype.rafEventHandler = sub(rafEvent)
     data = rafEvent.getData()
     eventType = data.eventType
@@ -1415,6 +1503,7 @@ function muxAnalytics() as Object
       m._totalLoadTime = 0
       m._segmentRequestCount = 0
       m._segmentRequestFailedCount = 0
+      m._viewApiEncryptionRequestCount = 0
 
       m._Flag_lastReportedPosition = 0
       m._Flag_atLeastOnePlayEventForContent = false
@@ -1497,6 +1586,7 @@ function muxAnalytics() as Object
       m._viewAverageRequestThroughput = Invalid
       m._viewRequestCount = Invalid
       m._segmentRequestFailedCount = Invalid
+      m._viewApiEncryptionRequestCount = Invalid
     end if
   end sub
 
