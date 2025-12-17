@@ -460,6 +460,12 @@ function muxAnalytics() as Object
     m._viewRequestCount = Invalid
     m._viewApiEncryptionRequestCount = Invalid
 
+    ' Latency tracking variables
+    m._totalLatency = Invalid
+    m._requestCompletedCount = Invalid
+    m._viewMaxRequestLatency = Invalid
+    m._viewAverageRequestLatency = Invalid
+
     ' Calculate player width and height
     m.deviceInfo = m._getDeviceInfo()
     videoMode = m.deviceInfo.GetVideoMode()
@@ -982,12 +988,26 @@ function muxAnalytics() as Object
       print "[mux-analytics] warning: request handler called without required 'type' field"
       return
     end if
-    
+
     requestVariant = message.type
+
+    ' Used for throughput and latency metrics
+    requestStartNum = 0
+    responseStartNum = Invalid
+    responseEndNum = 0
+    bytesLoaded = Invalid
 
     props = {}
     if message.request_start <> Invalid
       props.request_start = message.request_start
+      msgType = Type(message.request_start)
+      if msgType = "roString" OR msgType = "String"
+        ' String: set in props but don't use for calculations
+        print "[mux-analytics] warning: request_start received as string, only numeric values are supported for metric calculations"
+      else
+        ' Number: use for calculations and convert to string for props
+        requestStartNum = message.request_start
+      end if
     end if
     if message.request_hostname <> Invalid
       props.request_hostname = message.request_hostname
@@ -1002,12 +1022,29 @@ function muxAnalytics() as Object
     if requestVariant = "completed"
       if message.request_bytes_loaded <> Invalid
         props.request_bytes_loaded = message.request_bytes_loaded
+        bytesLoaded = message.request_bytes_loaded
       end if
       if message.request_response_start <> Invalid
         props.request_response_start = message.request_response_start
+        msgType = Type(message.request_response_start)
+        if msgType = "roString" OR msgType = "String"
+          ' String: set in props but don't use for calculations
+          print "[mux-analytics] warning: request_response_start received as string, only numeric values are supported for metric calculations"
+        else
+          ' Number: use for calculations and convert to string for props
+          responseStartNum = message.request_response_start
+        end if
       end if
       if message.request_response_end <> Invalid
         props.request_response_end = message.request_response_end
+        msgType = Type(message.request_response_end)
+        if msgType = "roString" OR msgType = "String"
+          ' String: set in props but don't use for calculations
+          print "[mux-analytics] warning: request_response_end received as string, only numeric values are supported for metric calculations"
+        else
+          ' Number: use for calculations and convert to string for props
+          responseEndNum = message.request_response_end
+        end if
       end if
       if message.request_url <> Invalid
         props.request_url = message.request_url
@@ -1037,10 +1074,55 @@ function muxAnalytics() as Object
         end if
         m._viewApiEncryptionRequestCount++
         if props.request_start <> Invalid AND props.request_response_end <> Invalid
-          duration = Val(props.request_response_end) - Val(props.request_start)
+          duration = responseEndNum - requestStartNum
           props.request_duration = duration
         end if
       end if
+
+      latency = Invalid  
+      loadTime = Invalid
+
+      if responseStartNum <> Invalid
+        latency = responseStartNum - requestStartNum
+        loadTime = responseEndNum - responseStartNum
+      else
+        loadTime = responseEndNum - requestStartNum
+      end if
+
+      if loadTime > 0 AND bytesLoaded <> Invalid AND bytesLoaded > 0
+        throughput = (bytesLoaded / loadTime) * 8000  ' in bits/sec
+
+        if m._requestCompletedCount = Invalid
+          m._requestCompletedCount = 0
+        end if
+
+        m._requestCompletedCount++
+        m._totalBytes = m._safeAdd(m._totalBytes, bytesLoaded)
+        m._totalLoadTime = m._safeAdd(m._totalLoadTime, loadTime)
+
+        if m._viewMinRequestThroughput = Invalid
+          m._viewMinRequestThroughput = throughput
+        else
+          m._viewMinRequestThroughput = m._min(m._viewMinRequestThroughput, throughput)
+        end if
+        
+        m._viewAverageRequestThroughput = (m._totalBytes / m._totalLoadTime) * 8000
+
+        ' if we have latency data, then let's add these metrics
+        if latency <> Invalid AND latency > 0
+          m._totalLatency = m._safeAdd(m._totalLatency, latency)
+
+          if m._viewMaxRequestLatency = Invalid
+            m._viewMaxRequestLatency = latency
+          else
+            m._viewMaxRequestLatency = m._max(m._viewMaxRequestLatency, latency)
+          end if
+
+          m._viewAverageRequestLatency = m._totalLatency / m._requestCompletedCount
+        end if
+
+      end if
+
       m._addEventToQueue(m._createEvent("requestcompleted", props))
     else if requestVariant = "failed"
       if message.request_error <> Invalid
@@ -1505,6 +1587,8 @@ function muxAnalytics() as Object
       m._segmentRequestCount = 0
       m._segmentRequestFailedCount = 0
       m._viewApiEncryptionRequestCount = 0
+      m._requestCompletedCount = 0
+      m._totalLatency = 0
 
       m._Flag_lastReportedPosition = 0
       m._Flag_atLeastOnePlayEventForContent = false
@@ -1588,6 +1672,10 @@ function muxAnalytics() as Object
       m._viewRequestCount = Invalid
       m._segmentRequestFailedCount = Invalid
       m._viewApiEncryptionRequestCount = Invalid
+      m._requestCompletedCount = Invalid
+      m._totalLatency = Invalid
+      m._viewMaxRequestLatency = Invalid
+      m._viewAverageRequestLatency = Invalid
     end if
   end sub
 
@@ -1917,6 +2005,12 @@ function muxAnalytics() as Object
     end if
     if m._viewRequestCount <> Invalid
       props.view_request_count = m._viewRequestCount
+    end if
+    if m._viewMaxRequestLatency <> Invalid
+      props.view_max_request_latency = Int(m._viewMaxRequestLatency)
+    end if
+    if m._viewAverageRequestLatency <> Invalid
+      props.view_average_request_latency = Int(m._viewAverageRequestLatency)
     end if
     if m._cumulativePlayingTime <> Invalid AND m._cumulativePlayingTime > 0
       props.view_playing_time_ms_cumulative = m._cumulativePlayingTime
