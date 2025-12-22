@@ -138,12 +138,13 @@ function runBeaconLoop()
 
   ' Try to enable network events - these methods are available on Roku OS 10+
   firmwareVersion = m.mxa._sessionProperties.viewer_os_version
-
   ' Parse major version from firmware string (e.g., "10.1" -> 10, "9.2" -> 9)
-  firmwareParts = firmwareVersion.Tokenize(".")
   majorVersion = 0
-  if firmwareParts.Count() > 0
-    majorVersion = Val(firmwareParts[0])
+  if firmwareVersion <> Invalid and Type(firmwareVersion) = "String" and firmwareVersion <> ""
+    firmwareParts = firmwareVersion.Tokenize(".")
+    if firmwareParts.Count() > 0
+      majorVersion = Val(firmwareParts[0])
+    end if
   end if
 
   linkEventEnabled = Invalid
