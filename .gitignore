@@ -7,5 +7,5 @@
 /beta
 .env
 test_runner
-local.properties
+local.properties*
 .tool-versions
