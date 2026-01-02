@@ -39,6 +39,13 @@ function runBeaconLoop()
   m.beaconTimer.duration = m.BASE_TIME_BETWEEN_BEACONS / 1000
   m.beaconTimer.control = "start"
 
+  ' Drain timer: waits for pending requests before view end
+  m.DRAIN_TIMEOUT_MS = 200 ' 200ms timeout, resets on each new request
+  m.drainTimer = CreateObject("roSGNode", "Timer")
+  m.drainTimer.id = "drainTimer"
+  m.drainTimer.repeat = false
+  m.drainTimer.duration = m.DRAIN_TIMEOUT_MS / 1000
+
   m.httpPort = _createPort()
 
   useRandomMuxViewerId = false
@@ -62,7 +69,7 @@ function runBeaconLoop()
     SEEK_THRESHOLD: m.SEEK_THRESHOLD,
     USE_RANDOM_MUX_VIEWER_ID: useRandomMuxViewerId
   }
-  m.mxa.init(appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.pollTimer, m.httpPort)
+  m.mxa.init(appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.pollTimer, m.httpPort, m.drainTimer)
 
   m.top.ObserveField("rafEvent", m.messagePort)
 
@@ -137,6 +144,7 @@ function runBeaconLoop()
   m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
   m.heartbeatTimer.ObserveField("fire", m.messagePort)
+  m.drainTimer.ObserveField("fire", m.messagePort)
 
   ' Try to enable network events - these methods are available on Roku OS 10+
   firmwareVersion = m.mxa._sessionProperties.viewer_os_version
@@ -251,6 +259,8 @@ function runBeaconLoop()
             m.mxa.beaconIntervalHandler(msg)
           else if node = "heartbeatTimer"
             m.mxa.heartbeatIntervalHandler(msg)
+          else if node = "drainTimer"
+            m.mxa.drainTimerHandler()
           end if
         else if field = "cdn"
           m.mxa.cdnChangeHandler(msg.getData())
@@ -381,14 +391,21 @@ function muxAnalytics() as Object
   prototype.MUX_API_VERSION = "2.1" ' 2.1 because of GUIDs for player instance IDs
   prototype.PLAYER_IS_FULLSCREEN = "true"
 
-  prototype.init = sub(appInfo as Object, systemConfig as Object, customerConfig as Object, hbt as Object, pp as Object, hp as Object)
+  prototype.init = sub(appInfo as Object, systemConfig as Object, customerConfig as Object, hbt as Object, pp as Object, hp as Object, dt = Invalid as Object)
     m.httpPort = hp
     m.connection = _createConnection(m.httpPort)
     m.httpRetries = 5
     m.httpTimeout = 1500
     m.heartbeatTimer = hbt
     m.pollTimer = pp
+    m.drainTimer = dt
     m.loggingPrefix = "[mux-analytics] "
+    
+    ' Drain state variables
+    m._pendingViewEnd = false
+    m._pendingViewStart = false
+    m._drainRequestCount = 0 ' Count of requests received during drain
+    m._drainVideoContentProperties = Invalid ' Snapshot of metadata during drain
     m.DEFAULT_DRY_RUN = false
     m.DEFAULT_DEBUG_EVENTS = "none"
     m.DEFAULT_DEBUG_BEACONS = "none" 'full','partial','none'
@@ -751,9 +768,53 @@ function muxAnalytics() as Object
 
   prototype.videoViewChangeHandler = sub(view as String)
     if view = "end"
-      m._endView(true)
+      ' Instead of ending view immediately, start drain timer
+      ' This allows pending requests to complete with correct metadata
+      if m.drainTimer <> Invalid
+        m._pendingViewEnd = true
+        m._drainRequestCount = 0
+        ' Snapshot current video metadata before drain starts
+        ' This ensures requests during drain use correct metadata even if content changes
+        if m._videoContentProperties <> Invalid
+          m._drainVideoContentProperties = {}
+          m._drainVideoContentProperties.Append(m._videoContentProperties)
+          print "[mux-analytics] DRAIN: Snapshot saved - video_title: " + m._drainVideoContentProperties.video_title
+        end if
+        m.drainTimer.control = "stop"
+        m.drainTimer.control = "start"
+        print "[mux-analytics] DRAIN: view='end' received, starting drain timer (200ms)"
+        print "[mux-analytics] DRAIN: Waiting for pending requests to complete..."
+      else
+        ' Fallback if drain timer not available
+        m._endView(true)
+      end if
     else if view = "start"
-      m._startView(true)
+      if m._pendingViewEnd = true
+        ' Queue the start, it will execute after drain completes
+        m._pendingViewStart = true
+        print "[mux-analytics] DRAIN: view='start' received while draining, queued for after drain"
+      else
+        m._startView(true)
+      end if
+    end if
+  end sub
+  
+  ' Handler for drain timer expiration
+  prototype.drainTimerHandler = sub()
+    if m._pendingViewEnd = true
+      print "[mux-analytics] DRAIN: Timer expired after processing " + Str(m._drainRequestCount) + " requests"
+      print "[mux-analytics] DRAIN: Executing deferred _endView()"
+      m._pendingViewEnd = false
+      ' Execute _endView() first so it can use the snapshot metadata
+      m._endView(true)
+      ' Clear snapshot metadata after _endView() completes
+      m._drainVideoContentProperties = Invalid
+      
+      if m._pendingViewStart = true
+        print "[mux-analytics] DRAIN: Executing queued _startView()"
+        m._pendingViewStart = false
+        m._startView(true)
+      end if
     end if
   end sub
 
@@ -853,6 +914,19 @@ function muxAnalytics() as Object
   prototype.videoDownloadedSegmentChangeHandler = sub(videoSegment as object)
     if m._segmentRequestCount = Invalid then m._segmentRequestCount = 0
     m._segmentRequestCount++
+    
+    ' If we're draining, reset the timer for each new request
+    ' This ensures we wait for ALL pending requests to complete
+    if m._pendingViewEnd = true AND m.drainTimer <> Invalid
+      m._drainRequestCount++
+      m.drainTimer.control = "stop"
+      m.drainTimer.control = "start"
+      print "[mux-analytics] DRAIN: Request #" + Str(m._drainRequestCount) + " received during drain, timer reset"
+      if videoSegment <> Invalid AND videoSegment.segUrl <> Invalid
+        print "[mux-analytics] DRAIN:   hostname: " + m._getHostname(videoSegment.segUrl)
+      end if
+    end if
+    
     if videoSegment <> Invalid
       props = {}
       if videoSegment.segType <> Invalid
@@ -1761,8 +1835,21 @@ function muxAnalytics() as Object
     end if
 
     ' video content properties are checked once per view
-    if m._videoContentProperties <> Invalid
-      newEvent.Append(m._videoContentProperties)
+    ' During drain, use snapshot metadata for request events and viewend to ensure correct metadata
+    videoContentProps = m._videoContentProperties
+    if m._drainVideoContentProperties <> Invalid
+      ' Use snapshot for request events during drain
+      if m._pendingViewEnd = true AND (eventType = "requestcompleted" OR eventType = "requestfailed")
+        videoContentProps = m._drainVideoContentProperties
+        print "[mux-analytics] DRAIN: Using snapshot metadata for " + eventType + " - video_title: " + videoContentProps.video_title
+      ' Use snapshot for viewend when it's executed after drain completes
+      else if eventType = "viewend" AND m._pendingViewEnd = false
+        videoContentProps = m._drainVideoContentProperties
+        print "[mux-analytics] DRAIN: Using snapshot metadata for viewend - video_title: " + videoContentProps.video_title
+      end if
+    end if
+    if videoContentProps <> Invalid
+      newEvent.Append(videoContentProps)
     end if
 
     'actual video values overwrite video content values such as duration
