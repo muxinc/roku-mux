@@ -1256,7 +1256,7 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adimpression"))
     else if eventType = "Pause"
       if m._lastAdResumeTime <> Invalid
-        m._adWatchTime += max(0, now - m._lastAdResumeTime)
+        m._adWatchTime += m._max(0, now - m._lastAdResumeTime)
         m._lastAdResumeTime = Invalid
       end if
       m._addEventToQueue(m._createEvent("adpause"))
@@ -1288,7 +1288,7 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Complete"
       if m._lastAdResumeTime <> Invalid
-        m._adWatchTime += max(0, now - m._lastAdResumeTime)
+        m._adWatchTime += m._max(0, now - m._lastAdResumeTime)
         m._lastAdResumeTime = Invalid
       end if
       m._totalAdWatchTime += m._adWatchTime
@@ -1318,7 +1318,7 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("adthirdquartile"))
     else if eventType = "Skip"
       if m._lastAdResumeTime <> Invalid
-        m._adWatchTime += max(0, now - m._lastAdResumeTime)
+        m._adWatchTime += m._max(0, now - m._lastAdResumeTime)
         m._lastAdResumeTime = Invalid
       end if
       m._totalAdWatchTime += m._adWatchTime
@@ -1363,7 +1363,7 @@ function muxAnalytics() as Object
         m._addEventToQueue(m._createEvent("adplaying"))
       else if state = "paused"
         if m._lastAdResumeTime <> Invalid
-          m._adWatchTime += max(0, now - m._lastAdResumeTime)
+          m._adWatchTime += m._max(0, now - m._lastAdResumeTime)
           m._lastAdResumeTime = Invalid
         end if
         m._Flag_isPaused = true
@@ -1385,7 +1385,7 @@ function muxAnalytics() as Object
       ' Complete signals an ad has finished playback
       m._Flag_rssAdEnded = true
       if m._lastAdResumeTime <> Invalid
-        m._adWatchTime += max(0, now - m._lastAdResumeTime)
+        m._adWatchTime += m._max(0, now - m._lastAdResumeTime)
         m._lastAdResumeTime = Invalid
       end if
       m._totalAdWatchTime += m._adWatchTime
