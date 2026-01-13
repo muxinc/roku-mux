@@ -3,6 +3,7 @@
     <field id="config" type="array" alwaysNotify="true"/>
     <field id="video" type="node" alwaysNotify="true"/>
     <field id="rafEvent" type="assocarray" alwaysNotify="true"/>
+    <field id="disableDecoderStats" type="Boolean" alwaysNotify="true" value="false" />
   </interface>
   <script type="text/brightscript" uri="pkg:/components/MuxTask.brs"/>
   <children>
