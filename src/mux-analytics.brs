@@ -124,11 +124,6 @@ function runBeaconLoop()
   end if
   m.top.ObserveField("disablePlayheadRebufferTracking", m.messagePort)
 
-  if m.top.disableDecoderStats <> Invalid
-    m.mxa.disableDecoderStatsHandler(m.top.disableDecoderStats)
-  end if
-  m.top.ObserveField("disableDecoderStats", m.messagePort)
-
   m.top.ObserveField("rebufferstart", m.messagePort)
   m.top.ObserveField("rebufferend", m.messagePort)
 
@@ -261,8 +256,6 @@ function runBeaconLoop()
           m.mxa.cdnChangeHandler(msg.getData())
         else if field = "disablePlayheadRebufferTracking"
           m.mxa.disablePlayheadRebufferTrackingHandler(msg.getData())
-        else if field = "disableDecoderStats"
-          m.mxa.disableDecoderStatsHandler(msg.getData())
         else if field = "rebufferstart"
           m.mxa.rebufferStartHandler()
         else if field = "rebufferend"
@@ -299,7 +292,6 @@ function runBeaconLoop()
   m.top.UnobserveField("error")
   m.top.UnobserveField("cdn")
   m.top.UnobserveField("disablePlayheadRebufferTracking")
-  m.top.UnobserveField("disableDecoderStats")
   m.top.UnobserveField("rebufferstart")
   m.top.UnobserveField("rebufferend")
   m.top.UnobserveField("playback_mode")
@@ -1038,15 +1030,6 @@ function muxAnalytics() as Object
   prototype.disablePlayheadRebufferTrackingHandler = sub(disablePlayheadRebufferTracking as Boolean)
     if disablePlayheadRebufferTracking <> Invalid
       m._Flag_automaticRebufferTracking = (not disablePlayheadRebufferTracking)
-    end if
-  end sub
-
-  prototype.disableDecoderStatsHandler = sub(disableDecoderStats as Boolean)
-    if disableDecoderStats = true
-      ' If decoder stats should be disabled, unobserve the field if video node exists
-      if m.top.video <> Invalid
-        m.top.video.UnobserveField("decoderStats")
-      end if
     end if
   end sub
 
