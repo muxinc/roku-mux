@@ -84,84 +84,60 @@ function runBeaconLoop()
     end if
   end if
 
-  if m.top.HasField("view")
-    if m.top.view <> Invalid AND m.top.view <> ""
-      m.mxa.videoViewChangeHandler(m.top.view)
-    end if
-    m.top.ObserveField("view", m.messagePort)
+  if m.top.view <> Invalid AND m.top.view <> ""
+    m.mxa.videoViewChangeHandler(m.top.view)
   end if
+  m.top.ObserveField("view", m.messagePort)
 
   if m.top.config <> Invalid
     m.mxa.configChangeHandler(m.top.config)
   end if
   m.top.ObserveField("config", m.messagePort)
 
-  if m.top.HasField("useRenderStitchedStream")
-    if m.top.useRenderStitchedStream <> Invalid
-      m.mxa.useRenderStitchedStreamHandler(m.top.useRenderStitchedStream)
-    end if
-    m.top.ObserveField("useRenderStitchedStream", m.messagePort)
+  if m.top.useRenderStitchedStream <> Invalid
+    m.mxa.useRenderStitchedStreamHandler(m.top.useRenderStitchedStream)
   end if
+  m.top.ObserveField("useRenderStitchedStream", m.messagePort)
 
-  if m.top.HasField("useSSAI")
-    if m.top.useSSAI <> Invalid
-      m.mxa.useSSAIHandler(m.top.useSSAI)
-    end if
-    m.top.ObserveField("useSSAI", m.messagePort)
+  if m.top.useSSAI <> Invalid
+    m.mxa.useSSAIHandler(m.top.useSSAI)
   end if
+  m.top.ObserveField("useSSAI", m.messagePort)
 
-  if m.top.HasField("disableAutomaticErrorTracking")
-    if m.top.disableAutomaticErrorTracking <> Invalid
-      m.mxa.disableAutomaticErrorTrackingHandler(m.top.disableAutomaticErrorTracking)
-    end if
-    m.top.ObserveField("disableAutomaticErrorTracking", m.messagePort)
+  if m.top.disableAutomaticErrorTracking <> Invalid
+    m.mxa.disableAutomaticErrorTrackingHandler(m.top.disableAutomaticErrorTracking)
   end if
+  m.top.ObserveField("disableAutomaticErrorTracking", m.messagePort)
 
-  if m.top.HasField("error")
-    if m.top.error <> Invalid
-      m.mxa.videoErrorHandler(m.top.error)
-    end if
-    m.top.ObserveField("error", m.messagePort)
+  if m.top.error <> Invalid
+    m.mxa.videoErrorHandler(m.top.error)
   end if
+  m.top.ObserveField("error", m.messagePort)
 
-  if m.top.HasField("cdn")
-    if m.top.cdn <> Invalid
-      m.mxa.cdnChangeHandler(m.top.cdn)
-    end if
-    m.top.ObserveField("cdn", m.messagePort)
+  if m.top.cdn <> Invalid
+    m.mxa.cdnChangeHandler(m.top.cdn)
   end if
+  m.top.ObserveField("cdn", m.messagePort)
 
-  if m.top.HasField("disablePlayheadRebufferTracking")
-    if m.top.disablePlayheadRebufferTracking <> Invalid
-      m.mxa.disablePlayheadRebufferTrackingHandler(m.top.disablePlayheadRebufferTracking)
-    end if
-    m.top.ObserveField("disablePlayheadRebufferTracking", m.messagePort)
+  if m.top.disablePlayheadRebufferTracking <> Invalid
+    m.mxa.disablePlayheadRebufferTrackingHandler(m.top.disablePlayheadRebufferTracking)
   end if
+  m.top.ObserveField("disablePlayheadRebufferTracking", m.messagePort)
 
-  if m.top.HasField("disableDecoderStats")
-    if m.top.disableDecoderStats <> Invalid
-      m.mxa.disableDecoderStatsHandler(m.top.disableDecoderStats)
-    end if
-    m.top.ObserveField("disableDecoderStats", m.messagePort)
+  if m.top.disableDecoderStats <> Invalid
+    m.mxa.disableDecoderStatsHandler(m.top.disableDecoderStats)
   end if
+  m.top.ObserveField("disableDecoderStats", m.messagePort)
 
-  if m.top.HasField("rebufferstart")
-    m.top.ObserveField("rebufferstart", m.messagePort)
-  end if
-  if m.top.HasField("rebufferend")
-    m.top.ObserveField("rebufferend", m.messagePort)
-  end if
+  m.top.ObserveField("rebufferstart", m.messagePort)
+  m.top.ObserveField("rebufferend", m.messagePort)
 
-  if m.top.HasField("playback_mode")
-    if m.top.playback_mode <> Invalid
-      m.mxa.playbackModeHandler(m.top.playback_mode)
-    end if
-    m.top.ObserveField("playback_mode", m.messagePort)
+  if m.top.playback_mode <> Invalid
+    m.mxa.playbackModeHandler(m.top.playback_mode)
   end if
+  m.top.ObserveField("playback_mode", m.messagePort)
 
-  if m.top.HasField("request")
-    m.top.ObserveField("request", m.messagePort)
-  end if
+  m.top.ObserveField("request", m.messagePort)
 
   m.pollTimer.ObserveField("fire", m.messagePort)
   m.beaconTimer.ObserveField("fire", m.messagePort)
@@ -316,42 +292,18 @@ function runBeaconLoop()
   m.top.UnobserveField("rafEvent")
   m.top.UnobserveField("video")
   m.top.UnobserveField("config")
-  if m.top.HasField("view")
-    m.top.UnobserveField("view")
-  end if
-  if m.top.HasField("useRenderStitchedStream")
-    m.top.UnobserveField("useRenderStitchedStream")
-  end if
-  if m.top.HasField("useSSAI")
-    m.top.UnobserveField("useSSAI")
-  end if
-  if m.top.HasField("disableAutomaticErrorTracking")
-    m.top.UnobserveField("disableAutomaticErrorTracking")
-  end if
-  if m.top.HasField("error")
-    m.top.UnobserveField("error")
-  end if
-  if m.top.HasField("cdn")
-    m.top.UnobserveField("cdn")
-  end if
-  if m.top.HasField("disablePlayheadRebufferTracking")
-    m.top.UnobserveField("disablePlayheadRebufferTracking")
-  end if
-  if m.top.HasField("disableDecoderStats")
-    m.top.UnobserveField("disableDecoderStats")
-  end if
-  if m.top.HasField("rebufferstart")
-    m.top.UnobserveField("rebufferstart")
-  end if
-  if m.top.HasField("rebufferend")
-    m.top.UnobserveField("rebufferend")
-  end if
-  if m.top.HasField("playback_mode")
-    m.top.UnobserveField("playback_mode")
-  end if
-  if m.top.HasField("request")
-    m.top.UnobserveField("request")
-  end if
+  m.top.UnobserveField("view")
+  m.top.UnobserveField("useRenderStitchedStream")
+  m.top.UnobserveField("useSSAI")
+  m.top.UnobserveField("disableAutomaticErrorTracking")
+  m.top.UnobserveField("error")
+  m.top.UnobserveField("cdn")
+  m.top.UnobserveField("disablePlayheadRebufferTracking")
+  m.top.UnobserveField("disableDecoderStats")
+  m.top.UnobserveField("rebufferstart")
+  m.top.UnobserveField("rebufferend")
+  m.top.UnobserveField("playback_mode")
+  m.top.UnobserveField("request")
   if m.top.video <> Invalid
     m.top.video.UnobserveField("position")
   end if
