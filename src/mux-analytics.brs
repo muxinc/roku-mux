@@ -854,6 +854,23 @@ function muxAnalytics() as Object
     if m._segmentRequestCount = Invalid then m._segmentRequestCount = 0
     m._segmentRequestCount++
     if videoSegment <> Invalid
+      ' Validate that request belongs to current view by comparing timestamps
+      ' If request_start < view_start, the request was initiated before the current view started
+      ' This means it's a stale request from a previous video during view transitions
+      if m._viewStartTimestamp <> Invalid AND videoSegment.downloadDuration <> Invalid
+        date = m._getDateTime()
+        now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+        requestStartTime = now - videoSegment.downloadDuration
+        if requestStartTime < m._viewStartTimestamp
+          ' Request started before current view - it's from a previous video          
+          print "[mux-analytics] DISCARDING stale request from previous view"
+          print "  request_start: " + Str(requestStartTime)
+          print "  view_start: " + Str(m._viewStartTimestamp)
+          print "  difference_ms: " + Str(m._viewStartTimestamp - requestStartTime)
+          return
+        end if
+      end if
+
       props = {}
       if videoSegment.segType <> Invalid
         if videoSegment.segType = 0
