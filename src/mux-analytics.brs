@@ -78,7 +78,7 @@ function runBeaconLoop()
     m.top.video.ObserveField("downloadedSegment", m.messagePort)
     m.top.video.ObserveField("streamingSegment", m.messagePort)
     m.top.video.ObserveField("position", m.messagePort)
-    if m.top.video.enableDecoderStats <> Invalid
+    if m.top.disableDecoderStats <> true AND m.top.video.enableDecoderStats <> Invalid
       m.top.video.enableDecoderStats = true
       m.top.video.ObserveField("decoderStats", m.messagePort)
     end if
@@ -205,7 +205,7 @@ function runBeaconLoop()
             m.top.video.ObserveField("downloadedSegment", m.messagePort)
             m.top.video.ObserveField("streamingSegment", m.messagePort)
             m.top.video.ObserveField("position", m.messagePort)
-            if m.top.video.enableDecoderStats <> Invalid
+            if m.top.disableDecoderStats <> true AND m.top.video.enableDecoderStats <> Invalid
               m.top.video.enableDecoderStats = true
               m.top.video.ObserveField("decoderStats", m.messagePort)
             end if
@@ -282,13 +282,20 @@ function runBeaconLoop()
   m.heartbeatTimer.UnobserveField("fire")
   m.pollTimer.UnobserveField("fire")
 
+  m.top.UnobserveField("rafEvent")
   m.top.UnobserveField("video")
   m.top.UnobserveField("config")
-  m.top.UnobserveField("control")
   m.top.UnobserveField("view")
   m.top.UnobserveField("useRenderStitchedStream")
   m.top.UnobserveField("useSSAI")
   m.top.UnobserveField("disableAutomaticErrorTracking")
+  m.top.UnobserveField("error")
+  m.top.UnobserveField("cdn")
+  m.top.UnobserveField("disablePlayheadRebufferTracking")
+  m.top.UnobserveField("rebufferstart")
+  m.top.UnobserveField("rebufferend")
+  m.top.UnobserveField("playback_mode")
+  m.top.UnobserveField("request")
   if m.top.video <> Invalid
     m.top.video.UnobserveField("position")
   end if
@@ -940,14 +947,19 @@ function muxAnalytics() as Object
   end sub
 
   prototype.configChangeHandler = sub(config as Object)
-    m._configProperties = config
+    ' convert property_key to env_key
+    if config.property_key <> Invalid and config.property_key <> ""
+      print "[mux-analytics] warning: 'property_key' is deprecated. Please use 'env_key' instead."
+      config.env_key = config.property_key
+      config.Delete("property_key")
+    end if
     if config.beaconCollectionDomain <> Invalid AND config.beaconCollectionDomain <> ""
       m.beaconUrl = "https://" + config.beaconCollectionDomain
     else if config.env_key <> Invalid AND config.env_key <> ""
       m.beaconUrl = m._createBeaconUrl(config.env_key)
-    else if config.property_key <> Invalid AND config.property_key <> ""
-      m.beaconUrl = m._createBeaconUrl(config.property_key)
     end if
+
+    m._configProperties = config
   end sub
 
   prototype.useRenderStitchedStreamHandler = sub(useRenderStitchedStream as Boolean)
@@ -988,6 +1000,10 @@ function muxAnalytics() as Object
       if error.errorMessage <> Invalid
         errorMessage = error.errorMessage
       end if
+      if error.player_error_message <> Invalid
+        errorMessage = error.player_error_message
+      end if
+      ' legacy support for a typo
       if error.player_error_messsage <> Invalid
         errorMessage = error.player_error_message
       end if
@@ -1801,10 +1817,10 @@ function muxAnalytics() as Object
     if m._configProperties <> Invalid
       newEvent.Append(m._configProperties)
     end if
-
-    if newEvent.property_key = Invalid OR newEvent.property_key = ""
+    ' Warn if env_key is not set
+    if newEvent.env_key = Invalid OR newEvent.env_key = ""
       if m._playerSequence <> Invalid AND m._playerSequence < 2
-        Print "[mux-analytics] warning property_key not set."
+        Print "[mux-analytics] warning env_key not set."
       end if
     end if
 

@@ -4,7 +4,7 @@ sub init()
   m.video = m.top.FindNode("MainVideo")
 
   muxConfig = {
-    property_key: "<YOUR PROPERTY KEY>",
+    env_key: "<YOUR ENV KEY>",
     player_name: "Reset Player"
   }
   m.mux = m.top.FindNode("mux")
