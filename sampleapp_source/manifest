@@ -18,7 +18,7 @@ ui_resolutions=hd
 #Dry Run mode. Set to true to disable network requests
 mux_dry_run=false
 #base url of all beacon requests
-mux_base_url=https://img.litix.io
+# mux_base_url=https://img.litix.io
 #Set minification to false for readable metrics. These will not be recognised by mux.
 mux_minification=true
 #Display events in the log as they are created. Values: full | partial | none
