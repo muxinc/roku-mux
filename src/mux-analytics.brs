@@ -902,6 +902,7 @@ function muxAnalytics() as Object
       end if
       if videoSegment.segUrl <> Invalid
         props.request_hostname = m._getHostname(videoSegment.segUrl)
+        props.request_url = videoSegment.segUrl
       end if
       if videoSegment.status <> Invalid
         if videoSegment.status = 0
@@ -1218,6 +1219,9 @@ function muxAnalytics() as Object
 
       m._addEventToQueue(m._createEvent("requestcompleted", props))
     else if requestVariant = "failed"
+      if message.request_url <> Invalid
+        props.request_url = message.request_url
+      end if
       if message.request_error <> Invalid
         props.request_error = message.request_error
       end if
