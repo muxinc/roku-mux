@@ -1242,6 +1242,11 @@ function muxAnalytics() as Object
     ' Only pull the pieces of data we care about
     ' Previous instructions passed the full adIface in, which has a circular reference in some cases
     adMetadata = {}
+    ' copy over the `mux` object so we can pull the values later
+    adMetadata.mux = {}
+    if ctx.mux <> Invalid
+      adMetadata.mux = ctx.mux
+    end if
     if obj <> Invalid
       if obj.adurl <> Invalid
         adMetadata.adTagUrl = obj.adurl
@@ -1988,6 +1993,11 @@ function muxAnalytics() as Object
       if adTagUrl <> Invalid AND adTagUrl <> ""
         props.view_preroll_ad_tag_hostname = m._getHostname(adTagUrl)
         props.view_preroll_ad_tag_domain = m._getDomain(adTagUrl)
+      end if
+      if adData.mux <> Invalid
+        if adData.mux.ad_type <> Invalid
+          props.ad_type = adData.mux.ad_type
+        end if
       end if
     end if
     return props
