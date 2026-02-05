@@ -1,5 +1,5 @@
 {
-  "version": "2.5.0",
+  "version": "2.5.1",
   "main": "./src/mux-analytics.brs",
   "dependencies": {
     "@rokucommunity/bslint": "^0.8.9",
