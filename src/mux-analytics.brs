@@ -445,7 +445,11 @@ function muxAnalytics() as Object
     m.SEEK_THRESHOLD = systemConfig.SEEK_THRESHOLD
     m.MAX_API_ENCRYPTION_REQUESTS_PER_VIEW = 5
 
-    m._configProperties = customerConfig
+    if customerConfig <> Invalid
+      m._configProperties = customerConfig
+    else
+      m._configProperties = {}
+    end if
 
     m._eventQueue = []
     m._seekThreshold = m.SEEK_THRESHOLD / 1000
@@ -1059,11 +1063,15 @@ function muxAnalytics() as Object
       return
     end if
     props.player_playback_mode = playbackMode.player_playback_mode
+    ' Remember the playback mode for future events in the config
+    if m._configProperties <> Invalid
+      m._configProperties.player_playback_mode = playbackMode.player_playback_mode
+    end if
 
     if playbackMode.player_playback_mode_data <> Invalid
       ' ParseJson returns invalid if provided string is not parse-able JSON
       parsedData = ParseJson(playbackMode.player_playback_mode_data)
-      if parsedData = Invalid then
+      if parsedData = Invalid
         print "[mux-analytics] warning: player_playback_mode_data is not valid JSON"
         return
       end if
@@ -1944,7 +1952,7 @@ function muxAnalytics() as Object
         end if
       end if
 
-      if (content.URL <> Invalid and content.URL <> "")
+      if content.URL <> Invalid and content.URL <> ""
         props.video_source_url = content.URL
         props.video_source_hostname = m._getHostname(content.URL)
         props.video_source_domain = m._getDomain(content.URL)
@@ -2652,7 +2660,7 @@ function muxAnalytics() as Object
     if a = Invalid then a = 0
     if b = Invalid then b = 0
 
-    if a < b then
+    if a < b
       return a
     else
       return b
@@ -2663,7 +2671,7 @@ function muxAnalytics() as Object
     if a = Invalid then a = 0
     if b = Invalid then b = 0
 
-    if a < b then
+    if a < b
       return b
     else
       return a
@@ -2671,7 +2679,7 @@ function muxAnalytics() as Object
   end function
 
   prototype._safeAdd = function(var, addValue) as object
-    if var = Invalid then
+    if var = Invalid
       return addValue
     else
       return var + addValue
