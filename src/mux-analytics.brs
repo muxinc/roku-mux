@@ -1279,8 +1279,12 @@ function muxAnalytics() as Object
     date = m._getDateTime()
     now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
 
+    ' If we're handling ad events, we'll need these eventually, so guarantee they're initialized
     if m._adWatchTime = Invalid
       m._adWatchTime = 0
+    end if
+    if m._totalAdWatchTime = Invalid
+      m._totalAdWatchTime = 0
     end if
 
     m._Flag_isPaused = (eventType = "Pause")
@@ -1381,8 +1385,12 @@ function muxAnalytics() as Object
     date = m._getDateTime()
     now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
 
+    ' If we're handling ad events, we'll need these eventually, so guarantee they're initialized
     if m._adWatchTime = Invalid
       m._adWatchTime = 0
+    end if
+    if m._totalAdWatchTime = Invalid
+      m._totalAdWatchTime = 0
     end if
 
     if eventType = "AdStateChange"
