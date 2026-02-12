@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "2.5.2"
+  m.MUX_SDK_VERSION = "2.5.3"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
   
