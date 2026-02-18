@@ -648,6 +648,10 @@ function muxAnalytics() as Object
         if videoState = "buffering"
           m._addEventToQueue(m._createEvent("pause"))
         end if
+
+        print "[ heatmap ] detected seek, emitting seeking event." 
+        m._dumpPlayheadTimeVars()
+
         m._addEventToQueue(m._createEvent("seeking"))
         date = m._getDateTime()
         m._viewSeekStartTimeStamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
@@ -681,6 +685,10 @@ function muxAnalytics() as Object
 
       if m._Flag_lastVideoState = "buffering" and m._Flag_automaticRebufferTracking
         if m._Flag_RebufferingStarted = true
+
+          print "[ heatmap ] ending rebuffering:"
+          m._dumpPlayheadTimeVars()
+
           m._addEventToQueue(m._createEvent("rebufferend"))
           m._Flag_RebufferingStarted = false
         end if
@@ -696,6 +704,11 @@ function muxAnalytics() as Object
         if m._viewSeekDuration <> Invalid
           m._viewSeekDuration = m._viewSeekDuration + (now - seekStartTs)
         end if
+
+        ' todo - remove debug logs
+        print "[ heatmap ] ending seek:"
+        m._dumpPlayheadTimeVars()
+
         m._addEventToQueue(m._createEvent("seeked"))
         m._Flag_isSeeking = false
 
@@ -726,6 +739,10 @@ function muxAnalytics() as Object
       completedStreamInfo = m.video.completedStreamInfo
       if completedStreamInfo <> invalid
         if completedStreamInfo.isFullResult
+
+          print "[ heatmap ] video finished, emitting ended event"
+          m._dumpPlayheadTimeVars()
+
           m._addEventToQueue(m._createEvent("ended"))
         end if
       end if
@@ -812,6 +829,9 @@ function muxAnalytics() as Object
 
   prototype.videoContentIndexChangeHandler = sub(contentIndex as integer)
     if contentIndex > 0
+      print "[ heatmap ] Changed Content Index, sending ended"
+      m._dumpPlayheadTimeVars()
+
       m._addEventToQueue(m._createEvent("ended"))
       m._endView(true)
       m._startView(true)
@@ -1298,6 +1318,9 @@ function muxAnalytics() as Object
         m._addEventToQueue(m._createEvent("adplaying"))
       end if
     else if eventType = "PodComplete"
+      print "[ heatmap ] rafEventHandler: ad pod complete, emitting adbreakend event"
+      m._dumpPlayheadTimeVars()
+
       m._addEventToQueue(m._createEvent("adbreakend"))
       m._Flag_FailedAdsErrorSet = false
       ' In the case that this is SSAI, we need to signal a play and playing event
@@ -1333,11 +1356,19 @@ function muxAnalytics() as Object
       m._advertProperties = m._getAdvertProperties(ctx)
       m._adWatchTime = 0
       m._lastAdResumeTime = now
+
+      print "[ heatmap ] rafEventHandler 'Start' event: adplaying"
+      m._dumpPlayheadTimeVars()
+
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Resume"
       m._lastAdResumeTime = now
       m._advertProperties = m._getAdvertProperties(ctx)
+
+      print "[ heatmap ] rafEventHandler 'Resume' event: adplaying"
+      m._dumpPlayheadTimeVars()
+
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Complete"
@@ -1456,12 +1487,20 @@ function muxAnalytics() as Object
         m._Flag_rssAdEnded = false
         m._adWatchTime = 0
         m._lastAdResumeTime = now
+
+        print "[ heatmap ] renderStitchStreamEventHandler: adplaying"
+        m._dumpPlayheadTimeVars()
+
         m._addEventToQueue(m._createEvent("adplay"))
         m._addEventToQueue(m._createEvent("adplaying"))
       end if
     else if eventType = "PodComplete"
       m._Flag_rssInAdBreak = false
       m._Flag_isPaused = true
+
+      print "[ heatmap ] renderStitchStreamEventHandler: ad pod complete, emitting adbreakend event"
+      m._dumpPlayheadTimeVars()
+
       m._addEventToQueue(m._createEvent("adbreakend"))
     else if eventType = "ContentPosition"
       ' we have a special case here to track the start of content after an ad break
@@ -1469,6 +1508,10 @@ function muxAnalytics() as Object
         if m._Flag_isPaused
           m._Flag_isPaused = false
           m._triggerPlayEvent()
+
+          print "[ heatmap ] posting `playing` after ad break:"
+          m._dumpPlayheadTimeVars()
+
           m._addEventToQueue(m._createEvent("playing"))
         end if
       end if
@@ -1489,6 +1532,10 @@ function muxAnalytics() as Object
             m._Flag_isPaused = false
             m._triggerPlayEvent()
           end if
+
+          print "[ heatmap ] posting `playing` on content state change"
+          m._dumpPlayheadTimeVars()
+
           m._addEventToQueue(m._createEvent("playing"))
         else if state = "paused"
           m._Flag_isPaused = true
