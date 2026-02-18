@@ -2694,5 +2694,21 @@ function muxAnalytics() as Object
     end if
   end function
 
+  ' todo - remove this function probably
+  prototype._dumpPlayheadTimeVars = sub() 
+    if m._playerPlayheadTime <> Invalid
+      print "_playerPlayheadTime: " + StrI(m._playerPlayheadTime, 10) + " seconds"
+    else 
+      print "_playerPlayheadTime is invalid"
+    end if
+
+    if m._Flag_lastReportedPosition <> Invalid
+      print "_Flag_lastReportedPosition: " + StrI(m._Flag_lastReportedPosition, 10) + " seconds"
+    else 
+      print "_Flag_lastReportedPosition is invalid"
+    end if
+
+  end sub
+
   return prototype
 end function
