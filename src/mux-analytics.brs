@@ -751,6 +751,7 @@ function muxAnalytics() as Object
       print "[heatmap] Emitting playing event after pause (for whatever reason)"
       m._dumpPlayheadTimeVars()
 
+      m._updatePlayerPlayheadRendevous()
       m._startPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("playing"))
 
@@ -766,6 +767,7 @@ function muxAnalytics() as Object
           print "[heatmap] video finished, emitting ended event"
           m._dumpPlayheadTimeVars()
 
+          m._updatePlayerPlayheadRendevous()
           m._endPlaybackRange(m._playerPlayheadTime)
           m._addEventToQueue(m._createEvent("ended"))
         end if
@@ -873,6 +875,7 @@ function muxAnalytics() as Object
       print "[heatmap] Content index changed, emitting playing"
       m._dumpPlayheadTimeVars()
 
+      m._updatePlayerPlayheadRendevous()
       m._startPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("playing"))
     end if
@@ -1361,6 +1364,7 @@ function muxAnalytics() as Object
         print "[heatmap] rafEventHandler: ad pod complete with SSAI, emitting adbreakend event"
         m._dumpPlayheadTimeVars()
 
+        m._updatePlayerPlayheadRendevous()
         m._startPlaybackRange(m._playerPlayheadTime)
         m._addEventToQueue(m._createEvent("playing"))
       end if
@@ -1567,6 +1571,7 @@ function muxAnalytics() as Object
           print "[heatmap] posting playing after ad break:"
           m._dumpPlayheadTimeVars()
 
+          m._updatePlayerPlayheadRendevous()
           m._startPlaybackRange(m._playerPlayheadTime)
           m._addEventToQueue(m._createEvent("playing"))
         end if
@@ -1592,6 +1597,7 @@ function muxAnalytics() as Object
           print "[heatmap] posting `playing` on content state change"
           m._dumpPlayheadTimeVars()
 
+          m._updatePlayerPlayheadRendevous()
           m._startPlaybackRange(m._playerPlayheadTime)
           m._addEventToQueue(m._createEvent("playing"))
         else if state = "paused"
@@ -1865,6 +1871,7 @@ function muxAnalytics() as Object
       print "[heatmap] Ending View (last chance to end current range)"
       m._dumpPlayheadTimeVars()
           
+      m._updatePlayerPlayheadRendevous()
       m._endPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("viewend"))
       m._inView = false
@@ -2381,6 +2388,18 @@ function muxAnalytics() as Object
 
     return "unknown"
   end function
+
+  ' use only if you need very accurate timing (better than ~0.5sec)! Causes a thread rendevous
+  prototype._updatePlayerPlayheadRendevous = sub()
+    if m.video <> Invalid
+      playhead = m.video.position
+      if playhead <> Invalid
+        m._playerPlayheadTime = playhead
+      end if
+    else 
+      print "[mux-analytics] Warning: Attempted to update playerPlayheadTime but video node is invalid"
+    end if
+  end sub
 
   prototype._stringifiedPlaybackRanges = function(ranges as Object) as Object
     if ranges = Invalid OR ranges.count() = 0
