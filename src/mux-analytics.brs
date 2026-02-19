@@ -2401,23 +2401,23 @@ function muxAnalytics() as Object
     return result
   end function
 
-  prototype._startPlaybackRange = sub(startPlayheadTimeMs as Float)
-    if startPlayheadTimeMs = Invalid 
+  prototype._startPlaybackRange = sub(startPlayheadTimeSec as Float)
+    if startPlayheadTimeSec = Invalid 
       print "[mux-analytics] Warning: Attempted to start playback range with invalid start time"
       return
     end if
 
     ' only start a new playback range if one is not already open.
     if m._currentPlaybackRangeStart = Invalid
-      m._currentPlaybackRangeStart = startPlayheadTimeMs
+      m._currentPlaybackRangeStart = startPlayheadTimeSec
     else 
-      print "[mux-analytics] ignoring startPlaybackRange at " + startPlayheadTimeMs + ". range already open at " + m._currentPlaybackRangeStart
+      print "[mux-analytics] ignoring startPlaybackRange at " + startPlayheadTimeSec + ". range already open at " + m._currentPlaybackRangeStart
     end if
   end sub
 
-  prototype._endPlaybackRange = sub(endingPlayheadTimeMs as Float)
-    if m._currentPlaybackRangeStart <> Invalid AND endingPlayheadTimeMs <> Invalid
-      range = m._createPlaybackRange(m._currentPlaybackRangeStart, endingPlayheadTimeMs)
+  prototype._endPlaybackRange = sub(endingPlayheadTimeSec as Float)
+    if m._currentPlaybackRangeStart <> Invalid AND endingPlayheadTimeSec <> Invalid
+      range = m._createPlaybackRange(m._currentPlaybackRangeStart, endingPlayheadTimeSec)
       if range <> Invalid
         m._playbackRanges.push(range)
       end if
@@ -2428,15 +2428,15 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype._createPlaybackRange = function(startMs as Float, endMs as Float) as Object
-    if startMs = Invalid OR endMs = Invalid OR startMs >= endMs
+  prototype._createPlaybackRange = function(startSec as Float, endSec as Float) as Object
+    if startSec = Invalid OR endSec = Invalid OR startSec >= endSec
       print "Invalid start or end time for playback range"
       return Invalid
     end if
 
     range = {
-      start: startMs,
-      end: endMs
+      start: startSec,
+      end: endSec
     }
 
     return range
