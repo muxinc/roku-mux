@@ -2423,7 +2423,7 @@ function muxAnalytics() as Object
       if range.start <> Invalid AND range.end <> Invalid
         startMs = m._floatSecsToMillis(range.start)
         endMs = m._floatSecsToMillis(range.end)
-        rangeStr = StrI(startMs) + ":" + StrI(endMs)
+        rangeStr = startMs.ToStr() + ":" + endMs.ToStr()
         print "[heatmap] Adding playback range to event: " + rangeStr
         result.push(rangeStr)
       end if
