@@ -1341,6 +1341,9 @@ function muxAnalytics() as Object
 
     m._Flag_isPaused = (eventType = "Pause")
     if eventType = "PodStart"
+      m._updatePlayerPlayheadRendevous()
+      m._endPlaybackRange(m._playerPlayheadTime)
+
       m._advertProperties = m._getAdvertProperties(adMetadata)
       m._addEventToQueue(m._createEvent("adbreakstart"))
       ' In the case that this is SSAI, we need to signal an adplay and adplaying event
@@ -1352,7 +1355,14 @@ function muxAnalytics() as Object
     else if eventType = "PodComplete"
 
       print "[heatmap] rafEventHandler: ad pod complete, emitting adbreakend event"
+      print "[heatmap] rafEventHandler: isPaused?"
+      print m._Flag_isPaused
       m._dumpPlayheadTimeVars()
+
+      if m._Flag_isPaused <> false 
+        m._updatePlayerPlayheadRendevous()
+        m._startPlaybackRange(m._playerPlayheadTime)
+      end if
 
       m._addEventToQueue(m._createEvent("adbreakend"))
       m._Flag_FailedAdsErrorSet = false
@@ -2401,6 +2411,7 @@ function muxAnalytics() as Object
     end if
   end sub
 
+  ' return format: Array of strings in the format "startTime:endTime" in milliseconds
   prototype._stringifiedPlaybackRanges = function(ranges as Object) as Object
     if ranges = Invalid OR ranges.count() = 0
       return Invalid
@@ -2428,16 +2439,19 @@ function muxAnalytics() as Object
 
     ' only start a new playback range if one is not already open.
     if m._currentPlaybackRangeStart = Invalid
+      print "[heatmap] --Starting new playback range at playhead time (sec): " + Str(startPlayheadTimeSec)
       m._currentPlaybackRangeStart = startPlayheadTimeSec
     else 
-      print "[mux-analytics] ignoring startPlaybackRange at " + startPlayheadTimeSec + ". range already open at " + m._currentPlaybackRangeStart
+      print "[mux-analytics] ignoring startPlaybackRange at " + Str(startPlayheadTimeSec) + ". range already open at " + Str(m._currentPlaybackRangeStart)
     end if
   end sub
 
   prototype._endPlaybackRange = sub(endingPlayheadTimeSec as Float)
     if m._currentPlaybackRangeStart <> Invalid AND endingPlayheadTimeSec <> Invalid
+      print "[heatmap] --Ending playback range at playhead time (sec): " + Str(endingPlayheadTimeSec)
       range = m._createPlaybackRange(m._currentPlaybackRangeStart, endingPlayheadTimeSec)
       if range <> Invalid
+        print "[heatmap] --Adding playback range: " + Str(range.start) + " to " + Str(range.end)
         m._playbackRanges.push(range)
       end if
 
