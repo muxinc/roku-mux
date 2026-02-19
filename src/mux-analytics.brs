@@ -661,7 +661,7 @@ function muxAnalytics() as Object
         m._dumpPlayheadTimeVars()
 
         if m._playheadAtLastPause <> Invalid
-          m._endPlaybackRange()
+          m._endPlaybackRange(m._playheadAtLastPause)
         end if
 
         m._addEventToQueue(m._createEvent("seeking"))
@@ -2382,7 +2382,7 @@ function muxAnalytics() as Object
     return "unknown"
   end function
 
-  prototype._stringifiedPlaybackRanges = function(ranges as Object) as String
+  prototype._stringifiedPlaybackRanges = function(ranges as Object) as Object
     if ranges = Invalid OR ranges.count() = 0
       return Invalid
     end if
@@ -2391,7 +2391,9 @@ function muxAnalytics() as Object
     result = []
     for each range in ranges
       if range.start <> Invalid AND range.end <> Invalid
-        rangeStr = Int(range.start) + ":" + Int(range.end)
+        startMs = m._floatSecsToMillis(range.start)
+        endMs = m._floatSecsToMillis(range.end)
+        rangeStr = StrI(startMs) + ":" + StrI(endMs)
         print "[heatmap] Adding playback range to event: " + rangeStr
         result.push(rangeStr)
       end if
@@ -2399,21 +2401,21 @@ function muxAnalytics() as Object
     return result
   end function
 
-  prototype._startPlaybackRange = sub(startPlayheadTimeMs as Integer)
+  prototype._startPlaybackRange = sub(startPlayheadTimeMs as Float)
     if startPlayheadTimeMs = Invalid 
       print "[mux-analytics] Warning: Attempted to start playback range with invalid start time"
       return
     end if
 
     ' only start a new playback range if one is not already open.
-    if m._currentPlaybackRangeStart <> Invalid
+    if m._currentPlaybackRangeStart = Invalid
       m._currentPlaybackRangeStart = startPlayheadTimeMs
     else 
       print "[mux-analytics] ignoring startPlaybackRange at " + startPlayheadTimeMs + ". range already open at " + m._currentPlaybackRangeStart
     end if
   end sub
 
-  prototype._endPlaybackRange = sub(endingPlayheadTimeMs as Integer)
+  prototype._endPlaybackRange = sub(endingPlayheadTimeMs as Float)
     if m._currentPlaybackRangeStart <> Invalid AND endingPlayheadTimeMs <> Invalid
       range = m._createPlaybackRange(m._currentPlaybackRangeStart, endingPlayheadTimeMs)
       if range <> Invalid
@@ -2426,7 +2428,7 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype._createPlaybackRange = function(startMs as Integer, endMs as Integer) as Object
+  prototype._createPlaybackRange = function(startMs as Float, endMs as Float) as Object
     if startMs = Invalid OR endMs = Invalid OR startMs >= endMs
       print "Invalid start or end time for playback range"
       return Invalid
@@ -2849,6 +2851,14 @@ function muxAnalytics() as Object
   ' ' //////////////////////////////////////////////////////////////
   ' ' UTILS METHODS
   ' ' //////////////////////////////////////////////////////////////
+
+  prototype._floatSecsToMillis = function(secs as Float) as Integer 
+    if secs = Invalid
+      return Invalid
+    else
+      return Int(secs * 1000)
+    end if
+  end function
 
   prototype._min = function(a, b) as object
     if a = Invalid then a = 0
