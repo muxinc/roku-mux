@@ -2561,6 +2561,13 @@ function muxAnalytics() as Object
   end sub
 
   prototype._logEvent = sub(event = {} as Object, subtype = "" as String, title = "EVENT" as String)
+    if event.video_playback_range <> Invalid
+      print "---- playback ranges: "
+      print event.video_playback_range
+    else
+      print "---- playback ranges: INVALID"
+    end if
+
     if m.debugEvents = "none" then return
     tot = m.loggingPrefix + title + " " + event.event
     if m.debugEvents = "full"
