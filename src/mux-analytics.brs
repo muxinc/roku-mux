@@ -751,7 +751,9 @@ function muxAnalytics() as Object
       print "[heatmap] Emitting playing event after pause (for whatever reason)"
       m._dumpPlayheadTimeVars()
 
+      m._startPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("playing"))
+
       m._Flag_isSeeking = false
       m._Flag_atLeastOnePlayEventForContent = true
     else if videoState = "stopped"
@@ -764,6 +766,7 @@ function muxAnalytics() as Object
           print "[heatmap] video finished, emitting ended event"
           m._dumpPlayheadTimeVars()
 
+          m._endPlaybackRange(m._playerPlayheadTime)
           m._addEventToQueue(m._createEvent("ended"))
         end if
       end if
@@ -870,6 +873,7 @@ function muxAnalytics() as Object
       print "[heatmap] Content index changed, emitting playing"
       m._dumpPlayheadTimeVars()
 
+      m._startPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("playing"))
     end if
   end sub
@@ -1357,6 +1361,7 @@ function muxAnalytics() as Object
         print "[heatmap] rafEventHandler: ad pod complete with SSAI, emitting adbreakend event"
         m._dumpPlayheadTimeVars()
 
+        m._startPlaybackRange(m._playerPlayheadTime)
         m._addEventToQueue(m._createEvent("playing"))
       end if
     else if eventType = "Impression"
@@ -1562,6 +1567,7 @@ function muxAnalytics() as Object
           print "[heatmap] posting playing after ad break:"
           m._dumpPlayheadTimeVars()
 
+          m._startPlaybackRange(m._playerPlayheadTime)
           m._addEventToQueue(m._createEvent("playing"))
         end if
       end if
@@ -1586,6 +1592,7 @@ function muxAnalytics() as Object
           print "[heatmap] posting `playing` on content state change"
           m._dumpPlayheadTimeVars()
 
+          m._startPlaybackRange(m._playerPlayheadTime)
           m._addEventToQueue(m._createEvent("playing"))
         else if state = "paused"
           m._Flag_isPaused = true
@@ -1858,6 +1865,7 @@ function muxAnalytics() as Object
       print "[heatmap] Ending View (last chance to end current range)"
       m._dumpPlayheadTimeVars()
           
+      m._endPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("viewend"))
       m._inView = false
       m._viewId = Invalid
@@ -2391,10 +2399,17 @@ function muxAnalytics() as Object
     return result
   end function
 
-  prototype._startPlaybackRange = sub()
+  prototype._startPlaybackRange = sub(startPlayheadTimeMs as Integer)
+    if startPlayheadTimeMs = Invalid 
+      print "[mux-analytics] Warning: Attempted to start playback range with invalid start time"
+      return
+    end if
+
     ' only start a new playback range if one is not already open.
     if m._currentPlaybackRangeStart <> Invalid
-      m._currentPlaybackRangeStart = m._playerPlayheadTime
+      m._currentPlaybackRangeStart = startPlayheadTimeMs
+    else 
+      print "[mux-analytics] ignoring startPlaybackRange at " + startPlayheadTimeMs + ". range already open at " + m._currentPlaybackRangeStart
     end if
   end sub
 
