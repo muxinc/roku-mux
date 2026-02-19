@@ -275,7 +275,7 @@ function runBeaconLoop()
   end while
   m.beaconTimer.control = "stop"
   m.heartbeatTimer.control = "stop"
-  m._Flag_heartbeatTimerRunning = false
+  m.mxa._Flag_heartbeatTimerRunning = false
   m.pollTimer.control = "stop"
 
   m.beaconTimer.UnobserveField("fire")
