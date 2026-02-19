@@ -1793,7 +1793,10 @@ function muxAnalytics() as Object
       m._requestCompletedCount = 0
       m._totalLatency = 0
 
-      ' todo - somewhere in this function, is a good time to start the first playhead range
+      ' todo - somewhere in this function, is a good time to start the first playhead range (eg, right here)
+      m._playbackRanges = []
+      m._currentPlaybackRangeStart = Invalid
+      
       print "[heatmap] setting _Flag_lastReportedPosition to 0 during startView"
       m._Flag_lastReportedPosition = 0
       m._Flag_atLeastOnePlayEventForContent = false
@@ -2352,6 +2355,40 @@ function muxAnalytics() as Object
     end if
 
     return "unknown"
+  end function
+
+  prototype._startPlaybackRange = sub()
+    ' only start a new playback range if one is not already open.
+    if m._currentPlaybackRangeStart <> Invalid
+      m._currentPlaybackRangeStart = m._playerPlayheadTime
+    end if
+  end sub
+
+  prototype._endPlaybackRange = sub()
+    if m._currentPlaybackRangeStart <> Invalid AND m._playerPlayheadTime <> Invalid
+      range = m._createPlaybackRange(m._currentPlaybackRangeStart, m._playerPlayheadTime)
+      if range <> Invalid
+        m._playbackRanges.push(range)
+      end if
+
+      m._currentPlaybackRangeStart = Invalid
+    else 
+      print "[mux-analytics] Warning: Attempted to end playback range with invalid start or end time"
+    end if
+  end sub
+
+  prototype._createPlaybackRange = function(startMs as Integer, endMs as Integer) as Object
+    if startMs = Invalid OR endMs = Invalid OR startMs >= endMs
+      print "Invalid start or end time for playback range"
+      return Invalid
+    end if
+
+    range = {
+      start: startMs,
+      end: endMs
+    }
+
+    return range
   end function
 
   prototype._setCookieData = sub(data as Object)
