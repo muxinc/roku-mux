@@ -486,6 +486,8 @@ function muxAnalytics() as Object
     m._adWatchTime = Invalid
     m._cumulativePlayingTime = Invalid
     m._lastAdResumeTime = Invalid
+    ' Specifically means playhead when the video node sent a 'paused' state, not synthetic pause events we trigger
+    m._playheadAtLastPause = Invalid
 
     m._lastSourceWidth = Invalid
     m._lastSourceHeight = Invalid
@@ -648,6 +650,11 @@ function muxAnalytics() as Object
         if videoState = "buffering"
           m._addEventToQueue(m._createEvent("pause"))
         end if
+
+        if m._playheadAtLastPause <> Invalid
+          m._endPlaybackRange(m._playheadAtLastPause)
+        end if
+
         m._addEventToQueue(m._createEvent("seeking"))
         date = m._getDateTime()
         m._viewSeekStartTimeStamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
@@ -675,12 +682,15 @@ function muxAnalytics() as Object
         end if
       end if
     else if videoState = "paused"
+      m._playheadAtLastPause = m._playerPlayheadTime
+
       m._addEventToQueue(m._createEvent("pause"))
     else if videoState = "playing"
       m._videoProperties = m._getVideoProperties(m.video)
 
       if m._Flag_lastVideoState = "buffering" and m._Flag_automaticRebufferTracking
         if m._Flag_RebufferingStarted = true
+
           m._addEventToQueue(m._createEvent("rebufferend"))
           m._Flag_RebufferingStarted = false
         end if
@@ -696,6 +706,7 @@ function muxAnalytics() as Object
         if m._viewSeekDuration <> Invalid
           m._viewSeekDuration = m._viewSeekDuration + (now - seekStartTs)
         end if
+
         m._addEventToQueue(m._createEvent("seeked"))
         m._Flag_isSeeking = false
 
@@ -717,7 +728,11 @@ function muxAnalytics() as Object
       if m._Flag_lastVideoState = "paused"
         m._addEventToQueue(m._createEvent("play"))
       end if
+
+      m._updatePlayerPlayheadRendevous()
+      m._startPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("playing"))
+
       m._Flag_isSeeking = false
       m._Flag_atLeastOnePlayEventForContent = true
     else if videoState = "stopped"
@@ -726,6 +741,9 @@ function muxAnalytics() as Object
       completedStreamInfo = m.video.completedStreamInfo
       if completedStreamInfo <> invalid
         if completedStreamInfo.isFullResult
+
+          m._updatePlayerPlayheadRendevous()
+          m._endPlaybackRange(m._playerPlayheadTime)
           m._addEventToQueue(m._createEvent("ended"))
         end if
       end if
@@ -825,6 +843,9 @@ function muxAnalytics() as Object
           end if
         end if
       end if
+
+      m._updatePlayerPlayheadRendevous()
+      m._startPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("playing"))
     end if
   end sub
@@ -1296,6 +1317,10 @@ function muxAnalytics() as Object
         m._lastAdResumeTime = now
         m._addEventToQueue(m._createEvent("adplay"))
         m._addEventToQueue(m._createEvent("adplaying"))
+      else 
+        ' For CSAI, end the playback range, since CSAI ads have their own playhead
+        m._updatePlayerPlayheadRendevous()
+        m._endPlaybackRange(m._playerPlayheadTime)
       end if
     else if eventType = "PodComplete"
       m._addEventToQueue(m._createEvent("adbreakend"))
@@ -1304,7 +1329,14 @@ function muxAnalytics() as Object
       if m._Flag_useSSAI = true
         m._Flag_isPaused = false
         m._triggerPlayEvent()
+ 
         m._addEventToQueue(m._createEvent("playing"))
+      else 
+        ' for CSAI, we need to restart the playback range
+        if m._Flag_isPaused <> false 
+          m._updatePlayerPlayheadRendevous()
+          m._startPlaybackRange(m._playerPlayheadTime)
+        end if
       end if
     else if eventType = "Impression"
       m._addEventToQueue(m._createEvent("adimpression"))
@@ -1333,11 +1365,13 @@ function muxAnalytics() as Object
       m._advertProperties = m._getAdvertProperties(ctx)
       m._adWatchTime = 0
       m._lastAdResumeTime = now
+
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Resume"
       m._lastAdResumeTime = now
       m._advertProperties = m._getAdvertProperties(ctx)
+
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Complete"
@@ -1345,6 +1379,7 @@ function muxAnalytics() as Object
         m._adWatchTime += m._max(0, now - m._lastAdResumeTime)
         m._lastAdResumeTime = Invalid
       end if
+
       m._totalAdWatchTime += m._adWatchTime
       m._addEventToQueue(m._createEvent("adended"))
     else if eventType = "NoAdsError"
@@ -1401,11 +1436,13 @@ function muxAnalytics() as Object
         ' our ad break here if we're not already in one
         if not m._Flag_rssInAdBreak
           m._Flag_rssInAdBreak = true
+
           m._addEventToQueue(m._createEvent("adbreakstart"))
         end if
 
         ' and always trigger adplay
         m._Flag_isPaused = false
+
         m._addEventToQueue(m._createEvent("adplay"))
       else if state = "playing"
         ' in the playing state, if we are resuming, we need adplay first
@@ -1437,6 +1474,7 @@ function muxAnalytics() as Object
           m._Flag_isPaused = true
           m._addEventToQueue(m._createEvent("pause"))
         end if
+
         m._addEventToQueue(m._createEvent("adbreakstart"))
       end if
     else if eventType = "Complete"
@@ -1446,6 +1484,7 @@ function muxAnalytics() as Object
         m._adWatchTime += m._max(0, now - m._lastAdResumeTime)
         m._lastAdResumeTime = Invalid
       end if
+
       m._totalAdWatchTime += m._adWatchTime
       m._addEventToQueue(m._createEvent("adended"))
     else if eventType = "Impression"
@@ -1456,12 +1495,14 @@ function muxAnalytics() as Object
         m._Flag_rssAdEnded = false
         m._adWatchTime = 0
         m._lastAdResumeTime = now
+
         m._addEventToQueue(m._createEvent("adplay"))
         m._addEventToQueue(m._createEvent("adplaying"))
       end if
     else if eventType = "PodComplete"
       m._Flag_rssInAdBreak = false
       m._Flag_isPaused = true
+
       m._addEventToQueue(m._createEvent("adbreakend"))
     else if eventType = "ContentPosition"
       ' we have a special case here to track the start of content after an ad break
@@ -1469,6 +1510,9 @@ function muxAnalytics() as Object
         if m._Flag_isPaused
           m._Flag_isPaused = false
           m._triggerPlayEvent()
+
+          m._updatePlayerPlayheadRendevous()
+          m._startPlaybackRange(m._playerPlayheadTime)
           m._addEventToQueue(m._createEvent("playing"))
         end if
       end if
@@ -1489,6 +1533,9 @@ function muxAnalytics() as Object
             m._Flag_isPaused = false
             m._triggerPlayEvent()
           end if
+
+          m._updatePlayerPlayheadRendevous()
+          m._startPlaybackRange(m._playerPlayheadTime)
           m._addEventToQueue(m._createEvent("playing"))
         else if state = "paused"
           m._Flag_isPaused = true
@@ -1707,6 +1754,9 @@ function muxAnalytics() as Object
       m._requestCompletedCount = 0
       m._totalLatency = 0
 
+      m._playbackRanges = []
+      m._currentPlaybackRangeStart = Invalid
+      
       m._Flag_lastReportedPosition = 0
       m._Flag_atLeastOnePlayEventForContent = false
       m._Flag_isSeeking = false
@@ -1749,6 +1799,9 @@ function muxAnalytics() as Object
       m.heartbeatTimer.control = "stop"
       m._Flag_heartbeatTimerRunning = false
       m.pollTimer.control = "stop"
+
+      m._updatePlayerPlayheadRendevous()
+      m._endPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("viewend"))
       m._inView = false
       m._viewId = Invalid
@@ -2146,6 +2199,9 @@ function muxAnalytics() as Object
     if m._totalAdWatchTime <> Invalid AND m._totalAdWatchTime > 0
       props.ad_playing_time_ms_cumulative = m._totalAdWatchTime
     end if
+    if m._playbackRanges <> Invalid AND m._playbackRanges.count() > 0
+      props.video_playback_range = m._stringifiedPlaybackRanges(m._playbackRanges)
+    end if
     if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
       playerInitTime = Invalid
       if Type(m._configProperties.player_init_time) = "roString"
@@ -2260,6 +2316,78 @@ function muxAnalytics() as Object
     end if
 
     return "unknown"
+  end function
+
+  ' use only if you need very accurate timing (better than ~0.5sec)! Causes a thread rendevous
+  prototype._updatePlayerPlayheadRendevous = sub()
+    if m.video <> Invalid
+      playhead = m.video.position
+      if playhead <> Invalid
+        m._playerPlayheadTime = playhead
+      end if
+    else 
+      print "[mux-analytics] Warning: Attempted to update playerPlayheadTime but video node is invalid"
+    end if
+  end sub
+
+  ' return format: Array of strings in the format "startTime:endTime" in milliseconds
+  prototype._stringifiedPlaybackRanges = function(ranges as Object) as Object
+    if ranges = Invalid OR ranges.count() = 0
+      return Invalid
+    end if
+
+    ' Expects an array of objects with start and end properties
+    result = []
+    for each range in ranges
+      if range.start <> Invalid AND range.end <> Invalid
+        startMs = m._floatSecsToMillis(range.start)
+        endMs = m._floatSecsToMillis(range.end)
+        rangeStr = startMs.ToStr() + ":" + endMs.ToStr()
+        result.push(rangeStr)
+      end if
+    end for
+    return result
+  end function
+
+  prototype._startPlaybackRange = sub(startPlayheadTimeSec as Float)
+    if startPlayheadTimeSec = Invalid 
+      print "[mux-analytics] Warning: Attempted to start playback range with invalid start time"
+      return
+    end if
+
+    ' only start a new playback range if one is not already open.
+    if m._currentPlaybackRangeStart = Invalid
+      m._currentPlaybackRangeStart = startPlayheadTimeSec
+    else 
+      print "[mux-analytics] ignoring startPlaybackRange at " + Str(startPlayheadTimeSec) + ". range already open at " + Str(m._currentPlaybackRangeStart)
+    end if
+  end sub
+
+  prototype._endPlaybackRange = sub(endingPlayheadTimeSec as Float)
+    if m._currentPlaybackRangeStart <> Invalid AND endingPlayheadTimeSec <> Invalid
+      range = m._createPlaybackRange(m._currentPlaybackRangeStart, endingPlayheadTimeSec)
+      if range <> Invalid
+        m._playbackRanges.push(range)
+      end if
+
+      m._currentPlaybackRangeStart = Invalid
+    else 
+      print "[mux-analytics] Warning: Attempted to end playback range with invalid start or end time"
+    end if
+  end sub
+
+  prototype._createPlaybackRange = function(startSec as Float, endSec as Float) as Object
+    if startSec = Invalid OR endSec = Invalid OR startSec >= endSec
+      print "Invalid start or end time for playback range"
+      return Invalid
+    end if
+
+    range = {
+      start: startSec,
+      end: endSec
+    }
+
+    return range
   end function
 
   prototype._setCookieData = sub(data as Object)
@@ -2663,6 +2791,14 @@ function muxAnalytics() as Object
   ' ' //////////////////////////////////////////////////////////////
   ' ' UTILS METHODS
   ' ' //////////////////////////////////////////////////////////////
+
+  prototype._floatSecsToMillis = function(secs as Float) as Integer 
+    if secs = Invalid
+      return Invalid
+    else
+      return Int(secs * 1000)
+    end if
+  end function
 
   prototype._min = function(a, b) as object
     if a = Invalid then a = 0
