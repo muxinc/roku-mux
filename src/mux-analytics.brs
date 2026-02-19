@@ -1754,7 +1754,6 @@ function muxAnalytics() as Object
       m._requestCompletedCount = 0
       m._totalLatency = 0
 
-      ' todo - somewhere in this function, is a good time to start the first playhead range (eg, right here)
       m._playbackRanges = []
       m._currentPlaybackRangeStart = Invalid
       
@@ -2562,7 +2561,6 @@ function muxAnalytics() as Object
   end sub
 
   prototype._logEvent = sub(event = {} as Object, subtype = "" as String, title = "EVENT" as String)
-    ' todo - remove
     if event.video_playback_range <> Invalid
       print "---- playback ranges: "
       print event.video_playback_range
@@ -2838,23 +2836,6 @@ function muxAnalytics() as Object
       return var + addValue
     end if
   end function
-
-  ' todo - remove this function probably
-  prototype._dumpPlayheadTimeVars = sub() 
-    if m._playerPlayheadTime <> Invalid
-      print "[heatmap] _playerPlayheadTime: " + StrI(m._playerPlayheadTime, 10) + " seconds"
-    else 
-      print "[heatmap] _playerPlayheadTime is invalid"
-    end if
-
-    if m._Flag_lastReportedPosition <> Invalid
-      print "[heatmap] _Flag_lastReportedPosition: " + StrI(m._Flag_lastReportedPosition, 10) + " seconds"
-    else 
-      print "[heatmap] _Flag_lastReportedPosition is invalid"
-    end if
-
-    print "[heatmap]"
-  end sub
 
   return prototype
 end function
