@@ -2241,6 +2241,9 @@ function muxAnalytics() as Object
     if m._totalAdWatchTime <> Invalid AND m._totalAdWatchTime > 0
       props.ad_playing_time_ms_cumulative = m._totalAdWatchTime
     end if
+    if m._playbackRanges <> Invalid AND m._playbackRanges.count() > 0
+      props.video_playback_range = m._stringifiedPlaybackRanges(m._playbackRanges)
+    end if
     if m._configProperties <> Invalid AND m._configProperties.player_init_time <> Invalid
       playerInitTime = Invalid
       if Type(m._configProperties.player_init_time) = "roString"
@@ -2355,6 +2358,23 @@ function muxAnalytics() as Object
     end if
 
     return "unknown"
+  end function
+
+  prototype._stringifiedPlaybackRanges = function(ranges as Object) as String
+    if ranges = Invalid OR ranges.count() = 0
+      return Invalid
+    end if
+
+    ' Expects an array of objects with start and end properties
+    result = []
+    for each range in ranges
+      if range.start <> Invalid AND range.end <> Invalid
+        rangeStr = Int(range.start) + ":" + Int(range.end)
+        print "[heatmap] Adding playback range to event: " + rangeStr
+        result.push(rangeStr)
+      end if
+    end for
+    return result
   end function
 
   prototype._startPlaybackRange = sub()
@@ -2562,6 +2582,14 @@ function muxAnalytics() as Object
   end sub
 
   prototype._logEvent = sub(event = {} as Object, subtype = "" as String, title = "EVENT" as String)
+    ' todo - remove
+    if event.video_playback_range <> Invalid
+      print "---- playback ranges: "
+      print event.video_playback_range
+    else
+      print "---- playback ranges: INVALID"
+    end if
+
     if m.debugEvents = "none" then return
     tot = m.loggingPrefix + title + " " + event.event
     if m.debugEvents = "full"
