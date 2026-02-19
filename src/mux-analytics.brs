@@ -486,6 +486,8 @@ function muxAnalytics() as Object
     m._adWatchTime = Invalid
     m._cumulativePlayingTime = Invalid
     m._lastAdResumeTime = Invalid
+    ' Specifically means playhead when the video node sent a 'paused' state, not synthetic pause events we trigger
+    m._playheadAtLastPause = Invalid
 
     m._lastSourceWidth = Invalid
     m._lastSourceHeight = Invalid
@@ -649,11 +651,18 @@ function muxAnalytics() as Object
       ' If we've gone backwards at all or forwards by more than the threshold
       if m._playerPlayheadTime <> Invalid AND previouslyLastReportedPosition <> Invalid AND ((m._playerPlayheadTime < previouslyLastReportedPosition) OR (m._playerPlayheadTime > (previouslyLastReportedPosition + m._seekThreshold)))
         if videoState = "buffering"
+          print "[heatmap] caught self buffering because of a seek, sending 'pause', probably late"
+          m._dumpPlayheadTimeVars()
+
           m._addEventToQueue(m._createEvent("pause"))
         end if
 
         print "[heatmap] detected seek, emitting seeking event." 
         m._dumpPlayheadTimeVars()
+
+        if m._playheadAtLastPause <> Invalid
+          m._endPlaybackRange()
+        end if
 
         m._addEventToQueue(m._createEvent("seeking"))
         date = m._getDateTime()
@@ -682,6 +691,11 @@ function muxAnalytics() as Object
         end if
       end if
     else if videoState = "paused"
+      m._playheadAtLastPause = m._playerPlayheadTime
+
+      print "[heatmap] video state became paused, emitting pause event"
+      m._dumpPlayheadTimeVars()
+
       m._addEventToQueue(m._createEvent("pause"))
     else if videoState = "playing"
       m._videoProperties = m._getVideoProperties(m.video)
@@ -2384,9 +2398,9 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype._endPlaybackRange = sub()
-    if m._currentPlaybackRangeStart <> Invalid AND m._playerPlayheadTime <> Invalid
-      range = m._createPlaybackRange(m._currentPlaybackRangeStart, m._playerPlayheadTime)
+  prototype._endPlaybackRange = sub(endingPlayheadTimeMs as Integer)
+    if m._currentPlaybackRangeStart <> Invalid AND endingPlayheadTimeMs <> Invalid
+      range = m._createPlaybackRange(m._currentPlaybackRangeStart, endingPlayheadTimeMs)
       if range <> Invalid
         m._playbackRanges.push(range)
       end if
