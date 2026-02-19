@@ -1310,9 +1310,6 @@ function muxAnalytics() as Object
 
     m._Flag_isPaused = (eventType = "Pause")
     if eventType = "PodStart"
-      m._updatePlayerPlayheadRendevous()
-      m._endPlaybackRange(m._playerPlayheadTime)
-
       m._advertProperties = m._getAdvertProperties(adMetadata)
       m._addEventToQueue(m._createEvent("adbreakstart"))
       ' In the case that this is SSAI, we need to signal an adplay and adplaying event
@@ -1320,13 +1317,12 @@ function muxAnalytics() as Object
         m._lastAdResumeTime = now
         m._addEventToQueue(m._createEvent("adplay"))
         m._addEventToQueue(m._createEvent("adplaying"))
+      else 
+        ' For CSAI, end the playback range, since CSAI ads have their own playhead
+        m._updatePlayerPlayheadRendevous()
+        m._endPlaybackRange(m._playerPlayheadTime)
       end if
     else if eventType = "PodComplete"
-      if m._Flag_isPaused <> false 
-        m._updatePlayerPlayheadRendevous()
-        m._startPlaybackRange(m._playerPlayheadTime)
-      end if
-
       m._addEventToQueue(m._createEvent("adbreakend"))
       m._Flag_FailedAdsErrorSet = false
       ' In the case that this is SSAI, we need to signal a play and playing event
@@ -1334,9 +1330,13 @@ function muxAnalytics() as Object
         m._Flag_isPaused = false
         m._triggerPlayEvent()
  
-        m._updatePlayerPlayheadRendevous()
-        m._startPlaybackRange(m._playerPlayheadTime)
         m._addEventToQueue(m._createEvent("playing"))
+      else 
+        ' for CSAI, we need to restart the playback range
+        if m._Flag_isPaused <> false 
+          m._updatePlayerPlayheadRendevous()
+          m._startPlaybackRange(m._playerPlayheadTime)
+        end if
       end if
     else if eventType = "Impression"
       m._addEventToQueue(m._createEvent("adimpression"))
