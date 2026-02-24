@@ -729,7 +729,6 @@ function muxAnalytics() as Object
         m._addEventToQueue(m._createEvent("play"))
       end if
 
-      m._updatePlayerPlayheadRendevous()
       m._startPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("playing"))
 
@@ -742,7 +741,6 @@ function muxAnalytics() as Object
       if completedStreamInfo <> invalid
         if completedStreamInfo.isFullResult
 
-          m._updatePlayerPlayheadRendevous()
           m._endPlaybackRange(m._playerPlayheadTime)
           m._addEventToQueue(m._createEvent("ended"))
         end if
@@ -844,7 +842,6 @@ function muxAnalytics() as Object
         end if
       end if
 
-      m._updatePlayerPlayheadRendevous()
       m._startPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("playing"))
     end if
@@ -1319,7 +1316,6 @@ function muxAnalytics() as Object
         m._addEventToQueue(m._createEvent("adplaying"))
       else 
         ' For CSAI, end the playback range, since CSAI ads have their own playhead
-        m._updatePlayerPlayheadRendevous()
         m._endPlaybackRange(m._playerPlayheadTime)
       end if
     else if eventType = "PodComplete"
@@ -1334,7 +1330,6 @@ function muxAnalytics() as Object
       else 
         ' for CSAI, we need to restart the playback range
         if m._Flag_isPaused <> false 
-          m._updatePlayerPlayheadRendevous()
           m._startPlaybackRange(m._playerPlayheadTime)
         end if
       end if
@@ -1511,7 +1506,6 @@ function muxAnalytics() as Object
           m._Flag_isPaused = false
           m._triggerPlayEvent()
 
-          m._updatePlayerPlayheadRendevous()
           m._startPlaybackRange(m._playerPlayheadTime)
           m._addEventToQueue(m._createEvent("playing"))
         end if
@@ -1534,7 +1528,6 @@ function muxAnalytics() as Object
             m._triggerPlayEvent()
           end if
 
-          m._updatePlayerPlayheadRendevous()
           m._startPlaybackRange(m._playerPlayheadTime)
           m._addEventToQueue(m._createEvent("playing"))
         else if state = "paused"
@@ -1800,7 +1793,6 @@ function muxAnalytics() as Object
       m._Flag_heartbeatTimerRunning = false
       m.pollTimer.control = "stop"
 
-      m._updatePlayerPlayheadRendevous()
       m._endPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("viewend"))
       m._inView = false
@@ -2317,18 +2309,6 @@ function muxAnalytics() as Object
 
     return "unknown"
   end function
-
-  ' use only if you need very accurate timing (better than ~0.5sec)! Causes a thread rendevous
-  prototype._updatePlayerPlayheadRendevous = sub()
-    if m.video <> Invalid
-      playhead = m.video.position
-      if playhead <> Invalid
-        m._playerPlayheadTime = playhead
-      end if
-    else 
-      print "[mux-analytics] Warning: Attempted to update playerPlayheadTime but video node is invalid"
-    end if
-  end sub
 
   ' return format: Array of strings in the format "startTime:endTime" in milliseconds
   prototype._stringifiedPlaybackRanges = function(ranges as Object) as Object
