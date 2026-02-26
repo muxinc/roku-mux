@@ -365,9 +365,13 @@ function _firmwareVersionNumber(deviceInfo as Object)
 end function
 
 function _getConnectionType(deviceInfo as Object)
+  if deviceInfo = Invalid
+    return "no_connection"
+  end if
+
   connectionType = deviceInfo.GetConnectionType()
   if connectionType = ""
-    return Invalid
+    return "no_connection"
   end if
   if connectionType = "WiFiConnection"
     return "wifi"
@@ -576,20 +580,13 @@ function muxAnalytics() as Object
     if currentConnectionType <> m._lastConnectionType
       m._fireNetworkChangeEvent(currentConnectionType)
       m._lastConnectionType = currentConnectionType
-      ' Update session properties with new connection type
-      if m._sessionProperties <> Invalid
-        m._sessionProperties.viewer_connection_type = currentConnectionType
-      end if
     end if
   end sub
 
   prototype._fireNetworkChangeEvent = sub(connectionType as Dynamic)
     props = {}
-    if connectionType = Invalid
-      props.viewer_connection_type = Invalid
-    else
-      props.viewer_connection_type = connectionType
-    end if
+    if connectionType = Invalid then connectionType = "no_connection"
+    props.viewer_connection_type = connectionType
     m._addEventToQueue(m._createEvent("networkchange", props))
   end sub
 
@@ -1925,10 +1922,6 @@ function muxAnalytics() as Object
     props.viewer_device_model = seriesModel
     props.viewer_os_family = "Roku OS"
     props.viewer_os_version = firmwareVersion
-    connectionType = _getConnectionType(deviceInfo)
-    if connectionType <> Invalid
-      props.viewer_connection_type = connectionType
-    end if
     props.mux_api_version = m.MUX_API_VERSION
     props.player_mux_plugin_name = m.MUX_SDK_NAME
     props.player_mux_plugin_version = m.MUX_SDK_VERSION
