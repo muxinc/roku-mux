@@ -383,6 +383,58 @@ function _getConnectionType(deviceInfo as Object)
   return "other"
 end function
 
+function _statusToBool(status as Dynamic) as Dynamic
+  if status = Invalid then return Invalid
+  statusType = Type(status)
+  if statusType = "Boolean" OR statusType = "roBoolean"
+    return status
+  end if
+  if statusType = "String" OR statusType = "roString"
+    normalized = LCase(status)
+    if normalized = "true" OR normalized = "up" OR normalized = "connected" OR normalized = "available"
+      return true
+    end if
+    if normalized = "false" OR normalized = "down" OR normalized = "disconnected" OR normalized = "unavailable"
+      return false
+    end if
+  end if
+  return Invalid
+end function
+
+function _getEffectiveConnectionType(deviceInfo as Object, internetStatusOverride = Invalid as Dynamic, linkStatusOverride = Invalid as Dynamic) as Dynamic
+  baseConnectionType = _getConnectionType(deviceInfo)
+  if baseConnectionType = "no_connection"
+    return "no_connection"
+  end if
+
+  internetStatus = _statusToBool(internetStatusOverride)
+  linkStatus = _statusToBool(linkStatusOverride)
+
+  if deviceInfo <> Invalid
+    if internetStatus = Invalid AND FindMemberFunction(deviceInfo, "GetInternetStatus") <> Invalid
+      internetStatus = _statusToBool(deviceInfo.GetInternetStatus())
+    end if
+    if linkStatus = Invalid AND FindMemberFunction(deviceInfo, "GetLinkStatus") <> Invalid
+      linkStatus = _statusToBool(deviceInfo.GetLinkStatus())
+    end if
+  end if
+
+  if internetStatus = false
+    return "no_connection"
+  end if
+
+  if internetStatus = Invalid AND linkStatus = false
+    return "no_connection"
+  end if
+
+  return baseConnectionType
+end function
+
+function _nowMillis(dateTimeFactory as Object) as Double
+  date = dateTimeFactory()
+  return 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
+end function
+
 function muxAnalytics() as Object
   prototype = {}
 
@@ -543,6 +595,7 @@ function muxAnalytics() as Object
 
     ' Flag for a beacon currently being retried
     m._Flag_beaconRequestInProgress = false
+    m._beaconInFlight = Invalid
 
     ' Flag for whether or not to use a random mux viewer ID
     m._Flag_useRandomMuxViewerId = systemConfig.USE_RANDOM_MUX_VIEWER_ID
@@ -553,6 +606,8 @@ function muxAnalytics() as Object
     ' Network monitoring
     m._lastConnectionType = Invalid
     m._networkEventsSupported = false
+    m._consecutiveRequestFailures = 0
+    m._lastSuccessfulRequestTimestamp = Invalid
 
     ' kick off analytics
     date = m._getDateTime()
@@ -566,16 +621,29 @@ function muxAnalytics() as Object
     data = beaconIntervalEvent.getData()
     m.LIGHT_THE_BEACONS()
 
-    ' If network events are not supported, poll network status
-    if m._networkEventsSupported = false
-      m.networkStatusEventHandler(Invalid)
-    end if
+    ' Polling here provides a safety net in case roDeviceInfoEvent updates are missed.
+    m.networkStatusEventHandler(Invalid)
+    m._evaluateConnectivityFromPlayback()
   end sub
 
   ' Handler for roDeviceInfoEvent network status changes (or polling)
   ' event can be Invalid when called from polling
   prototype.networkStatusEventHandler = sub(event as Dynamic)
-    currentConnectionType = _getConnectionType(m.deviceInfo)
+    eventInternetStatus = Invalid
+    eventLinkStatus = Invalid
+    if event <> Invalid AND FindMemberFunction(event, "GetInfo") <> Invalid
+      eventInfo = event.GetInfo()
+      if eventInfo <> Invalid
+        if eventInfo.internetStatus <> Invalid
+          eventInternetStatus = eventInfo.internetStatus
+        end if
+        if eventInfo.linkStatus <> Invalid
+          eventLinkStatus = eventInfo.linkStatus
+        end if
+      end if
+    end if
+
+    currentConnectionType = _getEffectiveConnectionType(m.deviceInfo, eventInternetStatus, eventLinkStatus)
     ' Check if connection type has changed
     if currentConnectionType <> m._lastConnectionType
       m._fireNetworkChangeEvent(currentConnectionType)
@@ -585,9 +653,49 @@ function muxAnalytics() as Object
 
   prototype._fireNetworkChangeEvent = sub(connectionType as Dynamic)
     props = {}
-    if connectionType = Invalid then connectionType = "no_connection"
     props.viewer_connection_type = connectionType
+    print m.loggingPrefix + "networkchange viewer_connection_type=" + connectionType
     m._addEventToQueue(m._createEvent("networkchange", props))
+    ' Try to flush network changes immediately while preserving queue semantics.
+    m.LIGHT_THE_BEACONS()
+  end sub
+
+  prototype._handleRequestConnectivitySignal = sub(requestSucceeded as Boolean)
+    if m._inView <> true then return
+
+    if requestSucceeded = true
+      m._lastSuccessfulRequestTimestamp = _nowMillis(m._getDateTime)
+      m._consecutiveRequestFailures = 0
+      if m._lastConnectionType = "no_connection"
+        recoveredConnectionType = _getEffectiveConnectionType(m.deviceInfo)
+        if recoveredConnectionType <> "no_connection"
+          m._fireNetworkChangeEvent(recoveredConnectionType)
+          m._lastConnectionType = recoveredConnectionType
+        end if
+      end if
+    else
+      m._consecutiveRequestFailures = m._consecutiveRequestFailures + 1
+      ' Fallback for Roku models where internet/link status does not update reliably.
+      if m._consecutiveRequestFailures >= 2 AND m._lastConnectionType <> "no_connection"
+        m._fireNetworkChangeEvent("no_connection")
+        m._lastConnectionType = "no_connection"
+      end if
+    end if
+  end sub
+
+  prototype._evaluateConnectivityFromPlayback = sub()
+    if m._inView <> true then return
+    if m._lastConnectionType = "no_connection" then return
+    if m.video_state <> "buffering" then return
+    if m._Flag_atLeastOnePlayEventForContent <> true then return
+    if m._lastSuccessfulRequestTimestamp = Invalid then return
+
+    now = _nowMillis(m._getDateTime)
+    stalledDurationMs = now - m._lastSuccessfulRequestTimestamp
+    if stalledDurationMs >= 15000
+      m._fireNetworkChangeEvent("no_connection")
+      m._lastConnectionType = "no_connection"
+    end if
   end sub
 
   prototype.heartbeatIntervalHandler = sub(heartbeatIntervalEvent)
@@ -948,11 +1056,13 @@ function muxAnalytics() as Object
             m._viewRequestCount = m._segmentRequestCount
           end if
           m._addEventToQueue(m._createEvent("requestcompleted", props))
+          m._handleRequestConnectivitySignal(true)
         else
           if m._segmentRequestFailedCount = Invalid then m._segmentRequestFailedCount = 0
           m._segmentRequestFailedCount++
           props.view_request_failed_count = m._segmentRequestFailedCount
           m._addEventToQueue(m._createEvent("requestfailed", props))
+          m._handleRequestConnectivitySignal(false)
         end if
       end if
     end if
@@ -1241,6 +1351,7 @@ function muxAnalytics() as Object
       end if
 
       m._addEventToQueue(m._createEvent("requestcompleted", props))
+      m._handleRequestConnectivitySignal(true)
     else if requestVariant = "failed"
       if message.request_url <> Invalid
         props.request_url = message.request_url
@@ -1255,6 +1366,7 @@ function muxAnalytics() as Object
         props.request_error_text = message.request_error_text
       end if
       m._addEventToQueue(m._createEvent("requestfailed", props))
+      m._handleRequestConnectivitySignal(false)
     else if requestVariant = "canceled"
       m._addEventToQueue(m._createEvent("requestcanceled", props))
     end if
@@ -1645,6 +1757,7 @@ function muxAnalytics() as Object
     else
       if beacon.count() > 0
         m._logBeacon(beacon, "BEACON")
+        m._beaconInFlight = beacon
         m._minifiedBeacon = []
         for each b in beacon
           m._minifiedBeacon.push(m._minify(b))
@@ -1682,6 +1795,7 @@ function muxAnalytics() as Object
     ' Successful exit if a 2xx is returned
     statusCode = event.GetResponseCode()
     if statusCode >= 200 and statusCode < 300
+      m._beaconInFlight = Invalid
       m._Flag_beaconRequestInProgress = false
       return
     end if
@@ -1689,6 +1803,8 @@ function muxAnalytics() as Object
     ' Otherwise clean it up and set our delay and timer if we're not done
     if m._retryCountdown <= 0
       Print "[mux-analytics] Retries exceeded for beacon, giving up"
+      m._requeueFailedBeacon()
+      m._beaconInFlight = Invalid
       m._Flag_beaconRequestInProgress = false
       return
     end if
@@ -1706,6 +1822,14 @@ function muxAnalytics() as Object
     if m._beaconAttemptTimespan.TotalMilliseconds() >= m._beaconRetryDelay
       m._makeRequest()
     end if
+  end sub
+
+  prototype._requeueFailedBeacon = sub()
+    if m._beaconInFlight = Invalid OR m._beaconInFlight.count() = 0 then return
+    requeued = []
+    requeued.Append(m._beaconInFlight)
+    requeued.Append(m._eventQueue)
+    m._eventQueue = requeued
   end sub
 
   prototype._startView = sub(setByClient = false as Boolean)
@@ -1772,7 +1896,7 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("playbackmodechange", props))
 
       ' Fire initial networkchange event
-      initialConnectionType = _getConnectionType(m.deviceInfo)
+      initialConnectionType = _getEffectiveConnectionType(m.deviceInfo)
       m._lastConnectionType = initialConnectionType
       m._fireNetworkChangeEvent(initialConnectionType)
 
@@ -1836,6 +1960,8 @@ function muxAnalytics() as Object
       m._viewRequestCount = Invalid
       m._segmentRequestFailedCount = Invalid
       m._lastConnectionType = Invalid
+      m._consecutiveRequestFailures = 0
+      m._lastSuccessfulRequestTimestamp = Invalid
       m._viewApiEncryptionRequestCount = Invalid
       m._requestCompletedCount = Invalid
       m._totalLatency = Invalid
