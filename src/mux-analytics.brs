@@ -2530,7 +2530,17 @@ function muxAnalytics() as Object
       else
         tot = tot + "{"
         for each prop in evt
-          tot = tot + prop + ":" + evt[prop].toStr() + ", "
+          if evt[prop] = Invalid
+            tot = tot + prop + ":Invalid, "
+          else if Type(evt[prop]) = "roArray"
+            propString = "Array[" + evt[prop].join(",") + "]"
+            tot = tot + prop + ":" + propString + ", "
+          else if Type(evt[prop]) = "roAssociativeArray" OR Type(evt[prop]) = "roObject"
+            propString = "Object[" + FormatJson(evt[prop]) + "]"
+            tot = tot + prop + ":" + propString + ", "
+          else 
+            tot = tot + prop + ":" + evt[prop].toStr() + ", "
+          end if
         end for
         tot = Left(tot, len(tot) - 2)
         tot = tot + "} "
