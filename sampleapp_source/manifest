@@ -22,6 +22,6 @@ mux_dry_run=false
 #Set minification to false for readable metrics. These will not be recognised by mux.
 mux_minification=true
 #Display events in the log as they are created. Values: full | partial | none
-mux_debug_events=full
+mux_debug_events=partial
 #Display beacons in the log as they are sent. Values: full | partial | none
-mux_debug_beacons=full
+mux_debug_beacons=partial

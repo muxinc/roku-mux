@@ -1850,15 +1850,6 @@ function muxAnalytics() as Object
   prototype._createEvent = function(eventType as String, eventProperties = {} as Object) as Object
     newEvent = {}
 
-    ' just to test the string methods
-    newEvent.arrayValue = [1, 2, 3]
-    newEvent.objValue = {key1: "value1", key2: "value2"}
-    newEvent.stringValue = "test"
-    newEvent.floatValue = 1.23
-    newEvent.intValue = 123
-    newEvent.boolValue = true
-    newEvent.nullValue = Invalid
-
     if m._playerSequence <> Invalid
       m._playerSequence++
     end if
