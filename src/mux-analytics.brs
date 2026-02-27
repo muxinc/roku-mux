@@ -2813,7 +2813,7 @@ function muxAnalytics() as Object
       end for
       return "Array[" + stringifiedValues.join(",") + "]"
     else if GetInterface(value, "ifAssociativeArray") <> Invalid 
-      return "Object[" + FormatJson(value) + "]"
+      return "Object" + FormatJson(value)
     else 
       return value.toStr()
     end if
