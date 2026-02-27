@@ -2530,7 +2530,7 @@ function muxAnalytics() as Object
       else
         tot = tot + "{"
         for each prop in evt
-          tot = tot + prop + ":" + m._safeStr(evt[prop]) + ", "
+          tot = tot + prop + ":" + m._safeDebugStr(evt[prop]) + ", "
         end for
         tot = Left(tot, len(tot) - 2)
         tot = tot + "} "
@@ -2547,7 +2547,7 @@ function muxAnalytics() as Object
       tot = tot + "{"
       for each prop in event
         if event[prop] <> Invalid
-          tot = tot + prop + ":" + m._safeStr(event[prop]) + ", "
+          tot = tot + prop + ":" + m._safeDebugStr(event[prop]) + ", "
         end if
       end for
       tot = Left(tot, len(tot) - 2)
@@ -2802,14 +2802,14 @@ function muxAnalytics() as Object
     end if
   end function
 
-  prototype._safeStr = function(value as dynamic) as String
+  prototype._safeDebugStr = function(value as dynamic) as String
     if value = Invalid
       return "Invalid"
     else if GetInterface(value, "ifArray") <> Invalid 
       ' you can only Join() arrays of strings, so stringify each item before joining 
       stringifiedValues = []
       for each item in value
-        stringifiedValues.push(m._safeStr(item))
+        stringifiedValues.push(m._safeDebugStr(item))
       end for
       return "Array[" + stringifiedValues.join(",") + "]"
     else if GetInterface(value, "ifAssociativeArray") <> Invalid 
