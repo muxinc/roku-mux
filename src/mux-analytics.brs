@@ -1850,6 +1850,15 @@ function muxAnalytics() as Object
   prototype._createEvent = function(eventType as String, eventProperties = {} as Object) as Object
     newEvent = {}
 
+    ' just to test the string methods
+    newEvent.arrayValue = [1, 2, 3]
+    newEvent.objValue = {key1: "value1", key2: "value2"}
+    newEvent.stringValue = "test"
+    newEvent.floatValue = 1.23
+    newEvent.intValue = 123
+    newEvent.boolValue = true
+    newEvent.nullValue = Invalid
+
     if m._playerSequence <> Invalid
       m._playerSequence++
     end if
@@ -2530,17 +2539,7 @@ function muxAnalytics() as Object
       else
         tot = tot + "{"
         for each prop in evt
-          if evt[prop] = Invalid
-            tot = tot + prop + ":Invalid, "
-          else if Type(evt[prop]) = "roArray"
-            propString = "Array[" + evt[prop].join(",") + "]"
-            tot = tot + prop + ":" + propString + ", "
-          else if Type(evt[prop]) = "roAssociativeArray" OR Type(evt[prop]) = "roObject"
-            propString = "Object[" + FormatJson(evt[prop]) + "]"
-            tot = tot + prop + ":" + propString + ", "
-          else 
-            tot = tot + prop + ":" + evt[prop].toStr() + ", "
-          end if
+          tot = tot + prop + ":" + m._safeStr(evt[prop]) + ", "
         end for
         tot = Left(tot, len(tot) - 2)
         tot = tot + "} "
@@ -2557,7 +2556,7 @@ function muxAnalytics() as Object
       tot = tot + "{"
       for each prop in event
         if event[prop] <> Invalid
-          tot = tot + prop + ":" + event[prop].toStr() + ", "
+          tot = tot + prop + ":" + m._safeStr(event[prop]) + ", "
         end if
       end for
       tot = Left(tot, len(tot) - 2)
@@ -2809,6 +2808,18 @@ function muxAnalytics() as Object
       return b
     else
       return a
+    end if
+  end function
+
+  prototype._safeStr = function(value as dynamic) as String
+    if value = Invalid
+      return "Invalid"
+    else if Type(value) = "roArray"
+      return "Array[" + value.join(",") + "]"
+    else if Type(value) = "roAssociativeArray"
+      return "Object[" + FormatJson(value) + "]"
+    else 
+      return value.toStr()
     end if
   end function
 
