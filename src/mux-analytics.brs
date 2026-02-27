@@ -2815,7 +2815,12 @@ function muxAnalytics() as Object
     if value = Invalid
       return "Invalid"
     else if Type(value) = "roArray"
-      return "Array[" + value.join(",") + "]"
+      ' you can only Join() arrays of strings, so stringify each item before joining 
+      stringifiedValues = []
+      for each item in value
+        stringifiedValues.push(m._safeStr(item))
+      end for
+      return "Array[" + stringifiedValues.join(",") + "]"
     else if Type(value) = "roAssociativeArray"
       return "Object[" + FormatJson(value) + "]"
     else 
