@@ -2814,14 +2814,14 @@ function muxAnalytics() as Object
   prototype._safeStr = function(value as dynamic) as String
     if value = Invalid
       return "Invalid"
-    else if Type(value) = "roArray"
+    else if GetInterface(value, "ifArray") <> Invalid 
       ' you can only Join() arrays of strings, so stringify each item before joining 
       stringifiedValues = []
       for each item in value
         stringifiedValues.push(m._safeStr(item))
       end for
       return "Array[" + stringifiedValues.join(",") + "]"
-    else if Type(value) = "roAssociativeArray"
+    else if GetInterface(value, "ifAssociativeArray") <> Invalid 
       return "Object[" + FormatJson(value) + "]"
     else 
       return value.toStr()
