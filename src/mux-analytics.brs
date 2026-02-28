@@ -654,10 +654,7 @@ function muxAnalytics() as Object
   prototype._fireNetworkChangeEvent = sub(connectionType as Dynamic)
     props = {}
     props.viewer_connection_type = connectionType
-    print m.loggingPrefix + "networkchange viewer_connection_type=" + connectionType
     m._addEventToQueue(m._createEvent("networkchange", props))
-    ' Try to flush network changes immediately while preserving queue semantics.
-    m.LIGHT_THE_BEACONS()
   end sub
 
   prototype._handleRequestConnectivitySignal = sub(requestSucceeded as Boolean)
@@ -674,7 +671,7 @@ function muxAnalytics() as Object
         end if
       end if
     else
-      m._consecutiveRequestFailures = m._consecutiveRequestFailures + 1
+      m._consecutiveRequestFailures = m._safeAdd(m._consecutiveRequestFailures, 1)
       ' Fallback for Roku models where internet/link status does not update reliably.
       if m._consecutiveRequestFailures >= 2 AND m._lastConnectionType <> "no_connection"
         m._fireNetworkChangeEvent("no_connection")
