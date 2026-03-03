@@ -1,5 +1,5 @@
 sub init()
-  m.MUX_SDK_VERSION = "2.6.0"
+  m.MUX_SDK_VERSION = "2.6.1"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
   
@@ -2530,7 +2530,7 @@ function muxAnalytics() as Object
       else
         tot = tot + "{"
         for each prop in evt
-          tot = tot + prop + ":" + evt[prop].toStr() + ", "
+          tot = tot + prop + ":" + m._safeDebugStr(evt[prop]) + ", "
         end for
         tot = Left(tot, len(tot) - 2)
         tot = tot + "} "
@@ -2547,7 +2547,7 @@ function muxAnalytics() as Object
       tot = tot + "{"
       for each prop in event
         if event[prop] <> Invalid
-          tot = tot + prop + ":" + event[prop].toStr() + ", "
+          tot = tot + prop + ":" + m._safeDebugStr(event[prop]) + ", "
         end if
       end for
       tot = Left(tot, len(tot) - 2)
@@ -2799,6 +2799,23 @@ function muxAnalytics() as Object
       return b
     else
       return a
+    end if
+  end function
+
+  prototype._safeDebugStr = function(value as dynamic) as String
+    if value = Invalid
+      return "Invalid"
+    else if GetInterface(value, "ifArray") <> Invalid 
+      ' you can only Join() arrays of strings, so stringify each item before joining 
+      stringifiedValues = []
+      for each item in value
+        stringifiedValues.push(m._safeDebugStr(item))
+      end for
+      return "Array[" + stringifiedValues.join(",") + "]"
+    else if GetInterface(value, "ifAssociativeArray") <> Invalid 
+      return "Object" + FormatJson(value)
+    else 
+      return value.toStr()
     end if
   end function
 
