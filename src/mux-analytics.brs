@@ -729,6 +729,11 @@ function muxAnalytics() as Object
         m._addEventToQueue(m._createEvent("play"))
       end if
 
+      ' if we haven't gotten any playhead updates yet, assume we started at 0
+      if m._playerPlayheadTime = Invalid
+        m._playerPlayheadTime = 0
+      end if
+
       m._startPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("playing"))
 
@@ -2329,7 +2334,7 @@ function muxAnalytics() as Object
     return result
   end function
 
-  prototype._startPlaybackRange = sub(startPlayheadTimeSec as Float)
+  prototype._startPlaybackRange = sub(startPlayheadTimeSec)
     if startPlayheadTimeSec = Invalid 
       print "[mux-analytics] Warning: Attempted to start playback range with invalid start time"
       return
@@ -2343,7 +2348,7 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype._endPlaybackRange = sub(endingPlayheadTimeSec as Float)
+  prototype._endPlaybackRange = sub(endingPlayheadTimeSec)
     if m._currentPlaybackRangeStart <> Invalid AND endingPlayheadTimeSec <> Invalid
       range = m._createPlaybackRange(m._currentPlaybackRangeStart, endingPlayheadTimeSec)
       if range <> Invalid
