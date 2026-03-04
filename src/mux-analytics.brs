@@ -731,10 +731,11 @@ function muxAnalytics() as Object
 
       ' if we haven't gotten any playhead updates yet, assume we started at 0
       if m._playerPlayheadTime = Invalid
-        m._playerPlayheadTime = 0
+        m._startPlaybackRange(0)
+      else 
+        m._startPlaybackRange(m._playerPlayheadTime)
       end if
 
-      m._startPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("playing"))
 
       m._Flag_isSeeking = false
