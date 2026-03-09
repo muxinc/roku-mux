@@ -1779,6 +1779,9 @@ function muxAnalytics() as Object
     requeued = []
     requeued.Append(m._beaconInFlight)
     requeued.Append(m._eventQueue)
+    while requeued.count() > m.MAX_QUEUE_LENGTH
+      requeued.Pop()
+    end while
     m._eventQueue = requeued
   end sub
 
