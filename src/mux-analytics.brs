@@ -430,11 +430,6 @@ function _getEffectiveConnectionType(deviceInfo as Object, internetStatusOverrid
   return baseConnectionType
 end function
 
-function _nowMillis(dateTimeFactory as Object) as Double
-  date = dateTimeFactory()
-  return 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
-end function
-
 function muxAnalytics() as Object
   prototype = {}
 
@@ -593,7 +588,7 @@ function muxAnalytics() as Object
     m._Flag_rssAdEnded = false
     m._Flag_rssContentPlayingAfterAds = false
 
-    ' Flag for a beacon currently being retried
+    ' Keep a copy of the current beacon so we can preserve it if retries are exhausted.
     m._Flag_beaconRequestInProgress = false
     m._beaconInFlight = Invalid
 
@@ -606,8 +601,6 @@ function muxAnalytics() as Object
     ' Network monitoring
     m._lastConnectionType = Invalid
     m._networkEventsSupported = false
-    m._consecutiveRequestFailures = 0
-    m._lastSuccessfulRequestTimestamp = Invalid
 
     ' kick off analytics
     date = m._getDateTime()
@@ -623,7 +616,6 @@ function muxAnalytics() as Object
 
     ' Polling here provides a safety net in case roDeviceInfoEvent updates are missed.
     m.networkStatusEventHandler(Invalid)
-    m._evaluateConnectivityFromPlayback()
   end sub
 
   ' Handler for roDeviceInfoEvent network status changes (or polling)
@@ -655,44 +647,6 @@ function muxAnalytics() as Object
     props = {}
     props.viewer_connection_type = connectionType
     m._addEventToQueue(m._createEvent("networkchange", props))
-  end sub
-
-  prototype._handleRequestConnectivitySignal = sub(requestSucceeded as Boolean)
-    if m._inView <> true then return
-
-    if requestSucceeded = true
-      m._lastSuccessfulRequestTimestamp = _nowMillis(m._getDateTime)
-      m._consecutiveRequestFailures = 0
-      if m._lastConnectionType = "no_connection"
-        recoveredConnectionType = _getEffectiveConnectionType(m.deviceInfo)
-        if recoveredConnectionType <> "no_connection"
-          m._fireNetworkChangeEvent(recoveredConnectionType)
-          m._lastConnectionType = recoveredConnectionType
-        end if
-      end if
-    else
-      m._consecutiveRequestFailures = m._safeAdd(m._consecutiveRequestFailures, 1)
-      ' Fallback for Roku models where internet/link status does not update reliably.
-      if m._consecutiveRequestFailures >= 2 AND m._lastConnectionType <> "no_connection"
-        m._fireNetworkChangeEvent("no_connection")
-        m._lastConnectionType = "no_connection"
-      end if
-    end if
-  end sub
-
-  prototype._evaluateConnectivityFromPlayback = sub()
-    if m._inView <> true then return
-    if m._lastConnectionType = "no_connection" then return
-    if m.video_state <> "buffering" then return
-    if m._Flag_atLeastOnePlayEventForContent <> true then return
-    if m._lastSuccessfulRequestTimestamp = Invalid then return
-
-    now = _nowMillis(m._getDateTime)
-    stalledDurationMs = now - m._lastSuccessfulRequestTimestamp
-    if stalledDurationMs >= 15000
-      m._fireNetworkChangeEvent("no_connection")
-      m._lastConnectionType = "no_connection"
-    end if
   end sub
 
   prototype.heartbeatIntervalHandler = sub(heartbeatIntervalEvent)
@@ -1053,13 +1007,11 @@ function muxAnalytics() as Object
             m._viewRequestCount = m._segmentRequestCount
           end if
           m._addEventToQueue(m._createEvent("requestcompleted", props))
-          m._handleRequestConnectivitySignal(true)
         else
           if m._segmentRequestFailedCount = Invalid then m._segmentRequestFailedCount = 0
           m._segmentRequestFailedCount++
           props.view_request_failed_count = m._segmentRequestFailedCount
           m._addEventToQueue(m._createEvent("requestfailed", props))
-          m._handleRequestConnectivitySignal(false)
         end if
       end if
     end if
@@ -1348,7 +1300,6 @@ function muxAnalytics() as Object
       end if
 
       m._addEventToQueue(m._createEvent("requestcompleted", props))
-      m._handleRequestConnectivitySignal(true)
     else if requestVariant = "failed"
       if message.request_url <> Invalid
         props.request_url = message.request_url
@@ -1363,7 +1314,6 @@ function muxAnalytics() as Object
         props.request_error_text = message.request_error_text
       end if
       m._addEventToQueue(m._createEvent("requestfailed", props))
-      m._handleRequestConnectivitySignal(false)
     else if requestVariant = "canceled"
       m._addEventToQueue(m._createEvent("requestcanceled", props))
     end if
@@ -1754,6 +1704,7 @@ function muxAnalytics() as Object
     else
       if beacon.count() > 0
         m._logBeacon(beacon, "BEACON")
+        ' This is the batch currently governed by the existing backoff retry flow.
         m._beaconInFlight = beacon
         m._minifiedBeacon = []
         for each b in beacon
@@ -1800,6 +1751,7 @@ function muxAnalytics() as Object
     ' Otherwise clean it up and set our delay and timer if we're not done
     if m._retryCountdown <= 0
       Print "[mux-analytics] Retries exceeded for beacon, giving up"
+      ' Preserve the exhausted batch so the next normal beacon send attempt includes it.
       m._requeueFailedBeacon()
       m._beaconInFlight = Invalid
       m._Flag_beaconRequestInProgress = false
@@ -1823,6 +1775,7 @@ function muxAnalytics() as Object
 
   prototype._requeueFailedBeacon = sub()
     if m._beaconInFlight = Invalid OR m._beaconInFlight.count() = 0 then return
+    ' Requeue ahead of newer events to preserve ordering as much as possible.
     requeued = []
     requeued.Append(m._beaconInFlight)
     requeued.Append(m._eventQueue)
@@ -1957,8 +1910,6 @@ function muxAnalytics() as Object
       m._viewRequestCount = Invalid
       m._segmentRequestFailedCount = Invalid
       m._lastConnectionType = Invalid
-      m._consecutiveRequestFailures = 0
-      m._lastSuccessfulRequestTimestamp = Invalid
       m._viewApiEncryptionRequestCount = Invalid
       m._requestCompletedCount = Invalid
       m._totalLatency = Invalid
