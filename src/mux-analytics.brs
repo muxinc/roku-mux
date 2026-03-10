@@ -159,15 +159,12 @@ function runBeaconLoop()
 
     if linkEventEnabled = true AND internetEventEnabled = true
       print "[mux-analytics] Network status events enabled successfully"
-      m.mxa._networkEventsSupported = true
     else
       print "[mux-analytics] WARNING: Network event methods returned false, falling back to polling"
       print "[mux-analytics] EnableLinkStatusEvent: " ; linkEventEnabled ; ", EnableInternetStatusEvent: " ; internetEventEnabled
-      m.mxa._networkEventsSupported = false
     end if
   else
     print "[mux-analytics] Roku OS " ; firmwareVersion ; " detected. Network events require OS 10+, using polling instead"
-    m.mxa._networkEventsSupported = false
   end if
 
   ' Track exit on a separate port per Roku's guidance
@@ -600,7 +597,6 @@ function muxAnalytics() as Object
 
     ' Network monitoring
     m._lastConnectionType = Invalid
-    m._networkEventsSupported = false
 
     ' kick off analytics
     date = m._getDateTime()
