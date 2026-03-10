@@ -367,7 +367,7 @@ function _getConnectionType(deviceInfo as Object)
   end if
 
   connectionType = deviceInfo.GetConnectionType()
-  if connectionType = ""
+  if connectionType = Invalid OR connectionType = ""
     return "no_connection"
   end if
   if connectionType = "WiFiConnection"
