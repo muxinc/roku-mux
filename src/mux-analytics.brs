@@ -160,11 +160,11 @@ function runBeaconLoop()
     if linkEventEnabled = true AND internetEventEnabled = true
       print "[mux-analytics] Network status events enabled successfully"
     else
-      print "[mux-analytics] WARNING: Network event methods returned false, falling back to polling"
+      print "[mux-analytics] WARNING: Network event methods returned false; network change detection will rely on Roku event support"
       print "[mux-analytics] EnableLinkStatusEvent: " ; linkEventEnabled ; ", EnableInternetStatusEvent: " ; internetEventEnabled
     end if
   else
-    print "[mux-analytics] Roku OS " ; firmwareVersion ; " detected. Network events require OS 10+, using polling instead"
+    print "[mux-analytics] Roku OS " ; firmwareVersion ; " detected. Network events require OS 10+"
   end if
 
   ' Track exit on a separate port per Roku's guidance
@@ -609,13 +609,9 @@ function muxAnalytics() as Object
   prototype.beaconIntervalHandler = sub(beaconIntervalEvent)
     data = beaconIntervalEvent.getData()
     m.LIGHT_THE_BEACONS()
-
-    ' Polling here provides a safety net in case roDeviceInfoEvent updates are missed.
-    m.networkStatusEventHandler(Invalid)
   end sub
 
-  ' Handler for roDeviceInfoEvent network status changes (or polling)
-  ' event can be Invalid when called from polling
+  ' Handler for roDeviceInfoEvent network status changes
   prototype.networkStatusEventHandler = sub(event as Dynamic)
     eventInternetStatus = Invalid
     eventLinkStatus = Invalid
