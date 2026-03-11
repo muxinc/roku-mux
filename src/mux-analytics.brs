@@ -642,6 +642,10 @@ function muxAnalytics() as Object
     if currentConnectionType <> m._lastConnectionType
       m._fireNetworkChangeEvent(currentConnectionType)
       m._lastConnectionType = currentConnectionType
+      ' Update session properties with new connection type
+      if m._sessionProperties <> Invalid
+        m._sessionProperties.viewer_connection_type = currentConnectionType
+      end if
     end if
   end sub
 
@@ -2001,6 +2005,10 @@ function muxAnalytics() as Object
     props.viewer_device_model = seriesModel
     props.viewer_os_family = "Roku OS"
     props.viewer_os_version = firmwareVersion
+    connectionType = _getConnectionType(deviceInfo)
+    if connectionType <> Invalid
+      props.viewer_connection_type = connectionType
+    end if
     props.mux_api_version = m.MUX_API_VERSION
     props.player_mux_plugin_name = m.MUX_SDK_NAME
     props.player_mux_plugin_version = m.MUX_SDK_VERSION
