@@ -365,9 +365,13 @@ function _firmwareVersionNumber(deviceInfo as Object)
 end function
 
 function _getConnectionType(deviceInfo as Object)
+  if deviceInfo = Invalid
+    return "no_connection"
+  end if
+
   connectionType = deviceInfo.GetConnectionType()
-  if connectionType = ""
-    return Invalid
+  if connectionType = Invalid OR connectionType = ""
+    return "no_connection"
   end if
   if connectionType = "WiFiConnection"
     return "wifi"
@@ -377,6 +381,53 @@ function _getConnectionType(deviceInfo as Object)
   end if
 
   return "other"
+end function
+
+function _statusToBool(status as Dynamic) as Dynamic
+  if status = Invalid then return Invalid
+  statusType = Type(status)
+  if statusType = "Boolean" OR statusType = "roBoolean"
+    return status
+  end if
+  if statusType = "String" OR statusType = "roString"
+    normalized = LCase(status)
+    if normalized = "true" OR normalized = "up" OR normalized = "connected" OR normalized = "available"
+      return true
+    end if
+    if normalized = "false" OR normalized = "down" OR normalized = "disconnected" OR normalized = "unavailable"
+      return false
+    end if
+  end if
+  return Invalid
+end function
+
+function _getEffectiveConnectionType(deviceInfo as Object, internetStatusOverride = Invalid as Dynamic, linkStatusOverride = Invalid as Dynamic) as Dynamic
+  baseConnectionType = _getConnectionType(deviceInfo)
+  if baseConnectionType = "no_connection"
+    return "no_connection"
+  end if
+
+  internetStatus = _statusToBool(internetStatusOverride)
+  linkStatus = _statusToBool(linkStatusOverride)
+
+  if deviceInfo <> Invalid
+    if internetStatus = Invalid AND FindMemberFunction(deviceInfo, "GetInternetStatus") <> Invalid
+      internetStatus = _statusToBool(deviceInfo.GetInternetStatus())
+    end if
+    if linkStatus = Invalid AND FindMemberFunction(deviceInfo, "GetLinkStatus") <> Invalid
+      linkStatus = _statusToBool(deviceInfo.GetLinkStatus())
+    end if
+  end if
+
+  if internetStatus = false
+    return "no_connection"
+  end if
+
+  if internetStatus = Invalid AND linkStatus = false
+    return "no_connection"
+  end if
+
+  return baseConnectionType
 end function
 
 function muxAnalytics() as Object
@@ -537,8 +588,9 @@ function muxAnalytics() as Object
     m._Flag_rssAdEnded = false
     m._Flag_rssContentPlayingAfterAds = false
 
-    ' Flag for a beacon currently being retried
+    ' Keep a copy of the current beacon so we can preserve it if retries are exhausted.
     m._Flag_beaconRequestInProgress = false
+    m._beaconInFlight = Invalid
 
     ' Flag for whether or not to use a random mux viewer ID
     m._Flag_useRandomMuxViewerId = systemConfig.USE_RANDOM_MUX_VIEWER_ID
@@ -571,7 +623,21 @@ function muxAnalytics() as Object
   ' Handler for roDeviceInfoEvent network status changes (or polling)
   ' event can be Invalid when called from polling
   prototype.networkStatusEventHandler = sub(event as Dynamic)
-    currentConnectionType = _getConnectionType(m.deviceInfo)
+    eventInternetStatus = Invalid
+    eventLinkStatus = Invalid
+    if event <> Invalid AND FindMemberFunction(event, "GetInfo") <> Invalid
+      eventInfo = event.GetInfo()
+      if eventInfo <> Invalid
+        if eventInfo.internetStatus <> Invalid
+          eventInternetStatus = eventInfo.internetStatus
+        end if
+        if eventInfo.linkStatus <> Invalid
+          eventLinkStatus = eventInfo.linkStatus
+        end if
+      end if
+    end if
+
+    currentConnectionType = _getEffectiveConnectionType(m.deviceInfo, eventInternetStatus, eventLinkStatus)
     ' Check if connection type has changed
     if currentConnectionType <> m._lastConnectionType
       m._fireNetworkChangeEvent(currentConnectionType)
@@ -585,11 +651,7 @@ function muxAnalytics() as Object
 
   prototype._fireNetworkChangeEvent = sub(connectionType as Dynamic)
     props = {}
-    if connectionType = Invalid
-      props.viewer_connection_type = Invalid
-    else
-      props.viewer_connection_type = connectionType
-    end if
+    props.viewer_connection_type = connectionType
     m._addEventToQueue(m._createEvent("networkchange", props))
   end sub
 
@@ -1652,6 +1714,8 @@ function muxAnalytics() as Object
     else
       if beacon.count() > 0
         m._logBeacon(beacon, "BEACON")
+        ' This is the batch currently governed by the existing backoff retry flow.
+        m._beaconInFlight = beacon
         m._minifiedBeacon = []
         for each b in beacon
           m._minifiedBeacon.push(m._minify(b))
@@ -1689,6 +1753,7 @@ function muxAnalytics() as Object
     ' Successful exit if a 2xx is returned
     statusCode = event.GetResponseCode()
     if statusCode >= 200 and statusCode < 300
+      m._beaconInFlight = Invalid
       m._Flag_beaconRequestInProgress = false
       return
     end if
@@ -1696,6 +1761,9 @@ function muxAnalytics() as Object
     ' Otherwise clean it up and set our delay and timer if we're not done
     if m._retryCountdown <= 0
       Print "[mux-analytics] Retries exceeded for beacon, giving up"
+      ' Preserve the exhausted batch so the next normal beacon send attempt includes it.
+      m._requeueFailedBeacon()
+      m._beaconInFlight = Invalid
       m._Flag_beaconRequestInProgress = false
       return
     end if
@@ -1713,6 +1781,18 @@ function muxAnalytics() as Object
     if m._beaconAttemptTimespan.TotalMilliseconds() >= m._beaconRetryDelay
       m._makeRequest()
     end if
+  end sub
+
+  prototype._requeueFailedBeacon = sub()
+    if m._beaconInFlight = Invalid OR m._beaconInFlight.count() = 0 then return
+    ' Requeue ahead of newer events to preserve ordering as much as possible.
+    requeued = []
+    requeued.Append(m._beaconInFlight)
+    requeued.Append(m._eventQueue)
+    while requeued.count() > m.MAX_QUEUE_LENGTH
+      requeued.Pop()
+    end while
+    m._eventQueue = requeued
   end sub
 
   prototype._startView = sub(setByClient = false as Boolean)
@@ -1779,7 +1859,7 @@ function muxAnalytics() as Object
       m._addEventToQueue(m._createEvent("playbackmodechange", props))
 
       ' Fire initial networkchange event
-      initialConnectionType = _getConnectionType(m.deviceInfo)
+      initialConnectionType = _getEffectiveConnectionType(m.deviceInfo)
       m._lastConnectionType = initialConnectionType
       m._fireNetworkChangeEvent(initialConnectionType)
 
