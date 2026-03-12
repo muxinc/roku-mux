@@ -501,6 +501,8 @@ function muxAnalytics() as Object
     else
       m._configProperties = {}
     end if
+    m._viewConfigSnapshot = {}
+    m._viewConfigSnapshot.Append(m._configProperties)
 
     m._eventQueue = []
     m._seekThreshold = m.SEEK_THRESHOLD / 1000
@@ -657,6 +659,7 @@ function muxAnalytics() as Object
 
   prototype.heartbeatIntervalHandler = sub(heartbeatIntervalEvent)
     data = heartbeatIntervalEvent.getData()
+    if m._inView <> true then return
     if m._Flag_isPaused <> true
       m._addEventToQueue(m._createEvent("hb"))
     end if
@@ -957,11 +960,31 @@ function muxAnalytics() as Object
         now = 0# + date.AsSeconds() * 1000.0# + date.GetMilliseconds()
         requestStartTime = now - videoSegment.downloadDuration
         if requestStartTime < m._viewStartTimestamp
-          ' Request started before current view - it's from a previous video          
-          print "[mux-analytics] DISCARDING stale request from previous view"
+          ' Request started before current view - it's from a previous video
+          print "[mux-analytics] DISCARDING stale request from previous view (timestamp)"
           print "  request_start: " + Str(requestStartTime)
           print "  view_start: " + Str(m._viewStartTimestamp)
           print "  difference_ms: " + Str(m._viewStartTimestamp - requestStartTime)
+          return
+        end if
+      end if
+
+      ' Additional hostname-based stale request detection
+      ' After a view transition, segment downloads from the previous video's CDN
+      ' may still complete. The timestamp check above can miss these when message
+      ' queue delays make the estimated request_start appear after view_start.
+      ' Compare the segment hostname against the previous and current view sources.
+      if m._previousViewSourceHostname <> Invalid AND videoSegment.segUrl <> Invalid
+        segHostname = m._getHostname(videoSegment.segUrl)
+        currentSourceHostname = Invalid
+        if m._videoContentProperties <> Invalid
+          currentSourceHostname = m._videoContentProperties.video_source_hostname
+        end if
+        if segHostname <> Invalid AND currentSourceHostname <> Invalid AND segHostname <> currentSourceHostname AND segHostname = m._previousViewSourceHostname
+          print "[mux-analytics] DISCARDING stale request from previous view (hostname)"
+          print "  segment_hostname: " + segHostname
+          print "  current_source_hostname: " + currentSourceHostname
+          print "  previous_source_hostname: " + m._previousViewSourceHostname
           return
         end if
       end if
@@ -1049,6 +1072,12 @@ function muxAnalytics() as Object
     end if
 
     m._configProperties = config
+
+    ' Update snapshot only between views to prevent config leaking into active view
+    if m._inView <> true
+      m._viewConfigSnapshot = {}
+      m._viewConfigSnapshot.Append(config)
+    end if
   end sub
 
   prototype.useRenderStitchedStreamHandler = sub(useRenderStitchedStream as Boolean)
@@ -1150,6 +1179,10 @@ function muxAnalytics() as Object
     ' Remember the playback mode for future events in the config
     if m._configProperties <> Invalid
       m._configProperties.player_playback_mode = playbackMode.player_playback_mode
+    end if
+    ' Playback mode is an intentional mid-view update (e.g. ad breaks)
+    if m._viewConfigSnapshot <> Invalid
+      m._viewConfigSnapshot.player_playback_mode = playbackMode.player_playback_mode
     end if
 
     if playbackMode.player_playback_mode_data <> Invalid
@@ -1809,6 +1842,12 @@ function muxAnalytics() as Object
         m._playerViewCount++
       end if
       m._viewId = m._generateGUID()
+
+      ' Freeze config for this view so mid-view config changes don't leak
+      m._viewConfigSnapshot = {}
+      if m._configProperties <> Invalid
+        m._viewConfigSnapshot.Append(m._configProperties)
+      end if
       m._viewWatchTime = 0
       m._adWatchTime = 0
       m._totalAdWatchTime = 0
@@ -1833,7 +1872,8 @@ function muxAnalytics() as Object
 
       m._playbackRanges = []
       m._currentPlaybackRangeStart = Invalid
-      
+      m._playerPlayheadTime = 0
+
       m._Flag_lastReportedPosition = 0
       m._Flag_atLeastOnePlayEventForContent = false
       m._Flag_isSeeking = false
@@ -1879,7 +1919,17 @@ function muxAnalytics() as Object
 
       m._endPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("viewend"))
+
+      ' Record the ending view's source hostname so stale segment downloads
+      ' from the previous video can be identified after a view transition
+      if m._videoContentProperties <> Invalid AND m._videoContentProperties.video_source_hostname <> Invalid
+        m._previousViewSourceHostname = m._videoContentProperties.video_source_hostname
+      else
+        m._previousViewSourceHostname = Invalid
+      end if
       m._inView = false
+      ' Clear snapshot so events between views use live _configProperties
+      m._viewConfigSnapshot = {}
       m._viewId = Invalid
       m._viewStartTimestamp = Invalid
       m._viewSequence = Invalid
@@ -1968,7 +2018,9 @@ function muxAnalytics() as Object
     newEvent.Append(eventProperties)
 
     'customer can overwrite ALL properties should they wish'
-    if m._configProperties <> Invalid
+    if m._viewConfigSnapshot <> Invalid AND m._viewConfigSnapshot.Count() > 0
+      newEvent.Append(m._viewConfigSnapshot)
+    else if m._configProperties <> Invalid
       newEvent.Append(m._configProperties)
     end if
     ' Warn if env_key is not set
@@ -2414,7 +2466,7 @@ function muxAnalytics() as Object
   end function
 
   prototype._startPlaybackRange = sub(startPlayheadTimeSec)
-    if startPlayheadTimeSec = Invalid 
+    if startPlayheadTimeSec = Invalid
       print "[mux-analytics] Warning: Attempted to start playback range with invalid start time"
       return
     end if
@@ -2440,7 +2492,7 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype._createPlaybackRange = function(startSec as Float, endSec as Float) as Object
+  prototype._createPlaybackRange = function(startSec, endSec) as Object
     if startSec = Invalid OR endSec = Invalid OR startSec >= endSec
       print "Invalid start or end time for playback range"
       return Invalid

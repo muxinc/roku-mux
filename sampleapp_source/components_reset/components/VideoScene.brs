@@ -33,7 +33,8 @@ sub setupContent()
   {title: "DASH stream no ads", selectionID: "dashnoads"},
   {title: "Playlist content, no ads", selectionID: "playlist"},
   {title: "Live stream", selectionID: "live"},
-  {title: "TEST: View Transition Race", selectionID: "test_race"}
+  {title: "TEST: View Transition Race", selectionID: "test_race"},
+  {title: "TEST: Stress Rapid Transitions (x20)", selectionID: "test_stress"}
   ]
 
   listContent = createObject("roSGNode","ContentNode")
@@ -54,6 +55,9 @@ sub onItemSelected()
   ' Handle test scenarios directly without PlayerTask
   if selectedId = "test_race"
     runViewTransitionRaceTest()
+    return
+  else if selectedId = "test_stress"
+    runStressTransitionTest()
     return
   end if
   
@@ -186,15 +190,141 @@ end sub
 
 sub stopCurrentTest()
   print "[TEST] Stopping current test and returning to menu"
-  
+
   ' Stop video playback
   m.video.control = "stop"
   m.video.visible = false
-  
+
   ' End Mux tracking
   m.mux.setField("view", "end")
-  
+
   ' Show menu again
   m.list.visible = true
   m.list.setFocus(true)
+end sub
+
+' =============================================================================
+' STRESS TEST - Rapid View Transitions (x20)
+' Designed to reproduce video_source_url leaking across sessions
+' =============================================================================
+
+sub runStressTransitionTest()
+  print "[STRESS] ==============================================="
+  print "[STRESS] Starting Rapid Transition Stress Test (20 cycles)"
+  print "[STRESS] ==============================================="
+
+  m.list.visible = false
+  m.video.visible = true
+
+  ' Two alternating streams with very different hostnames for easy detection
+  m.stressStreams = [
+    {
+      title: "STREAM-A (Apple)",
+      url: "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8",
+      streamFormat: "hls"
+    },
+    {
+      title: "STREAM-B (Unified)",
+      url: "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8",
+      streamFormat: "hls"
+    }
+  ]
+  m.stressCount = 0
+  m.stressMax = 20
+  m.stressErrors = []
+
+  ' Start the first stream
+  startStressIteration()
+end sub
+
+sub startStressIteration()
+  if m.stressCount >= m.stressMax
+    printStressSummary()
+    return
+  end if
+
+  streamIdx = m.stressCount MOD 2
+  stream = m.stressStreams[streamIdx]
+
+  print "[STRESS] -----------------------------------------------"
+  print "[STRESS] Iteration " + m.stressCount.toStr() + "/" + m.stressMax.toStr()
+  print "[STRESS] Playing: " + stream.title
+  print "[STRESS] Expected URL: " + stream.url
+
+  ' If not first iteration, do the rapid end->start transition
+  if m.stressCount > 0
+    ' Time the endView
+    dt = createObject("roDateTime")
+    beforeMs = (0# + dt.asSeconds() * 1000.0# + dt.getMilliseconds())
+
+    print "[STRESS] >> Sending view='end'"
+    m.mux.setField("view", "end")
+
+    dt2 = createObject("roDateTime")
+    afterEndMs = (0# + dt2.asSeconds() * 1000.0# + dt2.getMilliseconds())
+    endDuration = afterEndMs - beforeMs
+    print "[STRESS] >> view='end' took " + endDuration.toStr() + " ms"
+
+    if endDuration > 100
+      m.stressErrors.push("[STRESS] WARNING: view='end' took " + endDuration.toStr() + " ms at iteration " + m.stressCount.toStr())
+    end if
+  end if
+
+  ' Set new content before starting view (so _startView reads correct metadata)
+  content = createObject("roSGNode", "ContentNode")
+  content.title = stream.title
+  content.url = stream.url
+  content.streamFormat = stream.streamFormat
+  m.video.content = content
+  m.video.control = "play"
+
+  ' Start new view after content is set
+  print "[STRESS] >> Sending view='start'"
+  m.mux.setField("view", "start")
+
+  dt3 = createObject("roDateTime")
+  afterStartMs = (0# + dt3.asSeconds() * 1000.0# + dt3.getMilliseconds())
+  if m.stressCount > 0
+    startDuration = afterStartMs - afterEndMs
+  else
+    startDuration = 0
+  end if
+  print "[STRESS] >> view='start' took " + startDuration.toStr() + " ms"
+
+  if startDuration > 100
+    m.stressErrors.push("[STRESS] WARNING: view='start' took " + startDuration.toStr() + " ms at iteration " + m.stressCount.toStr())
+  end if
+
+  m.stressCount++
+
+  ' Play for 3 seconds, then transition to next
+  m.testTimer = createObject("roSGNode", "Timer")
+  m.testTimer.duration = 3
+  m.testTimer.observeField("fire", "onStressTimerFire")
+  m.testTimer.control = "start"
+end sub
+
+sub onStressTimerFire()
+  startStressIteration()
+end sub
+
+sub printStressSummary()
+  print "[STRESS] ==============================================="
+  print "[STRESS] STRESS TEST COMPLETE"
+  print "[STRESS] Total iterations: " + m.stressMax.toStr()
+  if m.stressErrors.count() > 0
+    print "[STRESS] TIMING WARNINGS: " + m.stressErrors.count().toStr()
+    for each err in m.stressErrors
+      print err
+    end for
+  else
+    print "[STRESS] No timing warnings (all transitions < 100ms)"
+  end if
+  print "[STRESS] ==============================================="
+  print "[STRESS] Review the full log above for:"
+  print "[STRESS]   1. video_source_url mismatches (apple URL on unified events or vice versa)"
+  print "[STRESS]   2. Stale request_hostname values crossing view boundaries"
+  print "[STRESS]   3. Transition timing > 100ms"
+  print "[STRESS] Press BACK to return to menu"
+  print "[STRESS] ==============================================="
 end sub
