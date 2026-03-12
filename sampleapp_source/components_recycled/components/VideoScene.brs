@@ -16,6 +16,7 @@ sub init()
   m.mux.setField("video", m.video)
   m.mux.setField("config", m.muxConfig)
   m.mux.control = "RUN"
+  m.hasActiveView = false
 
   ' SETUP SELECTION LIST
   m.list.wrapDividerBitmapUri = ""
@@ -40,8 +41,20 @@ end sub
 
 sub onItemSelected()
   selectionId = m.contentList[m.list.itemSelected].selectionID
+
+  ' End the current view before switching content
+  if m.hasActiveView = true
+    m.video.control = "stop"
+    m.mux.setField("view", "end")
+  end if
+
+  ' Set new content and config
   setContent(selectionId)
   m.video.control = "play"
+
+  ' Start a new view for the new content
+  m.mux.setField("view", "start")
+  m.hasActiveView = true
 end sub
 
 sub setContent(selectionId as String)
@@ -60,6 +73,7 @@ sub setContent(selectionId as String)
     m.muxConfig.video_variant_id = "BUNNY_ID"
     m.muxConfig.video_source_current_audio_track = "customer set audio track 1"
     m.muxConfig.video_source_current_subtitle_track = "customer set subtitle track 1"
+    m.muxConfig.video_source_url = contentNode.URL
     m.mux.setField("config", m.muxConfig)
   else if selectionId = "2"
     contentNode.URL= "http://video.ted.com/talks/podcast/DavidKelley_2002_480.mp4"
@@ -75,6 +89,7 @@ sub setContent(selectionId as String)
     m.muxConfig.video_variant_id = "TED_ID"
     m.muxConfig.video_source_current_audio_track = "customer set audio track 2"
     m.muxConfig.video_source_current_subtitle_track = "customer set subtitle track 2"
+    m.muxConfig.video_source_url = contentNode.URL
     m.mux.setField("config", m.muxConfig)
   else if selectionId = "3"
     contentNode.URL= "https://content.jwplatform.com/manifests/yp34SRmf.m3u8"
@@ -91,6 +106,7 @@ sub setContent(selectionId as String)
     m.muxConfig.video_variant_id = "Cycling_ID"
     m.muxConfig.video_source_current_audio_track = "customer set audio track 3"
     m.muxConfig.video_source_current_subtitle_track = "customer set subtitle track 3"
+    m.muxConfig.video_source_url = contentNode.URL
     m.mux.setField("config", m.muxConfig)
   end if
   m.video.content = contentNode
