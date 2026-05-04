@@ -920,6 +920,8 @@ function muxAnalytics() as Object
   prototype._textTrackStateChanged = function(current as Object, previous as Dynamic) as Boolean
     if previous = Invalid then return true
     if current.enabled <> previous.enabled then return true
+    ' Do not report changes while disabled:
+    if current.enabled = false then return false
     if current.name <> previous.name then return true
     if current.language <> previous.language then return true
     return false
