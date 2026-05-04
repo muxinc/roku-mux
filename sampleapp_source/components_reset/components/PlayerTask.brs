@@ -100,6 +100,7 @@ sub playContent()
     contentNode.URL = "https://dash.akamaized.net/dash264/TestCases/5a/nomor/1.mpd"
     contentNode.StreamFormat = "dash"
     contentNode.length = 594
+    contentInfo.length = 594
     contentInfo.contentId = "BIG BUCK BUNNY"
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
