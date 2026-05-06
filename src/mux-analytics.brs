@@ -78,8 +78,8 @@ function runBeaconLoop()
     m.top.video.ObserveField("downloadedSegment", m.messagePort)
     m.top.video.ObserveField("streamingSegment", m.messagePort)
     m.top.video.ObserveField("position", m.messagePort)
-    m.top.video.ObserveField("currentSubtitleTrack", m.messagePort)
     m.top.video.ObserveField("availableSubtitleTracks", m.messagePort)
+    m.top.video.ObserveField("currentSubtitleTrack", m.messagePort)
     m.top.video.ObserveField("globalCaptionMode", m.messagePort)
     m.top.video.ObserveField("mute", m.messagePort)
     if m.top.disableDecoderStats <> true AND m.top.video.enableDecoderStats <> Invalid
@@ -209,8 +209,8 @@ function runBeaconLoop()
             m.top.video.ObserveField("downloadedSegment", m.messagePort)
             m.top.video.ObserveField("streamingSegment", m.messagePort)
             m.top.video.ObserveField("position", m.messagePort)
-            m.top.video.ObserveField("currentSubtitleTrack", m.messagePort)
             m.top.video.ObserveField("availableSubtitleTracks", m.messagePort)
+            m.top.video.ObserveField("currentSubtitleTrack", m.messagePort)
             m.top.video.ObserveField("globalCaptionMode", m.messagePort)
             m.top.video.ObserveField("mute", m.messagePort)
             if m.top.disableDecoderStats <> true AND m.top.video.enableDecoderStats <> Invalid
@@ -246,11 +246,12 @@ function runBeaconLoop()
           msgData = msg.getData()
           if msgData <> Invalid AND type(msgData) = "roString"
             m.mxa.videoStateChangeHandler(msgData)
+            m.mxa.videoNodeFieldChangeHandler(field, msgData)
           end if
         else if field = "position"
           m.mxa.videoPositionChangeHandler(msg.getData())
-        else if field = "currentSubtitleTrack" or field = "availableSubtitleTracks" or field = "globalCaptionMode" or field = "mute"
-          m.mxa.textTrackChangeHandler()
+        else if field = "availableSubtitleTracks" or field = "currentSubtitleTrack" or field = "globalCaptionMode" or field = "mute"
+          m.mxa.videoNodeFieldChangeHandler(field, msg.getData())
         else if field = "rafEvent"
           m.mxa.rafEventHandler(msg)
         else if field = "fire"
@@ -325,6 +326,17 @@ function runBeaconLoop()
   m.top.exit = false
 
   Print "[mux-analytics] end running task loop"
+  return true
+end function
+
+' Compares the items of two associative arrays. Uses direct equality checks, no type conversion or deep comparison.
+function _compareAAShallow(aa1 as Object, aa2 as Object) as Boolean
+  if aa1 = invalid or aa2 = invalid then return false
+  if aa1.Count() <> aa2.Count() then return false
+  for each key in aa1
+    if not aa2.DoesExist(key) then return false
+    if aa1[key] <> aa2[key] then return false
+  end for
   return true
 end function
 
@@ -542,7 +554,6 @@ function muxAnalytics() as Object
     m._audioSourceFormat = Invalid
     m._videoSourceDuration = Invalid
     m._videoCurrentCdn = Invalid
-    m._currentTextTrackState = Invalid
     m._viewPrerollPlayedCount = Invalid
     m._totalAdWatchTime = Invalid
     m._adWatchTime = Invalid
@@ -613,6 +624,12 @@ function muxAnalytics() as Object
     m._lastConnectionType = Invalid
     m._networkEventsSupported = false
 
+    ' Text Track Changes
+    m._previousTextTrackChangeProps = Invalid
+
+    ' Generic video node observation
+    m._videoNodeFields = Invalid
+
     ' kick off analytics
     date = m._getDateTime()
     m._startTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
@@ -680,6 +697,7 @@ function muxAnalytics() as Object
     else
       m._videoContentProperties = m._getVideoContentProperties(video.content)
     end if
+    m._videoNodeFields = m._getVideoNodeFields(video)
     m.video = video
 
     ' Initialize player playhead time
@@ -873,59 +891,72 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype.textTrackChangeHandler = sub()
-    if m.video = Invalid then return
+  prototype._checkTextTrackState = sub()
+    if m._inView = Invalid or m._inView = false then return
 
-    currentState = m._getTextTrackState()
+    props = m._getTextTrackChangeProps()
+    if props = Invalid then return
 
-    if m._textTrackStateChanged(currentState, m._currentTextTrackState)
-      props = {}
-      props.player_text_track_enabled = currentState.enabled
-      if currentState.enabled
-        if currentState.name <> Invalid then props.player_text_track_name = currentState.name
-        if currentState.language <> Invalid then props.player_text_track_language = currentState.language
-      end if
-      m._addEventToQueue(m._createEvent("texttrackchange", props))
-      m._currentTextTrackState = currentState
-    end if
+    previous = m._previousTextTrackChangeProps
+    if previous <> Invalid and _compareAAShallow(props, previous) then return
+
+    m._fireTextTrackChangeEvent(props)
   end sub
 
-  prototype._getTextTrackState = function() as Object
-    state = { enabled: false }
+  prototype._getTextTrackChangeProps = function() as Object
+    fields = m._videoNodeFields
+    if fields = Invalid then return Invalid
 
-    captionMode = m.video.globalCaptionMode
-    trackId = m.video.currentSubtitleTrack
-    isMuted = (m.video.mute <> Invalid and m.video.mute = true)
-    captionModeActive = (captionMode <> Invalid and (captionMode = "On" or (captionMode = "When mute" and isMuted)))
-    hasTrack = (trackId <> Invalid and trackId <> "")
-    state.enabled = (captionModeActive and hasTrack)
+    captionMode = fields.globalCaptionMode
+    if captionMode = Invalid or captionMode = "" then return Invalid
 
-    if hasTrack and m.video.availableSubtitleTracks <> Invalid
-      for each track in m.video.availableSubtitleTracks
-        if track.TrackName = trackId
-          if track.Description <> Invalid and track.Description <> ""
-            state.name = track.Description
-          end if
-          if track.Language <> Invalid and track.Language <> ""
-            state.language = track.Language
-          end if
-          exit for
-        end if
-      end for
+    ' Ignoring other values including "Instant replay":
+    captionsAllowed = false
+    if captionMode = "On"
+      captionsAllowed = true
+    else if captionMode = "When mute"
+      if fields.mute = Invalid then return Invalid
+      captionsAllowed = fields.mute
     end if
 
-    return state
+    if not captionsAllowed
+      return { player_text_track_enabled: false }
+    end if
+
+    trackId = fields.currentSubtitleTrack
+    tracks = fields.availableSubtitleTracks
+
+    if trackId = Invalid or trackId = "" or tracks = Invalid or tracks.Count() = 0
+      ' Do not trust these empty values during error state or initial buffering...
+      state = fields.state
+      if state = Invalid or state = "none" or state = "buffering" or state = "error"
+        return Invalid
+      end if
+      ' ...but after that, this means no available track:
+      return { player_text_track_enabled: false }
+    end if
+
+    for each track in tracks
+      if track.TrackName = trackId
+        props = { player_text_track_enabled: true }
+        if track.Description <> Invalid and track.Description <> ""
+          props.player_text_track_name = track.Description
+        end if
+        if track.Language <> Invalid and track.Language <> ""
+          props.player_text_track_language = track.Language
+        end if
+        return props
+      end if
+    end for
+
+    return Invalid
   end function
 
-  prototype._textTrackStateChanged = function(current as Object, previous as Dynamic) as Boolean
-    if previous = Invalid then return true
-    if current.enabled <> previous.enabled then return true
-    ' Do not report changes while disabled:
-    if current.enabled = false then return false
-    if current.name <> previous.name then return true
-    if current.language <> previous.language then return true
-    return false
-  end function
+  prototype._fireTextTrackChangeEvent = sub(props as Object)
+    if props = Invalid then return
+    m._previousTextTrackChangeProps = props
+    m._addEventToQueue(m._createEvent("texttrackchange", props))
+  end sub
 
   prototype._triggerPlayEvent = sub()
     if m.video <> Invalid
@@ -1928,8 +1959,8 @@ function muxAnalytics() as Object
       m._lastConnectionType = initialConnectionType
       m._fireNetworkChangeEvent(initialConnectionType)
 
-      ' Fire initial texttrackchange event
-      m.textTrackChangeHandler()
+      ' (potentially) fire initial texttrackchange event
+      m._fireTextTrackChangeEvent(m._getTextTrackChangeProps())
 
       m._addEventToQueue(m._createEvent("viewstart"))
 
@@ -1971,7 +2002,6 @@ function muxAnalytics() as Object
       m._videoSourceFormat = Invalid
       m._videoSourceDuration = Invalid
       m._videoCurrentCdn = Invalid
-      m._currentTextTrackState = Invalid
       m.drmType = Invalid
       m.droppedFrames = Invalid
 
@@ -1997,6 +2027,9 @@ function muxAnalytics() as Object
       m._totalLatency = Invalid
       m._viewMaxRequestLatency = Invalid
       m._viewAverageRequestLatency = Invalid
+
+      ' Text Track Changes
+      m._previousTextTrackChangeProps = Invalid
     end if
   end sub
 
@@ -2122,6 +2155,26 @@ function muxAnalytics() as Object
 
     return props
   end function
+
+  prototype._getVideoNodeFields = function(video as Object) as Object
+    fields = {}
+    if video <> Invalid
+      for each fieldName in ["availableSubtitleTracks", "currentSubtitleTrack", "globalCaptionMode", "mute", "state"]
+        fields[fieldName] = video[fieldName]
+      end for
+    end if
+    return fields
+  end function
+
+  prototype.videoNodeFieldChangeHandler = sub(fieldName as String, value as Dynamic)
+    if m._videoNodeFields = Invalid then return
+
+    m._videoNodeFields[fieldName] = value
+
+    if fieldName = "availableSubtitleTracks" or fieldName = "currentSubtitleTrack" or fieldName = "globalCaptionMode" or fieldName = "mute" or fieldName = "state"
+      m._checkTextTrackState()
+    end if
+  end sub
 
   ' Set called per video content'
   prototype._getVideoContentProperties = function(incomingContent as Object) as Object
