@@ -112,6 +112,13 @@ sub playContent()
     contentInfo.contentId = "BIG BUCK BUNNY"
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
+  else if selectionId = "texttracks"
+    contentNode.URL = "https://devstreaming-cdn.apple.com/videos/streaming/examples/adv_dv_atmos/main.m3u8"
+    contentNode.StreamFormat = "hls"
+    contentInfo.length = 98
+    contentInfo.contentId = "Becoming You"
+    m.top.video.content = contentNode
+    PlayContentOnlyNoAds(contentInfo)
   else if selectionId = "playlist"
     createPlaylist()
     PlayContentOnlyNoAds(contentInfo)
