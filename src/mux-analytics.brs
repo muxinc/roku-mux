@@ -624,11 +624,11 @@ function muxAnalytics() as Object
     m._lastConnectionType = Invalid
     m._networkEventsSupported = false
 
+    ' Generic video node observation
+    m._videoNodeFieldValues = Invalid
+
     ' Text Track Changes
     m._previousTextTrackChangeProps = Invalid
-
-    ' Generic video node observation
-    m._videoNodeFields = Invalid
 
     ' kick off analytics
     date = m._getDateTime()
@@ -645,6 +645,28 @@ function muxAnalytics() as Object
     ' If network events are not supported, poll network status
     if m._networkEventsSupported = false
       m.networkStatusEventHandler(Invalid)
+    end if
+  end sub
+
+  ' returns an associative array with current state of fields to be observed
+  ' see _videoNodeFieldValues and videoNodeFieldChangeHandler
+  prototype._getFieldValuesFromVideoNode = function(video as Object) as Object
+    fields = {}
+    if video <> Invalid
+      for each fieldName in ["availableSubtitleTracks", "currentSubtitleTrack", "globalCaptionMode", "mute", "state"]
+        fields[fieldName] = video[fieldName]
+      end for
+    end if
+    return fields
+  end function
+
+  prototype.videoNodeFieldChangeHandler = sub(fieldName as String, value as Dynamic)
+    if m._videoNodeFieldValues = Invalid then return
+
+    m._videoNodeFieldValues[fieldName] = value
+
+    if fieldName = "availableSubtitleTracks" or fieldName = "currentSubtitleTrack" or fieldName = "globalCaptionMode" or fieldName = "mute" or fieldName = "state"
+      m._checkTextTrackState()
     end if
   end sub
 
@@ -692,12 +714,12 @@ function muxAnalytics() as Object
 
   prototype.videoAddedHandler = sub(video as Object)
     m._videoProperties = m._getVideoProperties(video)
+    m._videoNodeFieldValues = m._getFieldValuesFromVideoNode(video)
     if video.contentIsPlaylist = true
       m._videoContentProperties = m._getVideoContentProperties(video.content.getChild(video.contentIndex))
     else
       m._videoContentProperties = m._getVideoContentProperties(video.content)
     end if
-    m._videoNodeFields = m._getVideoNodeFields(video)
     m.video = video
 
     ' Initialize player playhead time
@@ -904,7 +926,7 @@ function muxAnalytics() as Object
   end sub
 
   prototype._getTextTrackChangeProps = function() as Object
-    fields = m._videoNodeFields
+    fields = m._videoNodeFieldValues
     if fields = Invalid then return Invalid
 
     captionMode = fields.globalCaptionMode
@@ -2155,26 +2177,6 @@ function muxAnalytics() as Object
 
     return props
   end function
-
-  prototype._getVideoNodeFields = function(video as Object) as Object
-    fields = {}
-    if video <> Invalid
-      for each fieldName in ["availableSubtitleTracks", "currentSubtitleTrack", "globalCaptionMode", "mute", "state"]
-        fields[fieldName] = video[fieldName]
-      end for
-    end if
-    return fields
-  end function
-
-  prototype.videoNodeFieldChangeHandler = sub(fieldName as String, value as Dynamic)
-    if m._videoNodeFields = Invalid then return
-
-    m._videoNodeFields[fieldName] = value
-
-    if fieldName = "availableSubtitleTracks" or fieldName = "currentSubtitleTrack" or fieldName = "globalCaptionMode" or fieldName = "mute" or fieldName = "state"
-      m._checkTextTrackState()
-    end if
-  end sub
 
   ' Set called per video content'
   prototype._getVideoContentProperties = function(incomingContent as Object) as Object
