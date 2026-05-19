@@ -329,17 +329,6 @@ function runBeaconLoop()
   return true
 end function
 
-' Compares the items of two associative arrays. Uses direct equality checks, no type conversion or deep comparison.
-function _compareAAShallow(aa1 as Object, aa2 as Object) as Boolean
-  if aa1 = invalid or aa2 = invalid then return false
-  if aa1.Count() <> aa2.Count() then return false
-  for each key in aa1
-    if not aa2.DoesExist(key) then return false
-    if aa1[key] <> aa2[key] then return false
-  end for
-  return true
-end function
-
 function _createConnection(port as Object) as Object
   connection = CreateObject("roUrlTransfer")
   connection.SetPort(port)
@@ -920,7 +909,7 @@ function muxAnalytics() as Object
     if props = Invalid then return
 
     previous = m._previousTextTrackChangeProps
-    if previous <> Invalid and _compareAAShallow(props, previous) then return
+    if previous <> Invalid and m._compareAAShallow(props, previous) then return
 
     m._fireTextTrackChangeEvent(props)
   end sub
@@ -2980,6 +2969,17 @@ function muxAnalytics() as Object
   ' ' //////////////////////////////////////////////////////////////
   ' ' UTILS METHODS
   ' ' //////////////////////////////////////////////////////////////
+
+  ' Compares the items of two associative arrays. Uses direct equality checks, no type conversion or deep comparison.
+  prototype._compareAAShallow = function(aa1 as Object, aa2 as Object) as Boolean
+    if aa1 = invalid or aa2 = invalid then return false
+    if aa1.Count() <> aa2.Count() then return false
+    for each key in aa1
+      if not aa2.DoesExist(key) then return false
+      if aa1[key] <> aa2[key] then return false
+    end for
+    return true
+  end function
 
   prototype._floatSecsToMillis = function(secs as Float) as Integer 
     if secs = Invalid
