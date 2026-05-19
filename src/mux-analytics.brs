@@ -914,6 +914,7 @@ function muxAnalytics() as Object
     m._fireTextTrackChangeEvent(props)
   end sub
 
+  ' return texttrackchange event properties or Invalid if not loaded/ready.
   prototype._getTextTrackChangeProps = function() as Object
     fields = m._videoNodeFieldValues
     if fields = Invalid then return Invalid
