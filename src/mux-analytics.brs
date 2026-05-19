@@ -724,6 +724,9 @@ function muxAnalytics() as Object
         m._seekThreshold = maximumPossiblePositionChange
       end if
     end if
+
+    ' check refreshed state(s)
+    m._checkTextTrackState()
   end sub
 
   prototype.videoPositionChangeHandler = sub(position as Double)
