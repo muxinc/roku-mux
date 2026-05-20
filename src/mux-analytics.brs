@@ -608,7 +608,7 @@ function muxAnalytics() as Object
     m._networkEventsSupported = false
 
     ' Generic video node observation
-    m._videoNodeFieldValues = Invalid
+    m._observedVideoNodeFieldValues = Invalid
 
     ' Text Track Changes
     m._previousTextTrackChangeProps = Invalid
@@ -675,7 +675,7 @@ function muxAnalytics() as Object
 
   prototype.videoAddedHandler = sub(video as Object)
     m._videoProperties = m._getVideoProperties(video)
-    m._videoNodeFieldValues = m._getObservedFieldValuesFromVideoNode(video)
+    m._observedVideoNodeFieldValues = m._getObservedFieldValuesFromVideoNode(video)
     if video.contentIsPlaylist = true
       m._videoContentProperties = m._getVideoContentProperties(video.content.getChild(video.contentIndex))
     else
@@ -747,9 +747,9 @@ function muxAnalytics() as Object
   end function
 
   prototype.videoNodeFieldChangeHandler = sub(fieldName as String, value as Dynamic)
-    if m._videoNodeFieldValues = Invalid then return
+    if m._observedVideoNodeFieldValues = Invalid then return
 
-    m._videoNodeFieldValues[fieldName] = value
+    m._observedVideoNodeFieldValues[fieldName] = value
 
     handlersToInvoke = m._videoNodeFieldHandlers[fieldName]
     if handlersToInvoke <> Invalid
@@ -766,7 +766,7 @@ function muxAnalytics() as Object
   end sub
 
   prototype._callVideoStateChangeHandler = sub()
-    state = m._videoNodeFieldValues["state"]
+    state = m._observedVideoNodeFieldValues["state"]
     ' this check preserved from the original implementation in runBeaconLoop()
     if state <> Invalid AND type(state) = "roString"
       m.videoStateChangeHandler(state)
@@ -957,7 +957,7 @@ function muxAnalytics() as Object
 
   ' return texttrackchange event properties or Invalid if not loaded/ready.
   prototype._getTextTrackChangeProps = function() as Object
-    fields = m._videoNodeFieldValues
+    fields = m._observedVideoNodeFieldValues
     if fields = Invalid then return Invalid
 
     captionMode = fields.globalCaptionMode
