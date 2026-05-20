@@ -66,11 +66,12 @@ function runBeaconLoop()
 
   m.top.ObserveField("rafEvent", m.messagePort)
 
+  videoNodeId = Invalid
   if m.top.video = Invalid
     m.top.ObserveField("video", m.messagePort)
   else
+    videoNodeId = m.top.video.id
     m.mxa.videoAddedHandler(m.top.video)
-    m.top.video.ObserveField("state", m.messagePort)
     m.top.video.ObserveField("content", m.messagePort)
     m.top.video.ObserveField("control", m.messagePort)
     m.top.video.ObserveField("licenseStatus", m.messagePort)
@@ -78,10 +79,9 @@ function runBeaconLoop()
     m.top.video.ObserveField("downloadedSegment", m.messagePort)
     m.top.video.ObserveField("streamingSegment", m.messagePort)
     m.top.video.ObserveField("position", m.messagePort)
-    m.top.video.ObserveField("availableSubtitleTracks", m.messagePort)
-    m.top.video.ObserveField("currentSubtitleTrack", m.messagePort)
-    m.top.video.ObserveField("globalCaptionMode", m.messagePort)
-    m.top.video.ObserveField("mute", m.messagePort)
+    for each fieldName in m.mxa.videoNodeFieldsToObserve()
+      m.top.video.ObserveField(fieldName, m.messagePort)
+    end for
     if m.top.disableDecoderStats <> true AND m.top.video.enableDecoderStats <> Invalid
       m.top.video.enableDecoderStats = true
       m.top.video.ObserveField("decoderStats", m.messagePort)
@@ -196,12 +196,15 @@ function runBeaconLoop()
       msgType = type(msg)
       if msgType = "roSGNodeEvent"
         field = msg.getField()
-        if field = "video"
+        nodeId = msg.GetNode()
+        if nodeId = videoNodeId and m.mxa.isObservedVideoNodeField(field)
+          m.mxa.videoNodeFieldChangeHandler(field, msg.getData())
+        else if field = "video"
           if m.top.video = Invalid
+            videoNodeId = m.top.video.id
             m.top.UnobserveField("video")
             data = msg.getData()
             m.mxa.videoAddedHandler(data)
-            m.top.video.ObserveField("state", m.messagePort)
             m.top.video.ObserveField("content", m.messagePort)
             m.top.video.ObserveField("control", m.messagePort)
             m.top.video.ObserveField("licenseStatus", m.messagePort)
@@ -209,10 +212,9 @@ function runBeaconLoop()
             m.top.video.ObserveField("downloadedSegment", m.messagePort)
             m.top.video.ObserveField("streamingSegment", m.messagePort)
             m.top.video.ObserveField("position", m.messagePort)
-            m.top.video.ObserveField("availableSubtitleTracks", m.messagePort)
-            m.top.video.ObserveField("currentSubtitleTrack", m.messagePort)
-            m.top.video.ObserveField("globalCaptionMode", m.messagePort)
-            m.top.video.ObserveField("mute", m.messagePort)
+            for each fieldName in m.mxa.videoNodeFieldsToObserve()
+              m.top.video.ObserveField(fieldName, m.messagePort)
+            end for
             if m.top.disableDecoderStats <> true AND m.top.video.enableDecoderStats <> Invalid
               m.top.video.enableDecoderStats = true
               m.top.video.ObserveField("decoderStats", m.messagePort)
@@ -242,16 +244,8 @@ function runBeaconLoop()
           m.mxa.drmLicenseStatusChangeHandler(msg.getData())
         else if field = "view"
           m.mxa.videoViewChangeHandler(msg.getData())
-        else if field = "state"
-          msgData = msg.getData()
-          if msgData <> Invalid AND type(msgData) = "roString"
-            m.mxa.videoStateChangeHandler(msgData)
-            m.mxa.videoNodeFieldChangeHandler(field, msgData)
-          end if
         else if field = "position"
           m.mxa.videoPositionChangeHandler(msg.getData())
-        else if field = "availableSubtitleTracks" or field = "currentSubtitleTrack" or field = "globalCaptionMode" or field = "mute"
-          m.mxa.videoNodeFieldChangeHandler(field, msg.getData())
         else if field = "rafEvent"
           m.mxa.rafEventHandler(msg)
         else if field = "fire"
@@ -637,28 +631,6 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  ' returns an associative array with current state of fields to be observed
-  ' see _videoNodeFieldValues and videoNodeFieldChangeHandler
-  prototype._getFieldValuesFromVideoNode = function(video as Object) as Object
-    fields = {}
-    if video <> Invalid
-      for each fieldName in ["availableSubtitleTracks", "currentSubtitleTrack", "globalCaptionMode", "mute", "state"]
-        fields[fieldName] = video[fieldName]
-      end for
-    end if
-    return fields
-  end function
-
-  prototype.videoNodeFieldChangeHandler = sub(fieldName as String, value as Dynamic)
-    if m._videoNodeFieldValues = Invalid then return
-
-    m._videoNodeFieldValues[fieldName] = value
-
-    if fieldName = "availableSubtitleTracks" or fieldName = "currentSubtitleTrack" or fieldName = "globalCaptionMode" or fieldName = "mute" or fieldName = "state"
-      m._checkTextTrackState()
-    end if
-  end sub
-
   ' Handler for roDeviceInfoEvent network status changes (or polling)
   ' event can be Invalid when called from polling
   prototype.networkStatusEventHandler = sub(event as Dynamic)
@@ -703,7 +675,7 @@ function muxAnalytics() as Object
 
   prototype.videoAddedHandler = sub(video as Object)
     m._videoProperties = m._getVideoProperties(video)
-    m._videoNodeFieldValues = m._getFieldValuesFromVideoNode(video)
+    m._videoNodeFieldValues = m._getObservedFieldValuesFromVideoNode(video)
     if video.contentIsPlaylist = true
       m._videoContentProperties = m._getVideoContentProperties(video.content.getChild(video.contentIndex))
     else
@@ -726,12 +698,78 @@ function muxAnalytics() as Object
     end if
 
     ' check refreshed state(s)
+
+    ' note: videoStateChangeHandler was traditionally not called until the first "state" change message.
+    ' _callVideoStateChangeHandler omitted here to preserve behavior
+
     m._checkTextTrackState()
+  end sub
+
+  ' registry of handler names for observed video fields
+  prototype._videoNodeFieldHandlers = {
+    "availableSubtitleTracks": [
+      "_checkTextTrackState",
+    ],
+    "currentSubtitleTrack": [
+      "_checkTextTrackState",
+    ],
+    "globalCaptionMode": [
+      "_checkTextTrackState",
+    ],
+    "mute": [
+      "_checkTextTrackState",
+    ],
+    "state": [
+      "_callVideoStateChangeHandler",
+      "_checkTextTrackState",
+    ]
+  }
+
+  ' returns an associative array with current values for observed video node fields
+  prototype._getObservedFieldValuesFromVideoNode = function(video as Object) as Object
+    fields = {}
+    if video <> Invalid
+      for each fieldName in m.videoNodeFieldsToObserve()
+        fields[fieldName] = video[fieldName]
+      end for
+    end if
+    return fields
+  end function
+
+  ' returns an array of field names to observe on the video node
+  prototype.videoNodeFieldsToObserve = function() as Object
+    return m._videoNodeFieldHandlers.Keys()
+  end function
+
+  ' returns true when the field name is one of those observed
+  prototype.isObservedVideoNodeField = function(fieldName as String) as Boolean
+    return m._videoNodeFieldHandlers.DoesExist(fieldName)
+  end function
+
+  prototype.videoNodeFieldChangeHandler = sub(fieldName as String, value as Dynamic)
+    if m._videoNodeFieldValues = Invalid then return
+
+    m._videoNodeFieldValues[fieldName] = value
+
+    handlersToInvoke = m._videoNodeFieldHandlers[fieldName]
+    if handlersToInvoke <> Invalid
+      for each handler in handlersToInvoke
+        m[handler]()
+      end for
+    end if
   end sub
 
   prototype.videoPositionChangeHandler = sub(position as Double)
     if position < m.MAX_VIDEO_POSITION_JUMP
       m._playerPlayheadTime = position
+    end if
+  end sub
+
+  prototype._callVideoStateChangeHandler = sub()
+    state = m._videoNodeFieldValues["state"]
+    ' this check preserved from the original implementation in runBeaconLoop()
+    if state <> Invalid AND type(state) = "roString"
+      m.videoStateChangeHandler(state)
     end if
   end sub
 
