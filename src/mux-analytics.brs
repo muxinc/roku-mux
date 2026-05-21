@@ -66,11 +66,9 @@ function runBeaconLoop()
 
   m.top.ObserveField("rafEvent", m.messagePort)
 
-  videoNodeId = Invalid
   if m.top.video = Invalid
     m.top.ObserveField("video", m.messagePort)
   else
-    videoNodeId = m.top.video.id
     for each fieldName in m.mxa.videoNodeFieldsToObserve()
       m.top.video.ObserveField(fieldName, m.messagePort)
     end for
@@ -196,12 +194,10 @@ function runBeaconLoop()
       msgType = type(msg)
       if msgType = "roSGNodeEvent"
         field = msg.getField()
-        nodeId = msg.GetNode()
-        if nodeId = videoNodeId and m.mxa.isObservedVideoNodeField(field)
+        if m.mxa.isObservedVideoNodeField(field)
           m.mxa.videoNodeFieldChangeHandler(field, msg.getData())
         else if field = "video"
           if m.top.video = Invalid
-            videoNodeId = m.top.video.id
             m.top.UnobserveField("video")
             data = msg.getData()
             for each fieldName in m.mxa.videoNodeFieldsToObserve()
