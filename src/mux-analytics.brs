@@ -3027,17 +3027,6 @@ function muxAnalytics() as Object
   ' ' UTILS METHODS
   ' ' //////////////////////////////////////////////////////////////
 
-  ' Compares the items of two associative arrays. Uses direct equality checks, no type conversion or deep comparison.
-  prototype._compareAAShallow = function(aa1 as Object, aa2 as Object) as Boolean
-    if aa1 = invalid or aa2 = invalid then return false
-    if aa1.Count() <> aa2.Count() then return false
-    for each key in aa1
-      if not aa2.DoesExist(key) then return false
-      if aa1[key] <> aa2[key] then return false
-    end for
-    return true
-  end function
-
   prototype._floatSecsToMillis = function(secs as Float) as Integer 
     if secs = Invalid
       return Invalid
