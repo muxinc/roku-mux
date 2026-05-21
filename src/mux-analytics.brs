@@ -611,7 +611,7 @@ function muxAnalytics() as Object
     m._observedVideoNodeFieldValues = Invalid
 
     ' Text Track Changes
-    m._previousTextTrackChangeProps = Invalid
+    m._textTrackChangesState = Invalid
 
     ' kick off analytics
     date = m._getDateTime()
@@ -941,23 +941,29 @@ function muxAnalytics() as Object
   end sub
 
   prototype._checkTextTrackState = sub(ignored = Invalid)
-    if m._inView = Invalid or m._inView = false then return
+    if m._viewId = Invalid then return
 
-    props = m._getTextTrackChangeProps()
+    state = m._createTextTrackChangeState()
+    if state = Invalid then return
+
+    oldState = m._textTrackChangesState
+    if oldState <> Invalid and oldState.presentedSubtitleTrack = state.presentedSubtitleTrack
+      if oldState.hasSentEvent = true then return
+      state = oldState
+    else
+      m._textTrackChangesState = state
+    end if
+
+    props = m._createTextTrackChangeEventProps(state.presentedSubtitleTrack)
     if props = Invalid then return
 
-    previous = m._previousTextTrackChangeProps
-    if previous <> Invalid and m._compareAAShallow(props, previous) then return
-
-    m._fireTextTrackChangeEvent(props)
+    state.hasSentEvent = true
+    m._addEventToQueue(m._createEvent("texttrackchange", props))
   end sub
 
-  ' return texttrackchange event properties or Invalid if not loaded/ready.
-  prototype._getTextTrackChangeProps = function() as Object
-    fields = m._observedVideoNodeFieldValues
-    if fields = Invalid then return Invalid
-
-    captionMode = fields.globalCaptionMode
+  ' return texttrackchange event state or Invalid if not loaded/ready.
+  prototype._createTextTrackChangeState = function() as Object
+    captionMode = m._getObservedVideoNodeField("globalCaptionMode")
     if captionMode = Invalid or captionMode = "" then return Invalid
 
     ' Ignoring other values including "Instant replay":
@@ -965,30 +971,42 @@ function muxAnalytics() as Object
     if captionMode = "On"
       captionsAllowed = true
     else if captionMode = "When mute"
-      if fields.mute = Invalid then return Invalid
-      captionsAllowed = fields.mute
+      mute = m._getObservedVideoNodeField("mute")
+      if mute = Invalid then return Invalid
+      captionsAllowed = mute
     end if
 
     if not captionsAllowed
-      return { player_text_track_enabled: false }
+      return { presentedSubtitleTrack: Invalid }
     end if
 
-    trackId = fields.currentSubtitleTrack
-    tracks = fields.availableSubtitleTracks
-
-    if trackId = Invalid or trackId = "" or tracks = Invalid or tracks.Count() = 0
+    trackId = m._getObservedVideoNodeField("currentSubtitleTrack")
+    if trackId = Invalid or trackId = ""
       ' Do not trust these empty values during error state or initial buffering...
-      state = fields.state
+      state = m._getObservedVideoNodeField("state")
       if state = Invalid or state = "none" or state = "buffering" or state = "error"
         return Invalid
       end if
       ' ...but after that, this means no available track:
+      return { presentedSubtitleTrack: Invalid }
+    end if
+
+    return { presentedSubtitleTrack: trackId }
+  end function
+
+  ' return texttrackchange event props based on the provided track or Invalid if not loaded/ready.
+  prototype._createTextTrackChangeEventProps = function(trackId as Dynamic) as Object
+    if trackId = Invalid or trackId = ""
       return { player_text_track_enabled: false }
     end if
 
+    tracks = m._getObservedVideoNodeField("availableSubtitleTracks")
+    if tracks = Invalid then return Invalid
+
+    props = { player_text_track_enabled: true }
+
     for each track in tracks
       if track.TrackName = trackId
-        props = { player_text_track_enabled: true }
         if track.Description <> Invalid and track.Description <> ""
           props.player_text_track_name = track.Description
         end if
@@ -999,14 +1017,14 @@ function muxAnalytics() as Object
       end if
     end for
 
-    return Invalid
-  end function
+    ' not found, track list may be loading...
+    state = m._getObservedVideoNodeField("state")
+    if state = Invalid or state = "none" or state = "buffering"
+      return Invalid
+    end if
 
-  prototype._fireTextTrackChangeEvent = sub(props as Object)
-    if props = Invalid then return
-    m._previousTextTrackChangeProps = props
-    m._addEventToQueue(m._createEvent("texttrackchange", props))
-  end sub
+    return props
+  end function
 
   prototype._triggerPlayEvent = sub()
     if m.video <> Invalid
@@ -2009,8 +2027,8 @@ function muxAnalytics() as Object
       m._lastConnectionType = initialConnectionType
       m._fireNetworkChangeEvent(initialConnectionType)
 
-      ' (potentially) fire initial texttrackchange event
-      m._fireTextTrackChangeEvent(m._getTextTrackChangeProps())
+      ' fire initial texttrackchange event if ready
+      m._checkTextTrackState()
 
       m._addEventToQueue(m._createEvent("viewstart"))
 
@@ -2079,7 +2097,7 @@ function muxAnalytics() as Object
       m._viewAverageRequestLatency = Invalid
 
       ' Text Track Changes
-      m._previousTextTrackChangeProps = Invalid
+      m._textTrackChangesState = Invalid
     end if
   end sub
 
