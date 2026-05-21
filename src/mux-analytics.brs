@@ -940,6 +940,7 @@ function muxAnalytics() as Object
     end if
   end sub
 
+  ' examine the current presented text track state and potentially send a texttrackchange event
   prototype._checkTextTrackState = sub(ignored = Invalid)
     if m._viewId = Invalid then return
 
