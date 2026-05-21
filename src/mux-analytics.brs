@@ -71,6 +71,9 @@ function runBeaconLoop()
     m.top.ObserveField("video", m.messagePort)
   else
     videoNodeId = m.top.video.id
+    for each fieldName in m.mxa.videoNodeFieldsToObserve()
+      m.top.video.ObserveField(fieldName, m.messagePort)
+    end for
     m.mxa.videoAddedHandler(m.top.video)
     m.top.video.ObserveField("content", m.messagePort)
     m.top.video.ObserveField("control", m.messagePort)
@@ -79,9 +82,6 @@ function runBeaconLoop()
     m.top.video.ObserveField("downloadedSegment", m.messagePort)
     m.top.video.ObserveField("streamingSegment", m.messagePort)
     m.top.video.ObserveField("position", m.messagePort)
-    for each fieldName in m.mxa.videoNodeFieldsToObserve()
-      m.top.video.ObserveField(fieldName, m.messagePort)
-    end for
     if m.top.disableDecoderStats <> true AND m.top.video.enableDecoderStats <> Invalid
       m.top.video.enableDecoderStats = true
       m.top.video.ObserveField("decoderStats", m.messagePort)
@@ -204,6 +204,9 @@ function runBeaconLoop()
             videoNodeId = m.top.video.id
             m.top.UnobserveField("video")
             data = msg.getData()
+            for each fieldName in m.mxa.videoNodeFieldsToObserve()
+              m.top.video.ObserveField(fieldName, m.messagePort)
+            end for
             m.mxa.videoAddedHandler(data)
             m.top.video.ObserveField("content", m.messagePort)
             m.top.video.ObserveField("control", m.messagePort)
@@ -212,9 +215,6 @@ function runBeaconLoop()
             m.top.video.ObserveField("downloadedSegment", m.messagePort)
             m.top.video.ObserveField("streamingSegment", m.messagePort)
             m.top.video.ObserveField("position", m.messagePort)
-            for each fieldName in m.mxa.videoNodeFieldsToObserve()
-              m.top.video.ObserveField(fieldName, m.messagePort)
-            end for
             if m.top.disableDecoderStats <> true AND m.top.video.enableDecoderStats <> Invalid
               m.top.video.enableDecoderStats = true
               m.top.video.ObserveField("decoderStats", m.messagePort)
@@ -698,15 +698,12 @@ function muxAnalytics() as Object
     end if
 
     ' check refreshed state(s)
-
-    ' note: videoStateChangeHandler was traditionally not called until the first "state" change message.
-    ' _callVideoStateChangeHandler omitted here to preserve behavior
-
+    ' note: to preserve behavior, videoStateChangeHandler is not called until first "state" change message.
     m._checkTextTrackState()
   end sub
 
-  ' registry of handler names for observed video fields
-  prototype._videoNodeFieldHandlers = {
+  ' registry of handler names for observed video node fields
+  prototype._videoNodeFieldChangeHandlers = {
     "availableSubtitleTracks": [
       "_checkTextTrackState",
     ],
@@ -720,7 +717,7 @@ function muxAnalytics() as Object
       "_checkTextTrackState",
     ],
     "state": [
-      "_callVideoStateChangeHandler",
+      "videoStateChangeHandler",
       "_checkTextTrackState",
     ]
   }
@@ -738,12 +735,18 @@ function muxAnalytics() as Object
 
   ' returns an array of field names to observe on the video node
   prototype.videoNodeFieldsToObserve = function() as Object
-    return m._videoNodeFieldHandlers.Keys()
+    return m._videoNodeFieldChangeHandlers.Keys()
   end function
 
   ' returns true when the field name is one of those observed
   prototype.isObservedVideoNodeField = function(fieldName as String) as Boolean
-    return m._videoNodeFieldHandlers.DoesExist(fieldName)
+    return m._videoNodeFieldChangeHandlers.DoesExist(fieldName)
+  end function
+
+  ' returns the current value of the named field or Invalid if observing has not started
+  prototype._getObservedVideoNodeField = function(fieldName as String) as Dynamic
+    if m._observedVideoNodeFieldValues = Invalid then return Invalid
+    return m._observedVideoNodeFieldValues[fieldName]
   end function
 
   prototype.videoNodeFieldChangeHandler = sub(fieldName as String, value as Dynamic)
@@ -751,10 +754,10 @@ function muxAnalytics() as Object
 
     m._observedVideoNodeFieldValues[fieldName] = value
 
-    handlersToInvoke = m._videoNodeFieldHandlers[fieldName]
+    handlersToInvoke = m._videoNodeFieldChangeHandlers[fieldName]
     if handlersToInvoke <> Invalid
       for each handler in handlersToInvoke
-        m[handler]()
+        m[handler](value)
       end for
     end if
   end sub
@@ -765,15 +768,9 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype._callVideoStateChangeHandler = sub()
-    state = m._observedVideoNodeFieldValues["state"]
+  prototype.videoStateChangeHandler = sub(videoState as Dynamic)
     ' this check preserved from the original implementation in runBeaconLoop()
-    if state <> Invalid AND type(state) = "roString"
-      m.videoStateChangeHandler(state)
-    end if
-  end sub
-
-  prototype.videoStateChangeHandler = sub(videoState as String)
+    if videoState = Invalid or type(videoState) <> "roString" then return
     m.video_state = videoState
     previouslyLastReportedPosition = m._Flag_lastReportedPosition
     ' Position is now handled by videoPositionChangeHandler to avoid rendezvous
@@ -943,7 +940,7 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype._checkTextTrackState = sub()
+  prototype._checkTextTrackState = sub(ignored = Invalid)
     if m._inView = Invalid or m._inView = false then return
 
     props = m._getTextTrackChangeProps()
