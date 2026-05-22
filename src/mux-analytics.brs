@@ -66,24 +66,28 @@ function runBeaconLoop()
 
   m.top.ObserveField("rafEvent", m.messagePort)
 
-  if m.top.video = Invalid
-    m.top.ObserveField("video", m.messagePort)
-  else
+  bindVideoNode = sub(video as Object)
     for each fieldName in m.mxa.videoNodeFieldsToObserve()
-      m.top.video.ObserveField(fieldName, m.messagePort)
+      video.ObserveField(fieldName, m.messagePort)
     end for
-    m.mxa.videoAddedHandler(m.top.video)
-    m.top.video.ObserveField("content", m.messagePort)
-    m.top.video.ObserveField("control", m.messagePort)
-    m.top.video.ObserveField("licenseStatus", m.messagePort)
-    m.top.video.ObserveField("contentIndex", m.messagePort)
-    m.top.video.ObserveField("downloadedSegment", m.messagePort)
-    m.top.video.ObserveField("streamingSegment", m.messagePort)
-    m.top.video.ObserveField("position", m.messagePort)
-    if m.top.disableDecoderStats <> true AND m.top.video.enableDecoderStats <> Invalid
-      m.top.video.enableDecoderStats = true
-      m.top.video.ObserveField("decoderStats", m.messagePort)
+    m.mxa.videoAddedHandler(video)
+    video.ObserveField("content", m.messagePort)
+    video.ObserveField("control", m.messagePort)
+    video.ObserveField("licenseStatus", m.messagePort)
+    video.ObserveField("contentIndex", m.messagePort)
+    video.ObserveField("downloadedSegment", m.messagePort)
+    video.ObserveField("streamingSegment", m.messagePort)
+    video.ObserveField("position", m.messagePort)
+    if m.top.disableDecoderStats <> true AND video.enableDecoderStats <> Invalid
+      video.enableDecoderStats = true
+      video.ObserveField("decoderStats", m.messagePort)
     end if
+  end sub
+
+  if m.top.video <> Invalid
+    bindVideoNode(m.top.video)
+  else
+    m.top.ObserveField("video", m.messagePort)
   end if
 
   if m.top.view <> Invalid AND m.top.view <> ""
@@ -197,24 +201,10 @@ function runBeaconLoop()
         if m.mxa.isObservedVideoNodeField(field)
           m.mxa.videoNodeFieldChangeHandler(field, msg.getData())
         else if field = "video"
-          if m.top.video = Invalid
+          video = msg.getData()
+          if video <> Invalid
             m.top.UnobserveField("video")
-            data = msg.getData()
-            for each fieldName in m.mxa.videoNodeFieldsToObserve()
-              m.top.video.ObserveField(fieldName, m.messagePort)
-            end for
-            m.mxa.videoAddedHandler(data)
-            m.top.video.ObserveField("content", m.messagePort)
-            m.top.video.ObserveField("control", m.messagePort)
-            m.top.video.ObserveField("licenseStatus", m.messagePort)
-            m.top.video.ObserveField("contentIndex", m.messagePort)
-            m.top.video.ObserveField("downloadedSegment", m.messagePort)
-            m.top.video.ObserveField("streamingSegment", m.messagePort)
-            m.top.video.ObserveField("position", m.messagePort)
-            if m.top.disableDecoderStats <> true AND m.top.video.enableDecoderStats <> Invalid
-              m.top.video.enableDecoderStats = true
-              m.top.video.ObserveField("decoderStats", m.messagePort)
-            end if
+            bindVideoNode(video)
           end if
         else if field = "config"
           m.mxa.configChangeHandler(msg.getData())
