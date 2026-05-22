@@ -66,21 +66,21 @@ function runBeaconLoop()
 
   m.top.ObserveField("rafEvent", m.messagePort)
 
-  bindVideoNode = sub()
+  bindVideoNode = sub(video as Object)
     for each fieldName in m.mxa.videoNodeFieldsToObserve()
-      m.top.video.ObserveField(fieldName, m.messagePort)
+      video.ObserveField(fieldName, m.messagePort)
     end for
-    m.mxa.videoAddedHandler(m.top.video)
-    m.top.video.ObserveField("content", m.messagePort)
-    m.top.video.ObserveField("control", m.messagePort)
-    m.top.video.ObserveField("licenseStatus", m.messagePort)
-    m.top.video.ObserveField("contentIndex", m.messagePort)
-    m.top.video.ObserveField("downloadedSegment", m.messagePort)
-    m.top.video.ObserveField("streamingSegment", m.messagePort)
-    m.top.video.ObserveField("position", m.messagePort)
-    if m.top.disableDecoderStats <> true AND m.top.video.enableDecoderStats <> Invalid
-      m.top.video.enableDecoderStats = true
-      m.top.video.ObserveField("decoderStats", m.messagePort)
+    m.mxa.videoAddedHandler(video)
+    video.ObserveField("content", m.messagePort)
+    video.ObserveField("control", m.messagePort)
+    video.ObserveField("licenseStatus", m.messagePort)
+    video.ObserveField("contentIndex", m.messagePort)
+    video.ObserveField("downloadedSegment", m.messagePort)
+    video.ObserveField("streamingSegment", m.messagePort)
+    video.ObserveField("position", m.messagePort)
+    if m.top.disableDecoderStats <> true AND video.enableDecoderStats <> Invalid
+      video.enableDecoderStats = true
+      video.ObserveField("decoderStats", m.messagePort)
     end if
   end sub
 
