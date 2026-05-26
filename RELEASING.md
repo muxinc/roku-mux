@@ -12,28 +12,18 @@ Mux Data SDK for Roku.
 
 ## How Distribution Works
 
-Two version values must stay in sync, and they control different things:
+There is no package manager. Two version values must stay in sync and serve
+different purposes:
 
-- `src/mux-analytics.brs` (`m.MUX_SDK_VERSION`) controls the version the SDK
-  reports to Mux Data.
-- `package.json` (`version`) controls the path the SDK is deployed to on
-  `src.litix.io`.
+- `src/mux-analytics.brs` (`m.MUX_SDK_VERSION`) — the version reported to Mux Data.
+- `package.json` (`version`) — the deploy path on `src.litix.io`.
 
-There is no package manager. Publishing is triggered by creating the GitHub
-release off `master`:
-
-1. Creating the release creates the `vX.Y.Z` tag.
-2. The new tag kicks off a Buildkite pipeline that runs `npm run deploy`
-   (`scripts/deploy.js`).
-3. `deploy.js` uploads `src/mux-analytics.brs` to S3 (served from
-   `src.litix.io`) under the scope `roku`, at both the full-version path and the
-   major-version path, then invalidates CloudFront. The deployed files are
-   served at:
-   - `https://src.litix.io/roku/X.Y.Z/mux-analytics.brs`
-   - `https://src.litix.io/roku/<major>/mux-analytics.brs` (e.g. `roku/2/...`)
-
-This means the GitHub release is the publish action, not just release notes.
-Nothing reaches production until the release/tag is created.
+Creating the GitHub release off `master` is the publish action: it creates the
+`vX.Y.Z` tag, which triggers a Buildkite deploy (`npm run deploy` →
+`scripts/deploy.js`) that uploads `mux-analytics.brs` to `src.litix.io` under
+both the full-version and major-version paths
+(`https://src.litix.io/roku/X.Y.Z/mux-analytics.brs` and `.../roku/<major>/...`).
+Nothing reaches production until the release is created.
 
 ## Manual Release Checklist
 
@@ -237,38 +227,10 @@ PR.
 
 3. Update the Roku release notes page:
    `apps/web/app/docs/_guides/developer/monitor-roku.mdx`
-   - Find the `### Current release` section. It looks like this, where the most
-     recent release sits under `### Current release` and older ones are listed
-     under `### Previous releases`:
-     ```md
-     ### Current release
-
-     #### vPREV.VERSION
-     - previous release notes here
-
-     ### Previous releases
-
-     #### vOLDER.VERSION
-     - older release notes here
-     ```
-   - Move the existing current release down to the top of `### Previous
-     releases`, and add the new version under `### Current release`:
-     ```md
-     ### Current release
-
-     #### vNEW.VERSION
-     - new release notes here
-
-     ### Previous releases
-
-     #### vPREV.VERSION
-     - previous release notes here
-
-     #### vOLDER.VERSION
-     - older release notes here
-     ```
-   - Use the final GitHub release notes as the source. Match the existing
-     entries' formatting (heading level and bullet style).
+   - Add the new version as a `#### vX.Y.Z` entry under `### Current release`.
+   - Move the previous current release down to the top of `### Previous releases`.
+   - Use the final GitHub release notes as the source, matching the existing
+     entries' heading level and bullet style.
 
 4. Decide whether feature docs need updates.
    - Update feature docs when the release changes customer-facing behavior,
