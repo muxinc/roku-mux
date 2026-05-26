@@ -427,6 +427,7 @@ func rokutasks(r *runner) {
 			_, err := run("curl",
 				"--user", env_roku_user + ":" + env_roku_pass,
 				"--digest", "--show-error", 
+				"-H", "Expect: 100-continue",
 				"-F", "mysubmit=Install",
 				"-F", "archive=@\"" + out_dir_name + "/" + app_name+ ".zip\"", 
 				"--output", "/tmp/dev_server_out",
@@ -465,6 +466,7 @@ func rokutasks(r *runner) {
 		depends: []string{"closeApp", "package_test"},
 		main: func() error {
 			_, err := run("curl", "--user", env_roku_user+":"+env_roku_pass, "--digest", "--show-error", 
+				"-H", "Expect: 100-continue",
 				"-F", "mysubmit=Install", 
 				"-F", "archive=@\"" + out_dir_name + "/" + app_name + "-tests.zip\"",
 				"--output", "/tmp/dev_server_out",

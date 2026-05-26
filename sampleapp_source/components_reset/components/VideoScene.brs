@@ -33,7 +33,8 @@ sub setupContent()
   {title: "DASH stream no ads", selectionID: "dashnoads"},
   {title: "Playlist content, no ads", selectionID: "playlist"},
   {title: "Live stream", selectionID: "live"},
-  {title: "TEST: View Transition Race", selectionID: "test_race"}
+  {title: "TEST: View Transition Race", selectionID: "test_race"},
+  {title: "Subtitle/CC", selectionID: "texttracks"}
   ]
 
   listContent = createObject("roSGNode","ContentNode")

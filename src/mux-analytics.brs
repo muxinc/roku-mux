@@ -69,8 +69,10 @@ function runBeaconLoop()
   if m.top.video = Invalid
     m.top.ObserveField("video", m.messagePort)
   else
+    for each fieldName in m.mxa.videoNodeFieldsToObserve()
+      m.top.video.ObserveField(fieldName, m.messagePort)
+    end for
     m.mxa.videoAddedHandler(m.top.video)
-    m.top.video.ObserveField("state", m.messagePort)
     m.top.video.ObserveField("content", m.messagePort)
     m.top.video.ObserveField("control", m.messagePort)
     m.top.video.ObserveField("licenseStatus", m.messagePort)
@@ -192,12 +194,16 @@ function runBeaconLoop()
       msgType = type(msg)
       if msgType = "roSGNodeEvent"
         field = msg.getField()
-        if field = "video"
+        if m.mxa.isObservedVideoNodeField(field)
+          m.mxa.videoNodeFieldChangeHandler(field, msg.getData())
+        else if field = "video"
           if m.top.video = Invalid
             m.top.UnobserveField("video")
             data = msg.getData()
+            for each fieldName in m.mxa.videoNodeFieldsToObserve()
+              m.top.video.ObserveField(fieldName, m.messagePort)
+            end for
             m.mxa.videoAddedHandler(data)
-            m.top.video.ObserveField("state", m.messagePort)
             m.top.video.ObserveField("content", m.messagePort)
             m.top.video.ObserveField("control", m.messagePort)
             m.top.video.ObserveField("licenseStatus", m.messagePort)
@@ -234,11 +240,6 @@ function runBeaconLoop()
           m.mxa.drmLicenseStatusChangeHandler(msg.getData())
         else if field = "view"
           m.mxa.videoViewChangeHandler(msg.getData())
-        else if field = "state"
-          msgData = msg.getData()
-          if msgData <> Invalid AND type(msgData) = "roString"
-            m.mxa.videoStateChangeHandler(msgData)
-          end if
         else if field = "position"
           m.mxa.videoPositionChangeHandler(msg.getData())
         else if field = "rafEvent"
@@ -602,6 +603,12 @@ function muxAnalytics() as Object
     m._lastConnectionType = Invalid
     m._networkEventsSupported = false
 
+    ' Generic video node observation
+    m._observedVideoNodeFieldValues = Invalid
+
+    ' Text Track Changes
+    m._textTrackChangesState = Invalid
+
     ' kick off analytics
     date = m._getDateTime()
     m._startTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
@@ -664,6 +671,7 @@ function muxAnalytics() as Object
 
   prototype.videoAddedHandler = sub(video as Object)
     m._videoProperties = m._getVideoProperties(video)
+    m._observedVideoNodeFieldValues = m._getObservedFieldValuesFromVideoNode(video)
     if video.contentIsPlaylist = true
       m._videoContentProperties = m._getVideoContentProperties(video.content.getChild(video.contentIndex))
     else
@@ -684,6 +692,70 @@ function muxAnalytics() as Object
         m._seekThreshold = maximumPossiblePositionChange
       end if
     end if
+
+    ' check refreshed state(s)
+    ' note: to preserve behavior, videoStateChangeHandler is not called until first "state" change message.
+    m._checkTextTrackState()
+  end sub
+
+  ' registry of handler names for observed video node fields
+  prototype._videoNodeFieldChangeHandlers = {
+    "availableSubtitleTracks": [
+      "_checkTextTrackState",
+    ],
+    "currentSubtitleTrack": [
+      "_checkTextTrackState",
+    ],
+    "globalCaptionMode": [
+      "_checkTextTrackState",
+    ],
+    "mute": [
+      "_checkTextTrackState",
+    ],
+    "state": [
+      "videoStateChangeHandler",
+      "_checkTextTrackState",
+    ]
+  }
+
+  ' returns an associative array with current values for observed video node fields
+  prototype._getObservedFieldValuesFromVideoNode = function(video as Object) as Object
+    fields = {}
+    if video <> Invalid
+      for each fieldName in m.videoNodeFieldsToObserve()
+        fields[fieldName] = video[fieldName]
+      end for
+    end if
+    return fields
+  end function
+
+  ' returns an array of field names to observe on the video node
+  prototype.videoNodeFieldsToObserve = function() as Object
+    return m._videoNodeFieldChangeHandlers.Keys()
+  end function
+
+  ' returns true when the field name is one of those observed
+  prototype.isObservedVideoNodeField = function(fieldName as String) as Boolean
+    return m._videoNodeFieldChangeHandlers.DoesExist(fieldName)
+  end function
+
+  ' returns the current value of the named field or Invalid if observing has not started
+  prototype._getObservedVideoNodeField = function(fieldName as String) as Dynamic
+    if m._observedVideoNodeFieldValues = Invalid then return Invalid
+    return m._observedVideoNodeFieldValues[fieldName]
+  end function
+
+  prototype.videoNodeFieldChangeHandler = sub(fieldName as String, value as Dynamic)
+    if m._observedVideoNodeFieldValues = Invalid then return
+
+    m._observedVideoNodeFieldValues[fieldName] = value
+
+    handlersToInvoke = m._videoNodeFieldChangeHandlers[fieldName]
+    if handlersToInvoke <> Invalid
+      for each handler in handlersToInvoke
+        m[handler](value)
+      end for
+    end if
   end sub
 
   prototype.videoPositionChangeHandler = sub(position as Double)
@@ -692,7 +764,9 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype.videoStateChangeHandler = sub(videoState as String)
+  prototype.videoStateChangeHandler = sub(videoState as Dynamic)
+    ' this check preserved from the original implementation in runBeaconLoop()
+    if videoState = Invalid or type(videoState) <> "roString" then return
     m.video_state = videoState
     previouslyLastReportedPosition = m._Flag_lastReportedPosition
     ' Position is now handled by videoPositionChangeHandler to avoid rendezvous
@@ -861,6 +935,93 @@ function muxAnalytics() as Object
       m._videoCurrentCdn = cdn
     end if
   end sub
+
+  ' examine the current presented text track state and potentially send a texttrackchange event
+  prototype._checkTextTrackState = sub(ignored = Invalid)
+    if m._viewId = Invalid then return
+
+    state = m._createTextTrackChangeState()
+    if state = Invalid then return
+
+    oldState = m._textTrackChangesState
+    if oldState <> Invalid and oldState.presentedSubtitleTrack = state.presentedSubtitleTrack
+      if oldState.hasSentEvent = true then return
+      state = oldState
+    else
+      m._textTrackChangesState = state
+    end if
+
+    props = m._createTextTrackChangeEventProps(state.presentedSubtitleTrack)
+    if props = Invalid then return
+
+    state.hasSentEvent = true
+    m._addEventToQueue(m._createEvent("texttrackchange", props))
+  end sub
+
+  ' return texttrackchange event state or Invalid if not loaded/ready.
+  prototype._createTextTrackChangeState = function() as Object
+    captionMode = m._getObservedVideoNodeField("globalCaptionMode")
+    if captionMode = Invalid or captionMode = "" then return Invalid
+
+    ' Ignoring other values including "Instant replay":
+    captionsAllowed = false
+    if captionMode = "On"
+      captionsAllowed = true
+    else if captionMode = "When mute"
+      mute = m._getObservedVideoNodeField("mute")
+      if mute = Invalid then return Invalid
+      captionsAllowed = mute
+    end if
+
+    if not captionsAllowed
+      return { presentedSubtitleTrack: Invalid }
+    end if
+
+    trackId = m._getObservedVideoNodeField("currentSubtitleTrack")
+    if trackId = Invalid or trackId = ""
+      ' Do not trust these empty values during error state or initial buffering...
+      state = m._getObservedVideoNodeField("state")
+      if state = Invalid or state = "none" or state = "buffering" or state = "error"
+        return Invalid
+      end if
+      ' ...but after that, this means no available track:
+      return { presentedSubtitleTrack: Invalid }
+    end if
+
+    return { presentedSubtitleTrack: trackId }
+  end function
+
+  ' return texttrackchange event props based on the provided track or Invalid if not loaded/ready.
+  prototype._createTextTrackChangeEventProps = function(trackId as Dynamic) as Object
+    if trackId = Invalid or trackId = ""
+      return { player_text_track_enabled: false }
+    end if
+
+    tracks = m._getObservedVideoNodeField("availableSubtitleTracks")
+    if tracks = Invalid then return Invalid
+
+    props = { player_text_track_enabled: true }
+
+    for each track in tracks
+      if track.TrackName = trackId
+        if track.Description <> Invalid and track.Description <> ""
+          props.player_text_track_name = track.Description
+        end if
+        if track.Language <> Invalid and track.Language <> ""
+          props.player_text_track_language = track.Language
+        end if
+        return props
+      end if
+    end for
+
+    ' not found, track list may be loading...
+    state = m._getObservedVideoNodeField("state")
+    if state = Invalid or state = "none" or state = "buffering"
+      return Invalid
+    end if
+
+    return props
+  end function
 
   prototype._triggerPlayEvent = sub()
     if m.video <> Invalid
@@ -1863,6 +2024,9 @@ function muxAnalytics() as Object
       m._lastConnectionType = initialConnectionType
       m._fireNetworkChangeEvent(initialConnectionType)
 
+      ' fire initial texttrackchange event if ready
+      m._checkTextTrackState()
+
       m._addEventToQueue(m._createEvent("viewstart"))
 
       m._inView = true
@@ -1928,6 +2092,9 @@ function muxAnalytics() as Object
       m._totalLatency = Invalid
       m._viewMaxRequestLatency = Invalid
       m._viewAverageRequestLatency = Invalid
+
+      ' Text Track Changes
+      m._textTrackChangesState = Invalid
     end if
   end sub
 
@@ -2834,6 +3001,7 @@ function muxAnalytics() as Object
     "time": "ti",
     "total": "tl",
     "to": "to",
+    "track": "tr",
     "title": "tt",
     "type": "ty",
     "upscaling": "ug",

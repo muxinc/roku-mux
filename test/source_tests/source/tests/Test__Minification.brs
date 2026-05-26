@@ -25,6 +25,10 @@ Function TestSuite__Minification() as Object
   this.addTest("Minification [7] video_source_current_audio_track", TestCase__MuxAnalytics_Minification_minifies_video_source_current_audio_track)
   this.addTest("Minification [8] video_source_current_subtitle_track", TestCase__MuxAnalytics_Minification_minifies_video_source_current_subtitle_track)
   this.addTest("Minification [9] player_country_code", TestCase__MuxAnalytics_Minification_minifies_player_country_code)
+  this.addTest("Minification [10] player_text_track_enabled", TestCase__MuxAnalytics_Minification_minifies_player_text_track_enabled)
+  this.addTest("Minification [11] player_text_track_type", TestCase__MuxAnalytics_Minification_minifies_player_text_track_type)
+  this.addTest("Minification [12] player_text_track_name", TestCase__MuxAnalytics_Minification_minifies_player_text_track_name)
+  this.addTest("Minification [13] player_text_track_language", TestCase__MuxAnalytics_Minification_minifies_player_text_track_language)
 
   return this
 End Function
@@ -236,4 +240,44 @@ Function TestCase__MuxAnalytics_Minification_minifies_player_country_code() as S
   result = m.SUT._minify(body)
   ' THEN
   return m.assertEqual(result.keys()[0], "pcycd")
+end function
+
+Function TestCase__MuxAnalytics_Minification_minifies_player_text_track_enabled() as String
+  ' GIVEN
+  m.SUT.minification = true
+  body = {player_text_track_enabled: true}
+  ' WHEN
+  result = m.SUT._minify(body)
+  ' THEN
+  return m.assertEqual(result.keys()[0], "ptetreb")
+end function
+
+Function TestCase__MuxAnalytics_Minification_minifies_player_text_track_type() as String
+  ' GIVEN
+  m.SUT.minification = true
+  body = {player_text_track_type: "cc"}
+  ' WHEN
+  result = m.SUT._minify(body)
+  ' THEN
+  return m.assertEqual(result.keys()[0], "ptetrty")
+end function
+
+Function TestCase__MuxAnalytics_Minification_minifies_player_text_track_name() as String
+  ' GIVEN
+  m.SUT.minification = true
+  body = {player_text_track_name: "English"}
+  ' WHEN
+  result = m.SUT._minify(body)
+  ' THEN
+  return m.assertEqual(result.keys()[0], "ptetrnm")
+end function
+
+Function TestCase__MuxAnalytics_Minification_minifies_player_text_track_language() as String
+  ' GIVEN
+  m.SUT.minification = true
+  body = {player_text_track_language: "eng"}
+  ' WHEN
+  result = m.SUT._minify(body)
+  ' THEN
+  return m.assertEqual(result.keys()[0], "ptetrla")
 end function
