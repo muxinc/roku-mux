@@ -26,6 +26,7 @@ Function TestSuite__ViewRobustness() as Object
   this.addTest("ViewRobustness [9] Internally Started", TestCase__MuxAnalytics_ViewRobustness_internal_start_9, ViewRobustness_SetUp)
   this.addTest("ViewRobustness [10] Internally Started", TestCase__MuxAnalytics_ViewRobustness_internal_start_10, ViewRobustness_SetUp)
   this.addTest("ViewRobustness [10] Internally Ended", TestCase__MuxAnalytics_ViewRobustness_internal_end_1)
+  this.addTest("ViewRobustness cumulative playing time excludes startup and rebuffer", TestCase__MuxAnalytics_ViewRobustness_playing_time_excludes_startup_and_rebuffer)
 
   return this
 End Function
@@ -321,6 +322,21 @@ Function TestCase__MuxAnalytics_ViewRobustness_internal_end_1() as String
   return m.assertEqual("viewstartplayviewend", result)
 End Function
 
+Function TestCase__MuxAnalytics_ViewRobustness_playing_time_excludes_startup_and_rebuffer() as String
+  m.SUT.video_state = "playing"
+  m.SUT._viewWatchTime = 0
+  m.SUT._viewStartTimestamp = 1
+  m.SUT._viewTimeToFirstFrame = 1000
+  m.SUT._viewRebufferDuration = 4000
+  m.SUT._contentPlaybackTime = 10000
+  m.SUT._totalAdWatchTime = 2000
 
+  m.SUT._updateTotalWatchTime()
 
+  if m.SUT._viewWatchTime <> 15000
+    return m.assertEqual(15000, m.SUT._viewWatchTime)
+  end if
+
+  return m.assertEqual(12000, m.SUT._cumulativePlayingTime)
+End Function
 

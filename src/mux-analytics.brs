@@ -1815,7 +1815,7 @@ function muxAnalytics() as Object
     if m._contentPlaybackTime = Invalid then return
 
     m._viewWatchTime = m._viewTimeToFirstFrame + m._viewRebufferDuration + m._contentPlaybackTime
-    m._cumulativePlayingTime = m._viewWatchTime + m._totalAdWatchTime
+    m._cumulativePlayingTime = m._contentPlaybackTime + m._totalAdWatchTime
   end sub
 
   prototype._setBufferingMetrics = sub()
