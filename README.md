@@ -8,12 +8,6 @@ The version number is found in src/mux-analytics.brs
 
 This is the single source for the mux-analytics SDK for Roku.
 
-### Releasing ###
-
-See [RELEASING.md](RELEASING.md) for the full maintainer release process, including the manual checklist and the agent-assisted runbook.
-
-In short: bump the version in both `src/mux-analytics.brs` and `package.json` (they must match), merge to `master`, then cut a GitHub release off `master` with the tag `vX.Y.Z`. Creating the release triggers the Buildkite deploy to `src.litix.io`.
-
 ### How do I get set up? ###
 
 You will need golang to build the tool used to build, run and test. Once you have installed golang run
@@ -108,3 +102,7 @@ If you leave these unset. They will default to the following settings.
 `mux_debug_events` - none
 `mux_debug_beacons` - none
 `mux_minification` - true
+
+### Releasing ###
+
+See [RELEASING.md](RELEASING.md) for the full maintainer release process, including the manual checklist and the agent-assisted runbook.
