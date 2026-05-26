@@ -163,7 +163,9 @@ Continue only after the release PR is approved.
    ```
    If this returns a tag, stop and ask the maintainer how to proceed.
 
-5. Gather commits for release notes.
+5. Gather commits for release notes. `<prev_tag>` is the latest existing
+   release tag (the top entry from the tag list in "Prepare The Release PR"
+   step 3) — e.g. when cutting v2.7.0, `<prev_tag>` is `v2.6.3`.
    ```sh
    git log --oneline <prev_tag>...origin/master
    ```
@@ -173,11 +175,14 @@ Continue only after the release PR is approved.
    - Draft customer-facing notes from the merged feature PRs.
    - Focus on what changed from the user's perspective; avoid internal ticket
      IDs and TDD references.
-   - Share the notes with the maintainer for review.
    - If the maintainer edits the notes, use the maintainer-edited version as
      final.
 
-7. Create the GitHub release. This creates the `vX.Y.Z` tag off `master` and
+7. Stop and get maintainer approval of the final notes before continuing.
+   Creating the release is the production deploy, so do not run the next step
+   until the maintainer has approved the notes.
+
+8. Create the GitHub release. This creates the `vX.Y.Z` tag off `master` and
    triggers the Buildkite deploy.
    ```sh
    gh release create vX.Y.Z \
@@ -187,7 +192,7 @@ Continue only after the release PR is approved.
      --notes "<release notes>"
    ```
 
-8. Verify the release.
+9. Verify the release.
    ```sh
    gh release view vX.Y.Z --repo muxinc/roku-mux \
      --json tagName,name,url,targetCommitish,publishedAt,isDraft,isPrerelease
@@ -200,7 +205,7 @@ Continue only after the release PR is approved.
    ```
    These commit SHAs must match.
 
-9. Confirm the deploy.
+10. Confirm the deploy.
    - The new tag triggers a Buildkite pipeline that runs `npm run deploy`
      (`scripts/deploy.js`).
    - The deploy is asynchronous, so allow a short delay if it has not landed
