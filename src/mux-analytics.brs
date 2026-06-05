@@ -808,6 +808,7 @@ function muxAnalytics() as Object
     m._Flag_isPaused = (videoState = "paused")
 
     if videoState = "buffering"
+      m._Flag_suppressNextContentPlayingAfterAd = false
       ' Bail out if we aren't supposed to track automatic rebuffer events
       if not m._Flag_automaticRebufferTracking then return
 
@@ -822,6 +823,7 @@ function muxAnalytics() as Object
         end if
       end if
     else if videoState = "paused"
+      m._Flag_suppressNextContentPlayingAfterAd = false
       m._playheadAtLastPause = m._playerPlayheadTime
 
       m._addEventToQueue(m._createEvent("pause"))
@@ -1820,6 +1822,7 @@ function muxAnalytics() as Object
       if not m._Flag_rssInAdBreak
         state = ctx.state
         if state = "buffering"
+          m._Flag_suppressNextContentPlayingAfterAd = false
           ' if m._Flag_isPaused
             m._Flag_isPaused = false
             m._triggerPlayEvent()
@@ -1841,6 +1844,7 @@ function muxAnalytics() as Object
           m._startPlaybackRange(m._playerPlayheadTime)
           m._addEventToQueue(m._createEvent("playing"))
         else if state = "paused"
+          m._Flag_suppressNextContentPlayingAfterAd = false
           m._Flag_isPaused = true
           m._addEventToQueue(m._createEvent("pause"))
         end if

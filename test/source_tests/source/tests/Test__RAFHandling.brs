@@ -9,6 +9,7 @@ Function TestSuite__RAFHandling() as Object
   this.addTest("RAFHandling suppresses content playing during active ad", TestCase__MuxAnalytics_RAFHandling_SuppressesContentPlayingDuringActiveAd)
   this.addTest("RAFHandling deferred resume uses observed video state", TestCase__MuxAnalytics_RAFHandling_DeferredResumeUsesObservedVideoState)
   this.addTest("RAFHandling suppresses content playing between ads in pod", TestCase__MuxAnalytics_RAFHandling_SuppressesContentPlayingBetweenAdsInPod)
+  this.addTest("RAFHandling pause resume after deferred resume emits play and playing", TestCase__MuxAnalytics_RAFHandling_PauseResumeAfterDeferredResumeEmitsPlayPlaying)
   this.addTest("RAFHandling lets content playing through after ad end", TestCase__MuxAnalytics_RAFHandling_ContentPlayingAfterAdEnd)
   this.addTest("RAFHandling render stitched suppresses content playing during active ad", TestCase__MuxAnalytics_RAFHandling_RenderStitchedSuppressesContentPlayingDuringActiveAd)
   this.addTest("RAFHandling render stitched does not duplicate deferred resume", TestCase__MuxAnalytics_RAFHandling_RenderStitchedDoesNotDuplicateDeferredResume)
@@ -178,6 +179,39 @@ Function TestCase__MuxAnalytics_RAFHandling_SuppressesContentPlayingBetweenAdsIn
   events = m._eventNames()
 
   return m.assertEqual("playbackmodechange,networkchange,viewstart,adbreakstart,adplay,adplaying,adended,adplay,adplaying,adended,adbreakend,play,playing,", events)
+End Function
+
+Function TestCase__MuxAnalytics_RAFHandling_PauseResumeAfterDeferredResumeEmitsPlayPlaying() as String
+  m._resetSUT()
+
+  m.SUT._testTimeMs = 1000
+  m.fakeRAFEvent._dataToReturn = {eventType: "PodStart", obj: {}, ctx: {}}
+  m.SUT.rafEventHandler(m.fakeRAFEvent)
+
+  m.SUT._testTimeMs = 1100
+  m.fakeRAFEvent._dataToReturn = {eventType: "Start", obj: {}, ctx: {}}
+  m.SUT.rafEventHandler(m.fakeRAFEvent)
+
+  m.SUT._testTimeMs = 1700
+  m.SUT.videoStateChangeHandler(m._roString("playing"))
+
+  m.SUT._testTimeMs = 6100
+  m.fakeRAFEvent._dataToReturn = {eventType: "Complete", obj: {}, ctx: {}}
+  m.SUT.rafEventHandler(m.fakeRAFEvent)
+
+  m.SUT._testTimeMs = 6200
+  m.fakeRAFEvent._dataToReturn = {eventType: "PodComplete", obj: {}, ctx: {}}
+  m.SUT.rafEventHandler(m.fakeRAFEvent)
+
+  m.SUT._testTimeMs = 20000
+  m.SUT.videoStateChangeHandler(m._roString("paused"))
+
+  m.SUT._testTimeMs = 25000
+  m.SUT.videoStateChangeHandler(m._roString("playing"))
+
+  events = m._eventNames()
+
+  return m.assertEqual("playbackmodechange,networkchange,viewstart,adbreakstart,adplay,adplaying,adended,adbreakend,play,playing,pause,play,playing,", events)
 End Function
 
 Function TestCase__MuxAnalytics_RAFHandling_RenderStitchedSuppressesContentPlayingDuringActiveAd() as String
