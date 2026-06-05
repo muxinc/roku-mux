@@ -582,6 +582,9 @@ function muxAnalytics() as Object
     m._Flag_useSSAI = false
     m._Flag_automaticErrorTracking = true
     m._Flag_automaticRebufferTracking = true
+    m._Flag_adPlaybackActive = false
+    m._Flag_rafInAdBreak = false
+    m._Flag_deferredContentPlayingAfterAd = false
 
     ' Flags specifically for when renderStitchedStream is used
     m._Flag_useRenderStitchedStream = false
@@ -848,7 +851,7 @@ function muxAnalytics() as Object
 
         ' We will emit the play from paused states further down if needed
         if m._Flag_lastVideoState <> "paused"
-          m._addEventToQueue(m._createEvent("play"))
+          m._triggerPlayEvent()
         end if
       end if
 
@@ -861,19 +864,18 @@ function muxAnalytics() as Object
           end if
         end if
       end if
-      if m._Flag_lastVideoState = "paused"
-        m._addEventToQueue(m._createEvent("play"))
-      end if
+      if m._isAdPlaybackActive()
+        m._Flag_deferredContentPlayingAfterAd = true
+      else
+        m._Flag_deferredContentPlayingAfterAd = false
+        if m._Flag_lastVideoState = "paused"
+          m._triggerPlayEvent()
+        end if
 
-      ' if we haven't gotten any playhead updates yet, don't try to start a range
-      if m._playerPlayheadTime <> Invalid
-        m._startPlaybackRange(m._playerPlayheadTime)
+        m._emitContentPlayingEvent()
       end if
-
-      m._addEventToQueue(m._createEvent("playing"))
 
       m._Flag_isSeeking = false
-      m._Flag_atLeastOnePlayEventForContent = true
     else if videoState = "stopped"
     else if videoState = "finished"
       ' Only send ended event if it played to completion
@@ -1024,6 +1026,11 @@ function muxAnalytics() as Object
   end function
 
   prototype._triggerPlayEvent = sub()
+    if m._isAdPlaybackActive()
+      m._Flag_deferredContentPlayingAfterAd = true
+      return
+    end if
+
     if m.video <> Invalid
       if m.video.content <> Invalid
         if m.video.contentIsPlaylist
@@ -1035,6 +1042,51 @@ function muxAnalytics() as Object
       m._videoProperties = m._getVideoProperties(m.video)
     end if
     m._addEventToQueue(m._createEvent("play"))
+  end sub
+
+  prototype._emitContentPlayingEvent = sub()
+    ' if we haven't gotten any playhead updates yet, don't try to start a range
+    if m._playerPlayheadTime <> Invalid
+      m._startPlaybackRange(m._playerPlayheadTime)
+    end if
+
+    m._addEventToQueue(m._createEvent("playing"))
+
+    m._Flag_atLeastOnePlayEventForContent = true
+  end sub
+
+  prototype._isAdPlaybackActive = function() as Boolean
+    return m._Flag_adPlaybackActive = true OR m._Flag_rafInAdBreak = true OR m._Flag_rssInAdBreak = true
+  end function
+
+  prototype._beginAdPlayback = sub()
+    m._Flag_adPlaybackActive = true
+  end sub
+
+  prototype._endAdPlayback = sub()
+    m._Flag_adPlaybackActive = false
+    m._emitDeferredContentPlayingAfterAd()
+  end sub
+
+  prototype._emitDeferredContentPlayingAfterAd = sub()
+    if m._Flag_deferredContentPlayingAfterAd <> true
+      return
+    end if
+    if m._isAdPlaybackActive()
+      return
+    end if
+
+    currentVideoState = m.video_state
+    if m.video <> Invalid AND m.video.state <> Invalid
+      currentVideoState = m.video.state
+    end if
+    if currentVideoState <> "playing"
+      return
+    end if
+
+    m._Flag_deferredContentPlayingAfterAd = false
+    m._triggerPlayEvent()
+    m._emitContentPlayingEvent()
   end sub
 
   prototype.videoControlChangeHandler = sub(control as String)
@@ -1534,10 +1586,12 @@ function muxAnalytics() as Object
 
     m._Flag_isPaused = (eventType = "Pause")
     if eventType = "PodStart"
+      m._Flag_rafInAdBreak = true
       m._advertProperties = m._getAdvertProperties(adMetadata)
       m._addEventToQueue(m._createEvent("adbreakstart"))
       ' In the case that this is SSAI, we need to signal an adplay and adplaying event
       if m._Flag_useSSAI = true
+        m._beginAdPlayback()
         m._lastAdResumeTime = now
         m._addEventToQueue(m._createEvent("adplay"))
         m._addEventToQueue(m._createEvent("adplaying"))
@@ -1548,17 +1602,24 @@ function muxAnalytics() as Object
     else if eventType = "PodComplete"
       m._addEventToQueue(m._createEvent("adbreakend"))
       m._Flag_FailedAdsErrorSet = false
+      m._Flag_rafInAdBreak = false
       ' In the case that this is SSAI, we need to signal a play and playing event
       if m._Flag_useSSAI = true
-        m._Flag_isPaused = false
-        m._triggerPlayEvent()
- 
-        m._addEventToQueue(m._createEvent("playing"))
+        hadDeferredContentPlaying = m._Flag_deferredContentPlayingAfterAd = true
+        m._endAdPlayback()
+        emittedDeferredContentPlaying = hadDeferredContentPlaying AND m._Flag_deferredContentPlayingAfterAd <> true
+        if emittedDeferredContentPlaying <> true
+          m._Flag_isPaused = false
+          m._triggerPlayEvent()
+
+          m._addEventToQueue(m._createEvent("playing"))
+        end if
       else 
         ' for CSAI, we need to restart the playback range
         if m._Flag_isPaused <> false 
           m._startPlaybackRange(m._playerPlayheadTime)
         end if
+        m._endAdPlayback()
       end if
     else if eventType = "Impression"
       m._addEventToQueue(m._createEvent("adimpression"))
@@ -1586,11 +1647,13 @@ function muxAnalytics() as Object
       end if
       m._advertProperties = m._getAdvertProperties(ctx)
       m._adWatchTime = 0
+      m._beginAdPlayback()
       m._lastAdResumeTime = now
 
       m._addEventToQueue(m._createEvent("adplay"))
       m._addEventToQueue(m._createEvent("adplaying"))
     else if eventType = "Resume"
+      m._beginAdPlayback()
       m._lastAdResumeTime = now
       m._advertProperties = m._getAdvertProperties(ctx)
 
@@ -1604,6 +1667,9 @@ function muxAnalytics() as Object
 
       m._totalAdWatchTime += m._adWatchTime
       m._addEventToQueue(m._createEvent("adended"))
+      if m._Flag_rafInAdBreak <> true
+        m._endAdPlayback()
+      end if
     else if eventType = "NoAdsError"
       if m._Flag_FailedAdsErrorSet <> true
         ' For now, aderror events do not support codes and messages, but leaving
@@ -1635,6 +1701,9 @@ function muxAnalytics() as Object
       m._totalAdWatchTime += m._adWatchTime
       m._addEventToQueue(m._createEvent("adskipped"))
       m._addEventToQueue(m._createEvent("adended"))
+      if m._Flag_rafInAdBreak <> true
+        m._endAdPlayback()
+      end if
     end if
   end sub
 
@@ -1658,6 +1727,7 @@ function muxAnalytics() as Object
         ' our ad break here if we're not already in one
         if not m._Flag_rssInAdBreak
           m._Flag_rssInAdBreak = true
+          m._beginAdPlayback()
 
           m._addEventToQueue(m._createEvent("adbreakstart"))
         end if
@@ -1676,6 +1746,7 @@ function muxAnalytics() as Object
           m._adWatchTime = 0
         end if
         ' and always emit adplaying
+        m._beginAdPlayback()
         m._lastAdResumeTime = now
         m._addEventToQueue(m._createEvent("adplaying"))
       else if state = "paused"
@@ -1690,6 +1761,7 @@ function muxAnalytics() as Object
       ' Need to handle PodStart for non-pre-rolls
       if not m._Flag_rssInAdBreak
         m._Flag_rssInAdBreak = true
+        m._beginAdPlayback()
         m._adWatchTime = 0
         m._lastAdResumeTime = now
         if not m._Flag_isPaused
@@ -1709,6 +1781,7 @@ function muxAnalytics() as Object
 
       m._totalAdWatchTime += m._adWatchTime
       m._addEventToQueue(m._createEvent("adended"))
+      m._endAdPlayback()
     else if eventType = "Impression"
       ' When an additional ad is played within an ad pod, we do not get
       ' the AdStateChange events or anything other than the Impression
@@ -1716,6 +1789,7 @@ function muxAnalytics() as Object
       if m._Flag_rssAdEnded
         m._Flag_rssAdEnded = false
         m._adWatchTime = 0
+        m._beginAdPlayback()
         m._lastAdResumeTime = now
 
         m._addEventToQueue(m._createEvent("adplay"))
@@ -1726,6 +1800,7 @@ function muxAnalytics() as Object
       m._Flag_isPaused = true
 
       m._addEventToQueue(m._createEvent("adbreakend"))
+      m._endAdPlayback()
     else if eventType = "ContentPosition"
       ' we have a special case here to track the start of content after an ad break
       if not m._Flag_rssInAdBreak
