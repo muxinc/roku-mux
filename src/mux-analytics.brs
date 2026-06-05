@@ -585,6 +585,7 @@ function muxAnalytics() as Object
     m._Flag_adPlaybackActive = false
     m._Flag_rafInAdBreak = false
     m._Flag_deferredContentPlayingAfterAd = false
+    m._Flag_suppressNextContentPlayingAfterAd = false
 
     ' Flags specifically for when renderStitchedStream is used
     m._Flag_useRenderStitchedStream = false
@@ -866,6 +867,9 @@ function muxAnalytics() as Object
       end if
       if m._isAdPlaybackActive()
         m._Flag_deferredContentPlayingAfterAd = true
+      else if m._Flag_suppressNextContentPlayingAfterAd = true
+        m._Flag_suppressNextContentPlayingAfterAd = false
+        m._Flag_deferredContentPlayingAfterAd = false
       else
         m._Flag_deferredContentPlayingAfterAd = false
         if m._Flag_lastVideoState = "paused"
@@ -1076,15 +1080,14 @@ function muxAnalytics() as Object
       return
     end if
 
-    currentVideoState = m.video_state
-    if m.video <> Invalid AND m.video.state <> Invalid
-      currentVideoState = m.video.state
-    end if
-    if currentVideoState <> "playing"
+    if m.video_state <> "playing"
+      m._Flag_deferredContentPlayingAfterAd = false
       return
     end if
 
     m._Flag_deferredContentPlayingAfterAd = false
+    m._Flag_suppressNextContentPlayingAfterAd = true
+    m._Flag_isPaused = false
     m._triggerPlayEvent()
     m._emitContentPlayingEvent()
   end sub
@@ -1822,6 +1825,11 @@ function muxAnalytics() as Object
             m._triggerPlayEvent()
           ' end if
         else if state = "playing"
+          if m._Flag_suppressNextContentPlayingAfterAd = true
+            m._Flag_suppressNextContentPlayingAfterAd = false
+            return
+          end if
+
           ' We get the playing event after buffering on initial startup, but
           ' also again on unpausing (without the buffering event), so we need
           ' to send play if we're currently paused
