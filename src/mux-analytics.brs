@@ -1610,10 +1610,9 @@ function muxAnalytics() as Object
       m._Flag_rafInAdBreak = false
       ' In the case that this is SSAI, we need to signal a play and playing event
       if m._Flag_useSSAI = true
-        hadDeferredContentPlaying = m._Flag_deferredContentPlayingAfterAd = true
+        willEmitDeferredContentPlaying = m._Flag_deferredContentPlayingAfterAd = true AND m.video_state = "playing"
         m._endAdPlayback()
-        emittedDeferredContentPlaying = hadDeferredContentPlaying AND m._Flag_deferredContentPlayingAfterAd <> true
-        if emittedDeferredContentPlaying <> true
+        if willEmitDeferredContentPlaying <> true
           m._Flag_isPaused = false
           m._triggerPlayEvent()
 

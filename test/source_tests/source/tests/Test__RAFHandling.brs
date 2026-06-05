@@ -14,6 +14,7 @@ Function TestSuite__RAFHandling() as Object
   this.addTest("RAFHandling render stitched suppresses content playing during active ad", TestCase__MuxAnalytics_RAFHandling_RenderStitchedSuppressesContentPlayingDuringActiveAd)
   this.addTest("RAFHandling render stitched does not duplicate deferred resume", TestCase__MuxAnalytics_RAFHandling_RenderStitchedDoesNotDuplicateDeferredResume)
   this.addTest("RAFHandling SSAI pod complete does not duplicate deferred resume", TestCase__MuxAnalytics_RAFHandling_SSAIPodCompleteDoesNotDuplicateDeferredResume)
+  this.addTest("RAFHandling SSAI pod complete fallback emits when deferred resume skipped", TestCase__MuxAnalytics_RAFHandling_SSAIPodCompleteFallbackEmitsWhenDeferredResumeSkipped)
 
   return this
 End Function
@@ -284,6 +285,26 @@ Function TestCase__MuxAnalytics_RAFHandling_SSAIPodCompleteDoesNotDuplicateDefer
 
   m.SUT._testTimeMs = 1700
   m.SUT.videoStateChangeHandler(m._roString("playing"))
+
+  m.SUT._testTimeMs = 19000
+  m.fakeRAFEvent._dataToReturn = {eventType: "PodComplete", obj: {}, ctx: {}}
+  m.SUT.rafEventHandler(m.fakeRAFEvent)
+
+  events = m._eventNames()
+
+  return m.assertEqual("playbackmodechange,networkchange,viewstart,adbreakstart,adplay,adplaying,adbreakend,play,playing,", events)
+End Function
+
+Function TestCase__MuxAnalytics_RAFHandling_SSAIPodCompleteFallbackEmitsWhenDeferredResumeSkipped() as String
+  m._resetSUT()
+  m.SUT.useSSAIHandler(true)
+
+  m.SUT._testTimeMs = 1000
+  m.fakeRAFEvent._dataToReturn = {eventType: "PodStart", obj: {}, ctx: {}}
+  m.SUT.rafEventHandler(m.fakeRAFEvent)
+
+  m.SUT._Flag_deferredContentPlayingAfterAd = true
+  m.SUT.video_state = "buffering"
 
   m.SUT._testTimeMs = 19000
   m.fakeRAFEvent._dataToReturn = {eventType: "PodComplete", obj: {}, ctx: {}}
