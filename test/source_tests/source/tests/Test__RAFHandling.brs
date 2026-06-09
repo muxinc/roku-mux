@@ -75,6 +75,10 @@ Function TestCase__MuxAnalytics_RAFHandling_StandardAdComplete() as String
   m._resetSUT()
 
   m.SUT._testTimeMs = 1000
+  m.fakeRAFEvent._dataToReturn = {eventType: "PodStart", obj: {}, ctx: {}}
+  m.SUT.rafEventHandler(m.fakeRAFEvent)
+
+  m.SUT._testTimeMs = 1100
   m.fakeRAFEvent._dataToReturn = {eventType: "Start", obj: {}, ctx: {}}
   m.SUT.rafEventHandler(m.fakeRAFEvent)
 
@@ -82,13 +86,21 @@ Function TestCase__MuxAnalytics_RAFHandling_StandardAdComplete() as String
   m.fakeRAFEvent._dataToReturn = {eventType: "Complete", obj: {}, ctx: {}}
   m.SUT.rafEventHandler(m.fakeRAFEvent)
 
-  return m.assertEqual(5100.0#, m.SUT._totalAdWatchTime)
+  m.SUT._testTimeMs = 6200
+  m.fakeRAFEvent._dataToReturn = {eventType: "PodComplete", obj: {}, ctx: {}}
+  m.SUT.rafEventHandler(m.fakeRAFEvent)
+
+  return m.assertEqual(5000.0#, m.SUT._totalAdWatchTime)
 End Function
 
 Function TestCase__MuxAnalytics_RAFHandling_SuppressesContentPlayingDuringActiveAd() as String
   m._resetSUT()
 
   m.SUT._testTimeMs = 1000
+  m.fakeRAFEvent._dataToReturn = {eventType: "PodStart", obj: {}, ctx: {}}
+  m.SUT.rafEventHandler(m.fakeRAFEvent)
+
+  m.SUT._testTimeMs = 1100
   m.fakeRAFEvent._dataToReturn = {eventType: "Start", obj: {}, ctx: {}}
   m.SUT.rafEventHandler(m.fakeRAFEvent)
 
@@ -103,15 +115,23 @@ Function TestCase__MuxAnalytics_RAFHandling_SuppressesContentPlayingDuringActive
   m.fakeRAFEvent._dataToReturn = {eventType: "Complete", obj: {}, ctx: {}}
   m.SUT.rafEventHandler(m.fakeRAFEvent)
 
+  m.SUT._testTimeMs = 19100
+  m.fakeRAFEvent._dataToReturn = {eventType: "PodComplete", obj: {}, ctx: {}}
+  m.SUT.rafEventHandler(m.fakeRAFEvent)
+
   events = m._eventNames()
 
-  return m.assertEqual("playbackmodechange,networkchange,viewstart,adplay,adplaying,adfirstquartile,adended,play,playing,", events)
+  return m.assertEqual("playbackmodechange,networkchange,viewstart,adbreakstart,adplay,adplaying,adfirstquartile,adended,adbreakend,play,playing,", events)
 End Function
 
 Function TestCase__MuxAnalytics_RAFHandling_DeferredResumeUsesObservedVideoState() as String
   m._resetSUT()
 
   m.SUT._testTimeMs = 1000
+  m.fakeRAFEvent._dataToReturn = {eventType: "PodStart", obj: {}, ctx: {}}
+  m.SUT.rafEventHandler(m.fakeRAFEvent)
+
+  m.SUT._testTimeMs = 1100
   m.fakeRAFEvent._dataToReturn = {eventType: "Start", obj: {}, ctx: {}}
   m.SUT.rafEventHandler(m.fakeRAFEvent)
 
@@ -123,15 +143,23 @@ Function TestCase__MuxAnalytics_RAFHandling_DeferredResumeUsesObservedVideoState
   m.fakeRAFEvent._dataToReturn = {eventType: "Complete", obj: {}, ctx: {}}
   m.SUT.rafEventHandler(m.fakeRAFEvent)
 
+  m.SUT._testTimeMs = 19100
+  m.fakeRAFEvent._dataToReturn = {eventType: "PodComplete", obj: {}, ctx: {}}
+  m.SUT.rafEventHandler(m.fakeRAFEvent)
+
   events = m._eventNames()
 
-  return m.assertEqual("playbackmodechange,networkchange,viewstart,adplay,adplaying,adended,play,playing,", events)
+  return m.assertEqual("playbackmodechange,networkchange,viewstart,adbreakstart,adplay,adplaying,adended,adbreakend,play,playing,", events)
 End Function
 
 Function TestCase__MuxAnalytics_RAFHandling_ContentPlayingAfterAdEnd() as String
   m._resetSUT()
 
   m.SUT._testTimeMs = 1000
+  m.fakeRAFEvent._dataToReturn = {eventType: "PodStart", obj: {}, ctx: {}}
+  m.SUT.rafEventHandler(m.fakeRAFEvent)
+
+  m.SUT._testTimeMs = 1100
   m.fakeRAFEvent._dataToReturn = {eventType: "Start", obj: {}, ctx: {}}
   m.SUT.rafEventHandler(m.fakeRAFEvent)
 
@@ -139,12 +167,16 @@ Function TestCase__MuxAnalytics_RAFHandling_ContentPlayingAfterAdEnd() as String
   m.fakeRAFEvent._dataToReturn = {eventType: "Complete", obj: {}, ctx: {}}
   m.SUT.rafEventHandler(m.fakeRAFEvent)
 
+  m.SUT._testTimeMs = 19100
+  m.fakeRAFEvent._dataToReturn = {eventType: "PodComplete", obj: {}, ctx: {}}
+  m.SUT.rafEventHandler(m.fakeRAFEvent)
+
   m.SUT._testTimeMs = 19700
   m.SUT.videoStateChangeHandler(m._roString("playing"))
 
   events = m._eventNames()
 
-  return m.assertEqual("playbackmodechange,networkchange,viewstart,adplay,adplaying,adended,playing,", events)
+  return m.assertEqual("playbackmodechange,networkchange,viewstart,adbreakstart,adplay,adplaying,adended,adbreakend,playing,", events)
 End Function
 
 Function TestCase__MuxAnalytics_RAFHandling_SuppressesContentPlayingBetweenAdsInPod() as String
