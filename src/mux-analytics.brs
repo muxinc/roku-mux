@@ -1074,6 +1074,16 @@ function muxAnalytics() as Object
     m._emitDeferredContentPlayingAfterAd()
   end sub
 
+  prototype._resetAdPlaybackState = sub()
+    m._Flag_adPlaybackActive = false
+    m._Flag_rafInAdBreak = false
+    m._Flag_deferredContentPlayingAfterAd = false
+    m._Flag_suppressNextContentPlayingAfterAd = false
+    m._Flag_rssInAdBreak = false
+    m._Flag_rssAdEnded = false
+    m._lastAdResumeTime = Invalid
+  end sub
+
   prototype._emitDeferredContentPlayingAfterAd = sub()
     if m._Flag_deferredContentPlayingAfterAd <> true
       return
@@ -2048,6 +2058,7 @@ function muxAnalytics() as Object
     end if
     if m._clientOperatedStartAndEnd = true AND setByClient = false then return
     if m._inView = false
+      m._resetAdPlaybackState()
       m.heartbeatTimer.control = "start"
       m._Flag_heartbeatTimerRunning = true
       m.pollTimer.control = "start"
@@ -2129,6 +2140,7 @@ function muxAnalytics() as Object
 
       m._endPlaybackRange(m._playerPlayheadTime)
       m._addEventToQueue(m._createEvent("viewend"))
+      m._resetAdPlaybackState()
       m._inView = false
       m._viewId = Invalid
       m._viewStartTimestamp = Invalid
