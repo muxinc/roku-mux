@@ -8,14 +8,6 @@ The version number is found in src/mux-analytics.brs
 
 This is the single source for the mux-analytics SDK for Roku.
 
-### Releasing ###
-
-Releasing this SDK is handled via *Releases* (tags, more specifically). To release a feature:
-
-1) Merge any feature changes and bug fixes that you want. You can merge individual PRs to master in any order; until you make a Release, nothing will be pushed to production.
-2) In your last PR to make a release, bump the version in `src/mux-analytics.brs` _and_ in `package.json`. It's important that these are the same: the version in `mux-analytics.brs` controls the version of the SDK for Mux Data, and the version in `package.json` controls the version where it is deployed on src.litix.io.
-3) Once all bug fixes and features are merged, and the versions updated, cut a Release from within Github. Specify a new tag off of `master`, with the name `v2.0.2` (or whatever version you're releasing). This will kick off a deploy through buildkite, hosting the updated script in the correct location.
-
 ### How do I get set up? ###
 
 You will need golang to build the tool used to build, run and test. Once you have installed golang run
@@ -110,3 +102,7 @@ If you leave these unset. They will default to the following settings.
 `mux_debug_events` - none
 `mux_debug_beacons` - none
 `mux_minification` - true
+
+### Releasing ###
+
+See [RELEASING.md](RELEASING.md) for the full maintainer release process, including the manual checklist and the agent-assisted runbook.
