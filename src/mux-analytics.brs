@@ -2,6 +2,20 @@ sub init()
   m.MUX_SDK_VERSION = "2.7.1"
   m.top.id = "mux"
   m.top.functionName = "runBeaconLoop"
+
+  ' Ensure all observed configuration/event fields exist on m.top
+  ' Using invalid as default keeps them dynamically typed and configurable by callers
+  m.top.addFields({
+    disablePlayheadRebufferTracking: invalid
+    rebufferstart: invalid
+    rebufferend: invalid
+    playback_mode: invalid
+    request: invalid
+    disableDecoderStats: invalid
+  })
+  
+  ' Expose SDK version through interface for programmatic access
+  m.top.sdkVersion = m.MUX_SDK_VERSION
   
   ' Store randomMuxViewerId in m scope to avoid rendezvous in task thread
   m.randomMuxViewerId = m.top.randomMuxViewerId
@@ -144,7 +158,7 @@ function runBeaconLoop()
   firmwareVersion = m.mxa._sessionProperties.viewer_os_version
   ' Parse major version from firmware string (e.g., "10.1" -> 10, "9.2" -> 9)
   majorVersion = 0
-  if firmwareVersion <> Invalid and Type(firmwareVersion) = "String" and firmwareVersion <> ""
+  if firmwareVersion <> Invalid and (Type(firmwareVersion) = "String" or Type(firmwareVersion) = "roString") and firmwareVersion <> ""
     firmwareParts = firmwareVersion.Tokenize(".")
     if firmwareParts.Count() > 0
       majorVersion = Val(firmwareParts[0])
@@ -622,7 +636,7 @@ function muxAnalytics() as Object
   end sub
 
   prototype.beaconIntervalHandler = sub(beaconIntervalEvent)
-    data = beaconIntervalEvent.getData()
+    _data = beaconIntervalEvent.getData()
     m.LIGHT_THE_BEACONS()
 
     ' If network events are not supported, poll network status
@@ -667,7 +681,7 @@ function muxAnalytics() as Object
   end sub
 
   prototype.heartbeatIntervalHandler = sub(heartbeatIntervalEvent)
-    data = heartbeatIntervalEvent.getData()
+    _data = heartbeatIntervalEvent.getData()
     if m._Flag_isPaused <> true
       m._addEventToQueue(m._createEvent("hb"))
     end if
@@ -1113,7 +1127,7 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype.videoContentChangeHandler = sub(videoContent as Object)
+  prototype.videoContentChangeHandler = sub(_videoContent as Object)
     if m._clientOperatedStartAndEnd <> true
       m._endView()
       m._startView()
@@ -1861,7 +1875,7 @@ function muxAnalytics() as Object
     end if
   end sub
 
-  prototype.pollingIntervalHandler = sub(pollingIntervalEvent)
+  prototype.pollingIntervalHandler = sub(_pollingIntervalEvent)
     if m.video = Invalid then return
     if m._Flag_isPaused = true then return
 
@@ -2889,7 +2903,7 @@ function muxAnalytics() as Object
     Print tot
   end sub
 
-  prototype._logEvent = sub(event = {} as Object, subtype = "" as String, title = "EVENT" as String)
+  prototype._logEvent = sub(event = {} as Object, _subtype = "" as String, title = "EVENT" as String)
     if m.debugEvents = "none" then return
     tot = m.loggingPrefix + title + " " + event.event
     if m.debugEvents = "full"
@@ -3124,7 +3138,7 @@ function muxAnalytics() as Object
 
   prototype._floatSecsToMillis = function(secs as Float) as Integer 
     if secs = Invalid
-      return Invalid
+      return 0
     else
       return Int(secs * 1000)
     end if
