@@ -29,6 +29,10 @@ Function TestSuite__Minification() as Object
   this.addTest("Minification [11] player_text_track_type", TestCase__MuxAnalytics_Minification_minifies_player_text_track_type)
   this.addTest("Minification [12] player_text_track_name", TestCase__MuxAnalytics_Minification_minifies_player_text_track_name)
   this.addTest("Minification [13] player_text_track_language", TestCase__MuxAnalytics_Minification_minifies_player_text_track_language)
+  this.addTest("Minification [14] player_audio_track_enabled", TestCase__MuxAnalytics_Minification_minifies_player_audio_track_enabled)
+  this.addTest("Minification [15] player_audio_track_name", TestCase__MuxAnalytics_Minification_minifies_player_audio_track_name)
+  this.addTest("Minification [16] player_audio_track_language", TestCase__MuxAnalytics_Minification_minifies_player_audio_track_language)
+  this.addTest("Minification [17] player_audio_track_codec", TestCase__MuxAnalytics_Minification_minifies_player_audio_track_codec)
 
   return this
 End Function
@@ -280,4 +284,44 @@ Function TestCase__MuxAnalytics_Minification_minifies_player_text_track_language
   result = m.SUT._minify(body)
   ' THEN
   return m.assertEqual(result.keys()[0], "ptetrla")
+end function
+
+Function TestCase__MuxAnalytics_Minification_minifies_player_audio_track_enabled() as String
+  ' GIVEN
+  m.SUT.minification = true
+  body = {player_audio_track_enabled: true}
+  ' WHEN
+  result = m.SUT._minify(body)
+  ' THEN
+  return m.assertEqual(result.keys()[0], "paotreb")
+end function
+
+Function TestCase__MuxAnalytics_Minification_minifies_player_audio_track_name() as String
+  ' GIVEN
+  m.SUT.minification = true
+  body = {player_audio_track_name: "English"}
+  ' WHEN
+  result = m.SUT._minify(body)
+  ' THEN
+  return m.assertEqual(result.keys()[0], "paotrnm")
+end function
+
+Function TestCase__MuxAnalytics_Minification_minifies_player_audio_track_language() as String
+  ' GIVEN
+  m.SUT.minification = true
+  body = {player_audio_track_language: "eng"}
+  ' WHEN
+  result = m.SUT._minify(body)
+  ' THEN
+  return m.assertEqual(result.keys()[0], "paotrla")
+end function
+
+Function TestCase__MuxAnalytics_Minification_minifies_player_audio_track_codec() as String
+  ' GIVEN
+  m.SUT.minification = true
+  body = {player_audio_track_codec: "aac"}
+  ' WHEN
+  result = m.SUT._minify(body)
+  ' THEN
+  return m.assertEqual(result.keys()[0], "paotrcc")
 end function

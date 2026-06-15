@@ -119,6 +119,14 @@ sub playContent()
     contentInfo.contentId = "Becoming You"
     m.top.video.content = contentNode
     PlayContentOnlyNoAds(contentInfo)
+  else if selectionId = "audiotracks"
+    ' Multi-language audio (English + Français)
+    contentNode.URL = "https://stream.mux.com/3x5wDUHxkd8NkEfspLUK3OpSQEJe3pom.m3u8"
+    contentNode.StreamFormat = "hls"
+    contentInfo.length = 16
+    contentInfo.contentId = "Multi-language audio"
+    m.top.video.content = contentNode
+    PlayContentOnlyNoAds(contentInfo)
   else if selectionId = "playlist"
     createPlaylist()
     PlayContentOnlyNoAds(contentInfo)
