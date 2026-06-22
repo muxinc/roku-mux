@@ -9,17 +9,17 @@ This document tracks the Dependabot vulnerability investigation and setup for au
 - **Advisory ID**: GHSA-j965-2qgj-vjmq
 - **Severity**: Low (CVSS 3.7)
 - **Issue**: JavaScript SDK v2 users should add validation to the region parameter value or migrate to v3
-- **Package**: aws-sdk (Direct dependency)
-- **Current Version**: ^2.1693.0
-- **Status**: End-of-support on September 8, 2025
+- **Package**: @aws-sdk/client-s3 and @aws-sdk/client-cloudfront (Direct dependencies)
+- **Current Version**: Removed in favor of AWS SDK for JavaScript v3 clients
+- **Status**: Resolved by migrating the deploy script to AWS SDK v3 clients
 
 #### Details
 The vulnerability is related to the use of specific values for the region input field when calling AWS services. An actor with access to the environment could set the region input field to an invalid value. AWS SDK for JavaScript v2 reached end-of-support on September 8, 2025.
 
-#### Recommended Actions
-1. **Migrate to AWS SDK for JavaScript v3** - This is the recommended long-term solution
-2. **Implement input sanitization** - Add validation to the region parameter in application code
-3. **Follow AWS security best practices** - For SDK configuration and deployment
+#### Resolution
+1. **Migrated to AWS SDK for JavaScript v3** - The deployment script now uses `@aws-sdk/client-s3` and `@aws-sdk/client-cloudfront`
+2. **Preserved existing deployment behavior** - S3 uploads still set the object ACL to `public-read`, and CloudFront invalidations still run as before
+3. **Followed AWS security best practices** - Deployment credentials and regions continue to come from the existing environment configuration
 
 ## Dependabot Configuration
 

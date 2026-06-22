@@ -2,13 +2,14 @@
   "version": "2.7.1",
   "main": "./src/mux-analytics.brs",
   "engines": {
-    "node": ">=16",
-    "npm": ">=8.3.0"
+    "node": ">=20",
+    "npm": ">=10"
   },
   "dependencies": {
+    "@aws-sdk/client-cloudfront": "^3.1074.0",
+    "@aws-sdk/client-s3": "^3.1074.0",
     "@rokucommunity/bslint": "^0.8.9",
     "@snyk/protect": "latest",
-    "aws-sdk": "^2.1693.0",
     "brighterscript": "^0.72.5"
   },
   "scripts": {
