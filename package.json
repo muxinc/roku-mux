@@ -1,6 +1,9 @@
 {
   "version": "2.7.1",
   "main": "./src/mux-analytics.brs",
+  "engines": {
+    "node": ">=16"
+  },
   "dependencies": {
     "@rokucommunity/bslint": "^0.8.9",
     "@snyk/protect": "latest",
