@@ -2,7 +2,8 @@
   "version": "2.7.1",
   "main": "./src/mux-analytics.brs",
   "engines": {
-    "node": ">=16"
+    "node": ">=16",
+    "npm": ">=8.3.0"
   },
   "dependencies": {
     "@rokucommunity/bslint": "^0.8.9",
