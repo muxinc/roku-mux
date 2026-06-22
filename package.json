@@ -8,8 +8,7 @@
     "@rokucommunity/bslint": "^0.8.9",
     "@snyk/protect": "latest",
     "aws-sdk": "^2.1693.0",
-    "brighterscript": "^0.72.5",
-    "build": "^0.1.4"
+    "brighterscript": "^0.72.5"
   },
   "scripts": {
     "prepare": "npm run snyk-protect",
