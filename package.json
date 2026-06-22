@@ -4,7 +4,7 @@
   "dependencies": {
     "@rokucommunity/bslint": "^0.8.9",
     "@snyk/protect": "latest",
-    "aws-sdk": "^2.1692.0",
+    "aws-sdk": "^2.1693.0",
     "brighterscript": "^0.65.5",
     "build": "^0.1.4"
   },
