@@ -25,10 +25,10 @@ The vulnerability is related to the use of specific values for the region input 
 
 ### Setup
 Created `.github/dependabot.yml` to:
-- Enable automatic version updates for npm dependencies (weekly on Mondays at 03:00 UTC)
-- Enable automatic version updates for GitHub Actions (weekly on Mondays at 04:00 UTC)
+- Enable automatic version updates for npm dependencies (weekly on Mondays at 03:27 UTC)
+- Enable automatic version updates for GitHub Actions (weekly on Mondays at 04:42 UTC)
 - Group minor and patch updates to reduce PR volume
-- Automatically assign PRs to the repository owner for review
+- Optionally assign PRs to specific maintainers when needed
 - Apply consistent labeling for dependency management
 
 ### Features
@@ -36,7 +36,7 @@ Created `.github/dependabot.yml` to:
 - **PR Limit**: Up to 5 open PRs per ecosystem
 - **Grouping**: Minor and patch updates are grouped together
 - **Labels**: Applied for easy categorization (dependencies, ci)
-- **Reviewers**: Automatically assigned to DrMattChristian
+- **Assignment**: Use assignees when you want dependency PRs routed to a specific maintainer or queue
 
 ## Next Steps
 
@@ -48,7 +48,7 @@ Created `.github/dependabot.yml` to:
 ## AWS SDK Migration Timeline
 
 - **Current**: Using aws-sdk v2 with the known vulnerability
-- **Short-term**: Monitor aws-sdk@1.18.0 compatibility and security updates
+- **Short-term**: Assess compatibility with the current aws-sdk v2 dependency and evaluate security update options
 - **Medium-term**: Plan and execute migration to AWS SDK for JavaScript v3
   - This will require significant testing as it's a major version change
   - May require code refactoring due to API changes between v2 and v3

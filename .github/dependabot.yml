@@ -16,8 +16,7 @@ updates:
       prefix: "deps"
     labels:
       - "dependencies"
-    reviewers:
-      - "DrMattChristian"
+    assignees: []
     target-branch: "main"
 
   - package-ecosystem: "github-actions"
@@ -32,6 +31,5 @@ updates:
     labels:
       - "dependencies"
       - "ci"
-    reviewers:
-      - "DrMattChristian"
+    assignees: []
     target-branch: "main"
