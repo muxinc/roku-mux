@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-IMAGE_NAME="node:16-alpine"
+IMAGE_NAME="node:20-alpine"
 
 CMD=$(echo "$@" | sed 's/^-- //')
 

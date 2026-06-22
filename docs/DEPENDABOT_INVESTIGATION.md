@@ -9,7 +9,7 @@ This document tracks the Dependabot vulnerability investigation and setup for au
 - **Advisory ID**: GHSA-j965-2qgj-vjmq
 - **Severity**: Low (CVSS 3.7)
 - **Issue**: JavaScript SDK v2 users should add validation to the region parameter value or migrate to v3
-- **Package**: aws-sdk (Direct dependency)
+- **Package**: @aws-sdk/client-s3 and @aws-sdk/client-cloudfront (Direct dependencies)
 - **Current Version**: Removed in favor of AWS SDK for JavaScript v3 clients
 - **Status**: Resolved by migrating the deploy script to AWS SDK v3 clients
 
