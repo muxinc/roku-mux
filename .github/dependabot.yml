@@ -1,0 +1,45 @@
+version: 2
+updates:
+  # Enable version updates for npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+    # Allow up to 5 open PRs for npm dependencies
+    open-pull-requests-limit: 5
+    # Group minor and patch updates
+    groups:
+      minor-and-patch:
+        dependency-type: "minor-and-patch"
+        update-types:
+          - "minor"
+          - "patch"
+    commit-message:
+      prefix: "deps"
+    labels:
+      - "dependencies"
+    reviewers:
+      - "DrMattChristian"
+    # Target changes to main branch
+    target-branch: "main"
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+    # Allow up to 5 open PRs for GitHub Actions
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "ci"
+    reviewers:
+      - "DrMattChristian"
+    # Target changes to main branch
+    target-branch: "main"
