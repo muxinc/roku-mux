@@ -9,7 +9,6 @@ updates:
     open-pull-requests-limit: 5
     groups:
       minor-and-patch:
-        dependency-type: "minor-and-patch"
         update-types:
           - "minor"
           - "patch"
