@@ -1,8 +1,22 @@
 {
     "files": [
-        "src/**/*",
         "test/**/*",
-        "sampleapp_source/**/*"
+        {
+            "src": "sampleapp_source/**/*",
+            "dest": ""
+        },
+        "!sampleapp_source/components_*/**/*",
+        {
+            "src": "sampleapp_source/components_reset/**/*",
+            "dest": ""
+        },
+        {
+            "src": "src/mux-analytics.brs",
+            "dest": "libs/mux-analytics.brs"
+        }
     ],
-    "plugins": [ "@rokucommunity/bslint" ]
+    "plugins": [
+        "@rokucommunity/bslint"
+    ],
+    "sourceMap": true
 }
