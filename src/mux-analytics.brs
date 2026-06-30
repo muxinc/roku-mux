@@ -957,7 +957,7 @@ function muxAnalytics() as Object
   end sub
 
   ' examine the current presented text track state and potentially send a texttrackchange event
-  prototype._checkTextTrackState = sub(ignored = Invalid)
+  prototype._checkTextTrackState = sub(_ = Invalid)
     if m._viewId = Invalid then return
 
     state = m._createTextTrackChangeState()
@@ -1044,7 +1044,7 @@ function muxAnalytics() as Object
   end function
 
   ' examine the current playing audio track and potentially send an audiotrackchange event
-  prototype._checkAudioTrackState = sub(ignored = Invalid)
+  prototype._checkAudioTrackState = sub(_ = Invalid)
     if m._viewId = Invalid then return
 
     state = m._createAudioTrackChangeState()
