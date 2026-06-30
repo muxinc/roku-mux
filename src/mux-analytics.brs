@@ -959,6 +959,11 @@ function muxAnalytics() as Object
   ' examine the current presented text track state and potentially send a texttrackchange event
   prototype._checkTextTrackState = sub(_ = Invalid)
     if m._viewId = Invalid then return
+    ' values may be stale/inconsistent in these states:
+    playbackState = m._getObservedVideoNodeField("state")
+    if playbackState = Invalid or playbackState = "none" or playbackState = "buffering" or playbackState = "error"
+      return
+    end if
 
     state = m._createTextTrackChangeState()
     if state = Invalid then return
@@ -999,12 +1004,6 @@ function muxAnalytics() as Object
 
     trackId = m._getObservedVideoNodeField("currentSubtitleTrack")
     if trackId = Invalid or trackId = ""
-      ' Do not trust these empty values during error state or initial buffering...
-      state = m._getObservedVideoNodeField("state")
-      if state = Invalid or state = "none" or state = "buffering" or state = "error"
-        return Invalid
-      end if
-      ' ...but after that, this means no available track:
       return { presentedSubtitleTrack: Invalid }
     end if
 
@@ -1017,10 +1016,10 @@ function muxAnalytics() as Object
       return { player_text_track_enabled: false }
     end if
 
-    tracks = m._getObservedVideoNodeField("availableSubtitleTracks")
-    if tracks = Invalid then return Invalid
-
     props = { player_text_track_enabled: true }
+
+    tracks = m._getObservedVideoNodeField("availableSubtitleTracks")
+    if tracks = Invalid then tracks = []
 
     for each track in tracks
       if track.TrackName = trackId
@@ -1030,15 +1029,9 @@ function muxAnalytics() as Object
         if track.Language <> Invalid and track.Language <> ""
           props.player_text_track_language = track.Language
         end if
-        return props
+        exit for
       end if
     end for
-
-    ' not found, track list may be loading...
-    state = m._getObservedVideoNodeField("state")
-    if state = Invalid or state = "none" or state = "buffering"
-      return Invalid
-    end if
 
     return props
   end function
@@ -1046,6 +1039,11 @@ function muxAnalytics() as Object
   ' examine the current playing audio track and potentially send an audiotrackchange event
   prototype._checkAudioTrackState = sub(_ = Invalid)
     if m._viewId = Invalid then return
+    ' values may be stale/inconsistent in these states:
+    playbackState = m._getObservedVideoNodeField("state")
+    if playbackState = Invalid or playbackState = "none" or playbackState = "buffering" or playbackState = "error"
+      return
+    end if
 
     state = m._createAudioTrackChangeState()
     if state = Invalid then return
@@ -1069,12 +1067,6 @@ function muxAnalytics() as Object
   prototype._createAudioTrackChangeState = function() as Object
     trackId = m._getObservedVideoNodeField("currentAudioTrack")
     if trackId = Invalid or trackId = ""
-      ' Do not trust these empty values during error state or initial buffering...
-      state = m._getObservedVideoNodeField("state")
-      if state = Invalid or state = "none" or state = "buffering" or state = "error"
-        return Invalid
-      end if
-      ' ...but after that, this means no audio track:
       return { presentedAudioTrack: Invalid }
     end if
 
@@ -1087,12 +1079,11 @@ function muxAnalytics() as Object
       return { player_audio_track_enabled: false }
     end if
 
-    tracks = m._getObservedVideoNodeField("availableAudioTracks")
-    if tracks = Invalid then return Invalid
-
     props = { player_audio_track_enabled: true }
 
-    foundTrack = false
+    tracks = m._getObservedVideoNodeField("availableAudioTracks")
+    if tracks = Invalid then tracks = []
+
     for each track in tracks
       if track.Track = trackId
         if track.Name <> Invalid and track.Name <> ""
@@ -1101,18 +1092,9 @@ function muxAnalytics() as Object
         if track.Language <> Invalid and track.Language <> ""
           props.player_audio_track_language = track.Language
         end if
-        foundTrack = true
         exit for
       end if
     end for
-
-    if not foundTrack
-      ' not found, track list may be loading...
-      state = m._getObservedVideoNodeField("state")
-      if state = Invalid or state = "none" or state = "buffering"
-        return Invalid
-      end if
-    end if
 
     ' best-effort codec from the currently playing audio format
     audioFormat = m._getObservedVideoNodeField("audioFormat")
