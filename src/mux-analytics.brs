@@ -613,6 +613,9 @@ function muxAnalytics() as Object
     ' Text Track Changes
     m._textTrackChangesState = Invalid
 
+    ' Audio Track Changes
+    m._audioTrackChangesState = Invalid
+
     ' kick off analytics
     date = m._getDateTime()
     m._startTimestamp = 0# + date.AsSeconds() * 1000.0#  + date.GetMilliseconds()
@@ -700,12 +703,20 @@ function muxAnalytics() as Object
     ' check refreshed state(s)
     ' note: to preserve behavior, videoStateChangeHandler is not called until first "state" change message.
     m._checkTextTrackState()
+    m._checkAudioTrackState()
   end sub
 
-  ' registry of handler names for observed video node fields
+  ' registry of handler names for observed video node fields (keys ordered alphabetically)
   prototype._videoNodeFieldChangeHandlers = {
+    "audioFormat": [],
+    "availableAudioTracks": [
+      "_checkAudioTrackState",
+    ],
     "availableSubtitleTracks": [
       "_checkTextTrackState",
+    ],
+    "currentAudioTrack": [
+      "_checkAudioTrackState",
     ],
     "currentSubtitleTrack": [
       "_checkTextTrackState",
@@ -719,6 +730,7 @@ function muxAnalytics() as Object
     "state": [
       "videoStateChangeHandler",
       "_checkTextTrackState",
+      "_checkAudioTrackState",
     ]
   }
 
@@ -945,8 +957,13 @@ function muxAnalytics() as Object
   end sub
 
   ' examine the current presented text track state and potentially send a texttrackchange event
-  prototype._checkTextTrackState = sub(ignored = Invalid)
+  prototype._checkTextTrackState = sub(_ = Invalid)
     if m._viewId = Invalid then return
+    ' values may be stale/inconsistent in these states:
+    playbackState = m._getObservedVideoNodeField("state")
+    if playbackState = Invalid or playbackState = "none" or playbackState = "buffering" or playbackState = "error"
+      return
+    end if
 
     state = m._createTextTrackChangeState()
     if state = Invalid then return
@@ -987,12 +1004,6 @@ function muxAnalytics() as Object
 
     trackId = m._getObservedVideoNodeField("currentSubtitleTrack")
     if trackId = Invalid or trackId = ""
-      ' Do not trust these empty values during error state or initial buffering...
-      state = m._getObservedVideoNodeField("state")
-      if state = Invalid or state = "none" or state = "buffering" or state = "error"
-        return Invalid
-      end if
-      ' ...but after that, this means no available track:
       return { presentedSubtitleTrack: Invalid }
     end if
 
@@ -1005,10 +1016,10 @@ function muxAnalytics() as Object
       return { player_text_track_enabled: false }
     end if
 
-    tracks = m._getObservedVideoNodeField("availableSubtitleTracks")
-    if tracks = Invalid then return Invalid
-
     props = { player_text_track_enabled: true }
+
+    tracks = m._getObservedVideoNodeField("availableSubtitleTracks")
+    if tracks = Invalid then tracks = []
 
     for each track in tracks
       if track.TrackName = trackId
@@ -1018,14 +1029,77 @@ function muxAnalytics() as Object
         if track.Language <> Invalid and track.Language <> ""
           props.player_text_track_language = track.Language
         end if
-        return props
+        exit for
       end if
     end for
 
-    ' not found, track list may be loading...
-    state = m._getObservedVideoNodeField("state")
-    if state = Invalid or state = "none" or state = "buffering"
-      return Invalid
+    return props
+  end function
+
+  ' examine the current playing audio track and potentially send an audiotrackchange event
+  prototype._checkAudioTrackState = sub(_ = Invalid)
+    if m._viewId = Invalid then return
+    ' values may be stale/inconsistent in these states:
+    playbackState = m._getObservedVideoNodeField("state")
+    if playbackState = Invalid or playbackState = "none" or playbackState = "buffering" or playbackState = "error"
+      return
+    end if
+
+    state = m._createAudioTrackChangeState()
+    if state = Invalid then return
+
+    oldState = m._audioTrackChangesState
+    if oldState <> Invalid and oldState.presentedAudioTrack = state.presentedAudioTrack
+      if oldState.hasSentEvent = true then return
+      state = oldState
+    else
+      m._audioTrackChangesState = state
+    end if
+
+    props = m._createAudioTrackChangeEventProps(state.presentedAudioTrack)
+    if props = Invalid then return
+
+    state.hasSentEvent = true
+    m._addEventToQueue(m._createEvent("audiotrackchange", props))
+  end sub
+
+  ' return audiotrackchange event state or Invalid if not loaded/ready.
+  prototype._createAudioTrackChangeState = function() as Object
+    trackId = m._getObservedVideoNodeField("currentAudioTrack")
+    if trackId = Invalid or trackId = ""
+      return { presentedAudioTrack: Invalid }
+    end if
+
+    return { presentedAudioTrack: trackId }
+  end function
+
+  ' return audiotrackchange event props based on the provided track or Invalid if not loaded/ready.
+  prototype._createAudioTrackChangeEventProps = function(trackId as Dynamic) as Object
+    if trackId = Invalid or trackId = ""
+      return { player_audio_track_enabled: false }
+    end if
+
+    props = { player_audio_track_enabled: true }
+
+    tracks = m._getObservedVideoNodeField("availableAudioTracks")
+    if tracks = Invalid then tracks = []
+
+    for each track in tracks
+      if track.Track = trackId
+        if track.Name <> Invalid and track.Name <> ""
+          props.player_audio_track_name = track.Name
+        end if
+        if track.Language <> Invalid and track.Language <> ""
+          props.player_audio_track_language = track.Language
+        end if
+        exit for
+      end if
+    end for
+
+    ' best-effort codec from the currently playing audio format
+    audioFormat = m._getObservedVideoNodeField("audioFormat")
+    if audioFormat <> Invalid and audioFormat <> "" and audioFormat <> "none" and audioFormat <> "unknown"
+      props.player_audio_track_codec = audioFormat
     end if
 
     return props
@@ -2121,8 +2195,9 @@ function muxAnalytics() as Object
       m._lastConnectionType = initialConnectionType
       m._fireNetworkChangeEvent(initialConnectionType)
 
-      ' fire initial texttrackchange event if ready
+      ' fire an initial change event if ready
       m._checkTextTrackState()
+      m._checkAudioTrackState()
 
       m._addEventToQueue(m._createEvent("viewstart"))
 
@@ -2193,6 +2268,9 @@ function muxAnalytics() as Object
 
       ' Text Track Changes
       m._textTrackChangesState = Invalid
+
+      ' Audio Track Changes
+      m._audioTrackChangesState = Invalid
     end if
   end sub
 
