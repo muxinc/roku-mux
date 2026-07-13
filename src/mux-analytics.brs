@@ -13,12 +13,11 @@ sub init()
     request: invalid
     disableDecoderStats: invalid
   })
-  
-  ' Expose SDK version through interface for programmatic access
-  m.top.sdkVersion = m.MUX_SDK_VERSION
-  
+
   ' Store randomMuxViewerId in m scope to avoid rendezvous in task thread
   m.randomMuxViewerId = m.top.randomMuxViewerId
+  ' Expose SDK version through interface for programmatic access
+  m.top.sdkVersion = m.MUX_SDK_VERSION
 end sub
 
 function runBeaconLoop()
@@ -3214,7 +3213,7 @@ function muxAnalytics() as Object
   ' ' UTILS METHODS
   ' ' //////////////////////////////////////////////////////////////
 
-  prototype._floatSecsToMillis = function(secs as Float) as Integer 
+  prototype._floatSecsToMillis = function(secs as Float) as Integer
     if secs = Invalid
       return 0
     else
