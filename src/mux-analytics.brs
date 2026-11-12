@@ -9,6 +9,7 @@ end sub
 
 function runBeaconLoop()
   m.messagePort = _createPort()
+  m.observedFields = []
   appInfo = _createAppInfo()
 
   m.MAX_BEACON_SIZE = 300 'controls size of a single beacon (in events)
@@ -64,92 +65,73 @@ function runBeaconLoop()
   }
   m.mxa.init(appInfo, systemConfig, m.top.config, m.heartbeatTimer, m.pollTimer, m.httpPort)
 
-  m.top.ObserveField("rafEvent", m.messagePort)
+  majorVersion = _osMajorVersion(m.mxa.deviceInfo)
+  ' ObserveFieldScopedEx is available on Roku OS 12+
+  m.scopedObservation = majorVersion >= 12
+
+  _observeField(m.top, "rafEvent", m.messagePort)
 
   if m.top.video = Invalid
-    m.top.ObserveField("video", m.messagePort)
+    _observeField(m.top, "video", m.messagePort)
   else
-    for each fieldName in m.mxa.videoNodeFieldsToObserve()
-      m.top.video.ObserveField(fieldName, m.messagePort)
-    end for
-    m.mxa.videoAddedHandler(m.top.video)
-    m.top.video.ObserveField("content", m.messagePort)
-    m.top.video.ObserveField("control", m.messagePort)
-    m.top.video.ObserveField("licenseStatus", m.messagePort)
-    m.top.video.ObserveField("contentIndex", m.messagePort)
-    m.top.video.ObserveField("downloadedSegment", m.messagePort)
-    m.top.video.ObserveField("streamingSegment", m.messagePort)
-    m.top.video.ObserveField("position", m.messagePort)
-    if m.top.disableDecoderStats <> true AND m.top.video.enableDecoderStats <> Invalid
-      m.top.video.enableDecoderStats = true
-      m.top.video.ObserveField("decoderStats", m.messagePort)
-    end if
+    _observeVideoNode(m.top.video, m.messagePort, m.mxa, m.top.disableDecoderStats <> true)
   end if
 
   if m.top.view <> Invalid AND m.top.view <> ""
     m.mxa.videoViewChangeHandler(m.top.view)
   end if
-  m.top.ObserveField("view", m.messagePort)
+  _observeField(m.top, "view", m.messagePort)
 
   if m.top.config <> Invalid
     m.mxa.configChangeHandler(m.top.config)
   end if
-  m.top.ObserveField("config", m.messagePort)
+  _observeField(m.top, "config", m.messagePort)
 
   if m.top.useRenderStitchedStream <> Invalid
     m.mxa.useRenderStitchedStreamHandler(m.top.useRenderStitchedStream)
   end if
-  m.top.ObserveField("useRenderStitchedStream", m.messagePort)
+  _observeField(m.top, "useRenderStitchedStream", m.messagePort)
 
   if m.top.useSSAI <> Invalid
     m.mxa.useSSAIHandler(m.top.useSSAI)
   end if
-  m.top.ObserveField("useSSAI", m.messagePort)
+  _observeField(m.top, "useSSAI", m.messagePort)
 
   if m.top.disableAutomaticErrorTracking <> Invalid
     m.mxa.disableAutomaticErrorTrackingHandler(m.top.disableAutomaticErrorTracking)
   end if
-  m.top.ObserveField("disableAutomaticErrorTracking", m.messagePort)
+  _observeField(m.top, "disableAutomaticErrorTracking", m.messagePort)
 
   if m.top.error <> Invalid
     m.mxa.videoErrorHandler(m.top.error)
   end if
-  m.top.ObserveField("error", m.messagePort)
+  _observeField(m.top, "error", m.messagePort)
 
   if m.top.cdn <> Invalid
     m.mxa.cdnChangeHandler(m.top.cdn)
   end if
-  m.top.ObserveField("cdn", m.messagePort)
+  _observeField(m.top, "cdn", m.messagePort)
 
   if m.top.disablePlayheadRebufferTracking <> Invalid
     m.mxa.disablePlayheadRebufferTrackingHandler(m.top.disablePlayheadRebufferTracking)
   end if
-  m.top.ObserveField("disablePlayheadRebufferTracking", m.messagePort)
+  _observeField(m.top, "disablePlayheadRebufferTracking", m.messagePort)
 
-  m.top.ObserveField("rebufferstart", m.messagePort)
-  m.top.ObserveField("rebufferend", m.messagePort)
+  _observeField(m.top, "rebufferstart", m.messagePort)
+  _observeField(m.top, "rebufferend", m.messagePort)
 
   if m.top.playback_mode <> Invalid
     m.mxa.playbackModeHandler(m.top.playback_mode)
   end if
-  m.top.ObserveField("playback_mode", m.messagePort)
+  _observeField(m.top, "playback_mode", m.messagePort)
 
-  m.top.ObserveField("request", m.messagePort)
+  _observeField(m.top, "request", m.messagePort)
 
-  m.pollTimer.ObserveField("fire", m.messagePort)
-  m.beaconTimer.ObserveField("fire", m.messagePort)
-  m.heartbeatTimer.ObserveField("fire", m.messagePort)
+  _observeField(m.pollTimer, "fire", m.messagePort)
+  _observeField(m.beaconTimer, "fire", m.messagePort)
+  _observeField(m.heartbeatTimer, "fire", m.messagePort)
 
   ' Try to enable network events - these methods are available on Roku OS 10+
-  firmwareVersion = m.mxa._sessionProperties.viewer_os_version
-  ' Parse major version from firmware string (e.g., "10.1" -> 10, "9.2" -> 9)
-  majorVersion = 0
-  if firmwareVersion <> Invalid and Type(firmwareVersion) = "String" and firmwareVersion <> ""
-    firmwareParts = firmwareVersion.Tokenize(".")
-    if firmwareParts.Count() > 0
-      majorVersion = Val(firmwareParts[0])
-    end if
-  end if
 
   linkEventEnabled = Invalid
   internetEventEnabled = Invalid
@@ -168,13 +150,13 @@ function runBeaconLoop()
       m.mxa._networkEventsSupported = false
     end if
   else
-    print "[mux-analytics] Roku OS " ; firmwareVersion ; " detected. Network events require OS 10+, using polling instead"
+    print "[mux-analytics] Roku OS " ; majorVersion ; " detected. Network events require OS 10+, using polling instead"
     m.mxa._networkEventsSupported = false
   end if
 
   ' Track exit on a separate port per Roku's guidance
   m.exitPort = _createPort()
-  m.top.ObserveField("exit", m.exitPort)
+  _observeField(m.top, "exit", m.exitPort)
 
   running = true
   while running
@@ -198,23 +180,8 @@ function runBeaconLoop()
           m.mxa.videoNodeFieldChangeHandler(field, msg.getData())
         else if field = "video"
           if m.top.video = Invalid
-            m.top.UnobserveField("video")
-            data = msg.getData()
-            for each fieldName in m.mxa.videoNodeFieldsToObserve()
-              m.top.video.ObserveField(fieldName, m.messagePort)
-            end for
-            m.mxa.videoAddedHandler(data)
-            m.top.video.ObserveField("content", m.messagePort)
-            m.top.video.ObserveField("control", m.messagePort)
-            m.top.video.ObserveField("licenseStatus", m.messagePort)
-            m.top.video.ObserveField("contentIndex", m.messagePort)
-            m.top.video.ObserveField("downloadedSegment", m.messagePort)
-            m.top.video.ObserveField("streamingSegment", m.messagePort)
-            m.top.video.ObserveField("position", m.messagePort)
-            if m.top.disableDecoderStats <> true AND m.top.video.enableDecoderStats <> Invalid
-              m.top.video.enableDecoderStats = true
-              m.top.video.ObserveField("decoderStats", m.messagePort)
-            end if
+            _unobserveField(m.top, "video")
+            _observeVideoNode(m.top.video, m.messagePort, m.mxa, m.top.disableDecoderStats <> true)
           end if
         else if field = "config"
           m.mxa.configChangeHandler(msg.getData())
@@ -279,27 +246,7 @@ function runBeaconLoop()
   m.mxa._Flag_heartbeatTimerRunning = false
   m.pollTimer.control = "stop"
 
-  m.beaconTimer.UnobserveField("fire")
-  m.heartbeatTimer.UnobserveField("fire")
-  m.pollTimer.UnobserveField("fire")
-
-  m.top.UnobserveField("rafEvent")
-  m.top.UnobserveField("video")
-  m.top.UnobserveField("config")
-  m.top.UnobserveField("view")
-  m.top.UnobserveField("useRenderStitchedStream")
-  m.top.UnobserveField("useSSAI")
-  m.top.UnobserveField("disableAutomaticErrorTracking")
-  m.top.UnobserveField("error")
-  m.top.UnobserveField("cdn")
-  m.top.UnobserveField("disablePlayheadRebufferTracking")
-  m.top.UnobserveField("rebufferstart")
-  m.top.UnobserveField("rebufferend")
-  m.top.UnobserveField("playback_mode")
-  m.top.UnobserveField("request")
-  if m.top.video <> Invalid
-    m.top.video.UnobserveField("position")
-  end if
+  _unobserveAllFields()
 
   if m.top.exitType = "soft"
     while NOT m.mxa.isQueueEmpty()
@@ -351,6 +298,91 @@ end function
 function _createRegistry() as Object
   return CreateObject("roRegistrySection", "mux")
 end function
+
+' Major OS version as an integer, from roDeviceInfo.GetOSVersion().
+' Return 0 on OS versions that lack GetOSVersion (9.1 and below).
+function _osMajorVersion(deviceInfo as Object) as Integer
+  if deviceInfo = Invalid OR FindMemberFunction(deviceInfo, "GetOSVersion") = Invalid
+    return 0
+  end if
+  return Int(Val(deviceInfo.GetOSVersion()["major"]))
+end function
+
+' Observe a field, delivering changes to the given port. Uses the scoped API
+' when m.scopedObservation is true, so unobserving never removes observers owned
+' by the app or other components. Every observation made here is recorded in
+' m.observedFields so it can be removed by _unobserveField/_unobserveAllFields.
+function _observeField(node as Object, fieldName as String, port as Object) as Boolean
+  if m.observedFields = Invalid then m.observedFields = []
+
+  scoped = false
+  if m.scopedObservation = true
+    scoped = node.observeFieldScopedEx(fieldName, port)
+  end if
+
+  observed = scoped
+  if NOT scoped
+    observed = node.observeField(fieldName, port)
+  end if
+
+  if observed
+    m.observedFields.Push({ node: node, fieldName: fieldName, scoped: scoped })
+  end if
+  return observed
+end function
+
+' Remove an observation made by _observeField, using the matching unobserve
+' call for however it was observed.
+sub _unobserveField(node as Object, fieldName as String)
+  if m.observedFields = Invalid then return
+
+  for i = m.observedFields.Count() - 1 to 0 step -1
+    entry = m.observedFields[i]
+    if entry.fieldName = fieldName AND entry.node.isSameNode(node)
+      _removeObservation(entry)
+      m.observedFields.Delete(i)
+    end if
+  end for
+end sub
+
+' Remove every observation made by _observeField that is still active.
+sub _unobserveAllFields()
+  if m.observedFields = Invalid then return
+
+  for each entry in m.observedFields
+    _removeObservation(entry)
+  end for
+  m.observedFields = []
+end sub
+
+sub _removeObservation(entry as Object)
+  if entry.scoped
+    entry.node.unobserveFieldScoped(entry.fieldName)
+  else
+    entry.node.unobserveField(entry.fieldName)
+  end if
+end sub
+
+' Observe all the fields the SDK needs on the video node and run videoAddedHandler.
+' The fields in videoNodeFieldsToObserve() are observed first so that none of their
+' changes are missed between the snapshot taken by videoAddedHandler and observing.
+sub _observeVideoNode(video as Object, port as Object, mxa as Object, observeDecoderStats as Boolean)
+  for each fieldName in mxa.videoNodeFieldsToObserve()
+    _observeField(video, fieldName, port)
+  end for
+  mxa.videoAddedHandler(video)
+  _observeField(video, "content", port)
+  _observeField(video, "control", port)
+  _observeField(video, "licenseStatus", port)
+  _observeField(video, "contentIndex", port)
+  _observeField(video, "downloadedSegment", port)
+  _observeField(video, "streamingSegment", port)
+  _observeField(video, "position", port)
+  if observeDecoderStats AND video.enableDecoderStats <> Invalid
+    video.enableDecoderStats = true
+    _observeField(video, "decoderStats", port)
+  end if
+end sub
 
 ' Firmware Version Number
 ' Return 8.01, 9.01, etc if FW 9.1 or less
