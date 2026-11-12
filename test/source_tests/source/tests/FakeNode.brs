@@ -6,10 +6,11 @@ function FakeNode(id as String, log as Object) as Object
   prototype.enableDecoderStats = false
   prototype._log = log
   prototype._scopedExResult = true
+  prototype._unscopedResult = true
 
   prototype.observeField = function(fieldName as String, port as Object) as Boolean
     m._log.Push(m.id + ".observeField:" + fieldName)
-    return true
+    return m._unscopedResult
   end function
 
   prototype.observeFieldScopedEx = function(fieldName as String, port as Object) as Boolean

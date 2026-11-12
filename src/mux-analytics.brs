@@ -71,8 +71,9 @@ function runBeaconLoop()
 
   _observeField(m.top, "rafEvent", m.messagePort)
 
+  videoObservation = Invalid
   if m.top.video = Invalid
-    _observeField(m.top, "video", m.messagePort)
+    videoObservation = _observeField(m.top, "video", m.messagePort)
   else
     _observeVideoNode(m.top.video, m.messagePort, m.mxa, m.top.disableDecoderStats <> true)
   end if
@@ -179,8 +180,9 @@ function runBeaconLoop()
         if m.mxa.isObservedVideoNodeField(field)
           m.mxa.videoNodeFieldChangeHandler(field, msg.getData())
         else if field = "video"
-          if m.top.video = Invalid
-            _unobserveField(m.top, "video")
+          if m.top.video <> Invalid AND videoObservation <> Invalid
+            _removeObservation(videoObservation)
+            videoObservation = Invalid
             _observeVideoNode(m.top.video, m.messagePort, m.mxa, m.top.disableDecoderStats <> true)
           end if
         else if field = "config"
@@ -311,8 +313,9 @@ end function
 ' Observe a field, delivering changes to the given port. Uses the scoped API
 ' when m.scopedObservation is true, so unobserving never removes observers owned
 ' by the app or other components. Every observation made here is recorded in
-' m.observedFields so it can be removed by _unobserveField/_unobserveAllFields.
-function _observeField(node as Object, fieldName as String, port as Object) as Boolean
+' m.observedFields so it can be removed by _removeObservation/_unobserveAllFields.
+' Return the recorded entry, or Invalid if the field could not be observed.
+function _observeField(node as Object, fieldName as String, port as Object) as Dynamic
   if m.observedFields = Invalid then m.observedFields = []
 
   scoped = false
@@ -325,21 +328,26 @@ function _observeField(node as Object, fieldName as String, port as Object) as B
     observed = node.observeField(fieldName, port)
   end if
 
-  if observed
-    m.observedFields.Push({ node: node, fieldName: fieldName, scoped: scoped })
-  end if
-  return observed
+  if NOT observed then return Invalid
+
+  entry = { node: node, fieldName: fieldName, scoped: scoped }
+  m.observedFields.Push(entry)
+  return entry
 end function
 
-' Remove an observation made by _observeField, using the matching unobserve
+' Remove an observation returned by _observeField, using the matching unobserve
 ' call for however it was observed.
-sub _unobserveField(node as Object, fieldName as String)
-  if m.observedFields = Invalid then return
+sub _removeObservation(entry as Object)
+  if entry.scoped
+    entry.node.unobserveFieldScoped(entry.fieldName)
+  else
+    entry.node.unobserveField(entry.fieldName)
+  end if
 
+  if m.observedFields = Invalid then return
   for i = m.observedFields.Count() - 1 to 0 step -1
-    entry = m.observedFields[i]
-    if entry.fieldName = fieldName AND entry.node.isSameNode(node)
-      _removeObservation(entry)
+    recorded = m.observedFields[i]
+    if recorded.fieldName = entry.fieldName AND recorded.node.isSameNode(entry.node)
       m.observedFields.Delete(i)
     end if
   end for
@@ -349,18 +357,11 @@ end sub
 sub _unobserveAllFields()
   if m.observedFields = Invalid then return
 
-  for each entry in m.observedFields
+  observations = m.observedFields
+  m.observedFields = []
+  for each entry in observations
     _removeObservation(entry)
   end for
-  m.observedFields = []
-end sub
-
-sub _removeObservation(entry as Object)
-  if entry.scoped
-    entry.node.unobserveFieldScoped(entry.fieldName)
-  else
-    entry.node.unobserveField(entry.fieldName)
-  end if
 end sub
 
 ' Observe all the fields the SDK needs on the video node and run videoAddedHandler.

@@ -9,7 +9,9 @@ Function TestSuite__ObserverHelpers() as Object
   this.addTest("ObserverHelpers uses unscoped calls below OS 12", TestCase__MuxAnalytics_ObserverHelpers_UnscopedBelowOS12)
   this.addTest("ObserverHelpers uses scoped calls on OS 12+", TestCase__MuxAnalytics_ObserverHelpers_ScopedOnOS12)
   this.addTest("ObserverHelpers falls back to unscoped when scoped observe fails", TestCase__MuxAnalytics_ObserverHelpers_FallsBackWhenScopedFails)
-  this.addTest("ObserverHelpers unobserveField only removes the matching node and field", TestCase__MuxAnalytics_ObserverHelpers_UnobserveFieldMatchesNodeAndField)
+  this.addTest("ObserverHelpers observeField returns the recorded entry", TestCase__MuxAnalytics_ObserverHelpers_ObserveFieldReturnsEntry)
+  this.addTest("ObserverHelpers observeField returns invalid and records nothing when observing fails", TestCase__MuxAnalytics_ObserverHelpers_ObserveFieldFailure)
+  this.addTest("ObserverHelpers removeObservation only removes the given observation", TestCase__MuxAnalytics_ObserverHelpers_RemoveObservationRemovesOnlyThatEntry)
   this.addTest("ObserverHelpers unobserveAllFields removes everything including replaced nodes", TestCase__MuxAnalytics_ObserverHelpers_UnobserveAllFields)
   this.addTest("ObserverHelpers observeVideoNode observes registry fields before videoAddedHandler", TestCase__MuxAnalytics_ObserverHelpers_ObserveVideoNode)
   this.addTest("ObserverHelpers observeVideoNode observes decoderStats when enabled", TestCase__MuxAnalytics_ObserverHelpers_ObserveVideoNodeDecoderStats)
@@ -101,21 +103,55 @@ Function TestCase__MuxAnalytics_ObserverHelpers_FallsBackWhenScopedFails() as St
   return m.assertEqual("n.observeFieldScopedEx:state,n.observeField:state,n.unobserveField:state,", m._joinedLog())
 End Function
 
-Function TestCase__MuxAnalytics_ObserverHelpers_UnobserveFieldMatchesNodeAndField() as String
+Function TestCase__MuxAnalytics_ObserverHelpers_ObserveFieldReturnsEntry() as String
+  m._reset()
+  GetGlobalAA().scopedObservation = true
+  node = FakeNode("n", m.log)
+
+  entry = _observeField(node, "state", m.fakePort)
+
+  result = m.assertEqual("state", entry.fieldName)
+  if result <> "" then return result
+  result = m.assertTrue(entry.scoped)
+  if result <> "" then return result
+  result = m.assertTrue(entry.node.isSameNode(node))
+  if result <> "" then return result
+  return m.assertEqual(1, GetGlobalAA().observedFields.Count())
+End Function
+
+Function TestCase__MuxAnalytics_ObserverHelpers_ObserveFieldFailure() as String
+  m._reset()
+  node = FakeNode("n", m.log)
+  node._unscopedResult = false
+
+  entry = _observeField(node, "state", m.fakePort)
+
+  result = m.assertInvalid(entry)
+  if result <> "" then return result
+  return m.assertEqual(0, GetGlobalAA().observedFields.Count())
+End Function
+
+Function TestCase__MuxAnalytics_ObserverHelpers_RemoveObservationRemovesOnlyThatEntry() as String
   m._reset()
   GetGlobalAA().scopedObservation = true
   nodeA = FakeNode("a", m.log)
   nodeB = FakeNode("b", m.log)
-  _observeField(nodeA, "video", m.fakePort)
+  entryAVideo = _observeField(nodeA, "video", m.fakePort)
   _observeField(nodeA, "state", m.fakePort)
   _observeField(nodeB, "video", m.fakePort)
   m.log.Clear()
 
-  _unobserveField(nodeA, "video")
+  _removeObservation(entryAVideo)
 
   result = m.assertEqual("a.unobserveFieldScoped:video,", m._joinedLog())
   if result <> "" then return result
-  return m.assertEqual(2, GetGlobalAA().observedFields.Count())
+  result = m.assertEqual(2, GetGlobalAA().observedFields.Count())
+  if result <> "" then return result
+
+  ' the removed observation is not unobserved a second time
+  m.log.Clear()
+  _unobserveAllFields()
+  return m.assertEqual("a.unobserveFieldScoped:state,b.unobserveFieldScoped:video,", m._joinedLog())
 End Function
 
 Function TestCase__MuxAnalytics_ObserverHelpers_UnobserveAllFields() as String
