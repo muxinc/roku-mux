@@ -67,13 +67,13 @@ function runBeaconLoop()
 
   majorVersion = _osMajorVersion(m.mxa.deviceInfo)
   ' ObserveFieldScopedEx is available on Roku OS 12+
-  m.scopedObservation = majorVersion >= 12
+  m.scopedExObservation = majorVersion >= 12
 
-  _observeField(m.top, "rafEvent", m.messagePort)
+  _observeInternalNodeField(m.top, "rafEvent", m.messagePort)
 
   videoObservation = Invalid
   if m.top.video = Invalid
-    videoObservation = _observeField(m.top, "video", m.messagePort)
+    videoObservation = _observeInternalNodeField(m.top, "video", m.messagePort)
   else
     _observeVideoNode(m.top.video, m.messagePort, m.mxa, m.top.disableDecoderStats <> true)
   end if
@@ -81,56 +81,56 @@ function runBeaconLoop()
   if m.top.view <> Invalid AND m.top.view <> ""
     m.mxa.videoViewChangeHandler(m.top.view)
   end if
-  _observeField(m.top, "view", m.messagePort)
+  _observeInternalNodeField(m.top, "view", m.messagePort)
 
   if m.top.config <> Invalid
     m.mxa.configChangeHandler(m.top.config)
   end if
-  _observeField(m.top, "config", m.messagePort)
+  _observeInternalNodeField(m.top, "config", m.messagePort)
 
   if m.top.useRenderStitchedStream <> Invalid
     m.mxa.useRenderStitchedStreamHandler(m.top.useRenderStitchedStream)
   end if
-  _observeField(m.top, "useRenderStitchedStream", m.messagePort)
+  _observeInternalNodeField(m.top, "useRenderStitchedStream", m.messagePort)
 
   if m.top.useSSAI <> Invalid
     m.mxa.useSSAIHandler(m.top.useSSAI)
   end if
-  _observeField(m.top, "useSSAI", m.messagePort)
+  _observeInternalNodeField(m.top, "useSSAI", m.messagePort)
 
   if m.top.disableAutomaticErrorTracking <> Invalid
     m.mxa.disableAutomaticErrorTrackingHandler(m.top.disableAutomaticErrorTracking)
   end if
-  _observeField(m.top, "disableAutomaticErrorTracking", m.messagePort)
+  _observeInternalNodeField(m.top, "disableAutomaticErrorTracking", m.messagePort)
 
   if m.top.error <> Invalid
     m.mxa.videoErrorHandler(m.top.error)
   end if
-  _observeField(m.top, "error", m.messagePort)
+  _observeInternalNodeField(m.top, "error", m.messagePort)
 
   if m.top.cdn <> Invalid
     m.mxa.cdnChangeHandler(m.top.cdn)
   end if
-  _observeField(m.top, "cdn", m.messagePort)
+  _observeInternalNodeField(m.top, "cdn", m.messagePort)
 
   if m.top.disablePlayheadRebufferTracking <> Invalid
     m.mxa.disablePlayheadRebufferTrackingHandler(m.top.disablePlayheadRebufferTracking)
   end if
-  _observeField(m.top, "disablePlayheadRebufferTracking", m.messagePort)
+  _observeInternalNodeField(m.top, "disablePlayheadRebufferTracking", m.messagePort)
 
-  _observeField(m.top, "rebufferstart", m.messagePort)
-  _observeField(m.top, "rebufferend", m.messagePort)
+  _observeInternalNodeField(m.top, "rebufferstart", m.messagePort)
+  _observeInternalNodeField(m.top, "rebufferend", m.messagePort)
 
   if m.top.playback_mode <> Invalid
     m.mxa.playbackModeHandler(m.top.playback_mode)
   end if
-  _observeField(m.top, "playback_mode", m.messagePort)
+  _observeInternalNodeField(m.top, "playback_mode", m.messagePort)
 
-  _observeField(m.top, "request", m.messagePort)
+  _observeInternalNodeField(m.top, "request", m.messagePort)
 
-  _observeField(m.pollTimer, "fire", m.messagePort)
-  _observeField(m.beaconTimer, "fire", m.messagePort)
-  _observeField(m.heartbeatTimer, "fire", m.messagePort)
+  _observeInternalNodeField(m.pollTimer, "fire", m.messagePort)
+  _observeInternalNodeField(m.beaconTimer, "fire", m.messagePort)
+  _observeInternalNodeField(m.heartbeatTimer, "fire", m.messagePort)
 
   ' Try to enable network events - these methods are available on Roku OS 10+
 
@@ -157,7 +157,7 @@ function runBeaconLoop()
 
   ' Track exit on a separate port per Roku's guidance
   m.exitPort = _createPort()
-  _observeField(m.top, "exit", m.exitPort)
+  _observeInternalNodeField(m.top, "exit", m.exitPort)
 
   running = true
   while running
@@ -310,31 +310,49 @@ function _osMajorVersion(deviceInfo as Object) as Integer
   return Int(Val(deviceInfo.GetOSVersion()["major"]))
 end function
 
-' Observe a field, delivering changes to the given port. Uses the scoped API
-' when m.scopedObservation is true, so unobserving never removes observers owned
-' by the app or other components. Every observation made here is recorded in
-' m.observedFields so it can be removed by _removeObservation/_unobserveAllFields.
-' Return the recorded entry, or Invalid if the field could not be observed.
-function _observeField(node as Object, fieldName as String, port as Object) as Dynamic
+' Observe a field on an internal node, delivering changes to the given port.
+' When scoped observation is not available (OS <12), the unscoped API is used
+' instead. As these are internal nodes, the "nuclear" unobserveField call will
+' not impact other components.
+' Returns the recorded entry, or Invalid if the field could not be observed.
+function _observeInternalNodeField(node as Object, fieldName as String, port as Object) as Dynamic
+  return _observeNodeField(node, fieldName, port, true)
+end function
+
+' Observe a field on an external node, delivering changes to the given port.
+' When scoped observation is not available (OS <12), the observer is allowed to
+' leak instead of potentially removing observers belonging to other components.
+' This effectively matches the legacy behavior of this component, where field
+' observations to the video node were never torn down.
+' Returns the recorded entry, or Invalid if the field could not be observed.
+function _observeExternalNodeField(node as Object, fieldName as String, port as Object) as Dynamic
+  return _observeNodeField(node, fieldName, port, false)
+end function
+
+' Utility function for _observeInternalNodeField/_observeExternalNodeField
+function _observeNodeField(node as Object, fieldName as String, port as Object, allowUnscopedTeardown as boolean) as Dynamic
   if m.observedFields = Invalid then m.observedFields = []
 
-  if m.scopedObservation = true
+  if m.scopedExObservation = true
     observed = node.observeFieldScopedEx(fieldName, port)
+    scopedTeardown = true
   else
+    ' observeFieldScoped() is deprecated and could trigger Roku Static Analysis certification warnings
     observed = node.observeField(fieldName, port)
+    scopedTeardown = NOT allowUnscopedTeardown
   end if
 
   if NOT observed then return Invalid
 
-  entry = { node: node, fieldName: fieldName }
+  entry = { node: node, fieldName: fieldName, scopedTeardown: scopedTeardown }
   m.observedFields.Push(entry)
   return entry
 end function
 
-' Remove an observation returned by _observeField, using the unobserve call that
-' matches m.scopedObservation (which doesn't change while the task runs).
+' Remove an observation returned by _observeNodeField, using the unobserve call that
+' was chosen when it was observed.
 sub _removeObservation(entry as Object)
-  if m.scopedObservation = true
+  if entry.scopedTeardown = true
     entry.node.unobserveFieldScoped(entry.fieldName)
   else
     entry.node.unobserveField(entry.fieldName)
@@ -349,7 +367,7 @@ sub _removeObservation(entry as Object)
   end for
 end sub
 
-' Remove every observation made by _observeField that is still active.
+' Remove every observation made by _observeNodeField that is still active.
 sub _unobserveAllFields()
   if m.observedFields = Invalid then return
 
@@ -365,19 +383,19 @@ end sub
 ' changes are missed between the snapshot taken by videoAddedHandler and observing.
 sub _observeVideoNode(video as Object, port as Object, mxa as Object, observeDecoderStats as Boolean)
   for each fieldName in mxa.videoNodeFieldsToObserve()
-    _observeField(video, fieldName, port)
+    _observeExternalNodeField(video, fieldName, port)
   end for
   mxa.videoAddedHandler(video)
-  _observeField(video, "content", port)
-  _observeField(video, "control", port)
-  _observeField(video, "licenseStatus", port)
-  _observeField(video, "contentIndex", port)
-  _observeField(video, "downloadedSegment", port)
-  _observeField(video, "streamingSegment", port)
-  _observeField(video, "position", port)
+  _observeExternalNodeField(video, "content", port)
+  _observeExternalNodeField(video, "control", port)
+  _observeExternalNodeField(video, "licenseStatus", port)
+  _observeExternalNodeField(video, "contentIndex", port)
+  _observeExternalNodeField(video, "downloadedSegment", port)
+  _observeExternalNodeField(video, "streamingSegment", port)
+  _observeExternalNodeField(video, "position", port)
   if observeDecoderStats AND video.enableDecoderStats <> Invalid
     video.enableDecoderStats = true
-    _observeField(video, "decoderStats", port)
+    _observeExternalNodeField(video, "decoderStats", port)
   end if
 end sub
 
