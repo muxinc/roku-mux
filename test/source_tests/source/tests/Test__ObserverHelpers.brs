@@ -8,7 +8,7 @@ Function TestSuite__ObserverHelpers() as Object
   this.addTest("ObserverHelpers osMajorVersion reads the major version from device info", TestCase__MuxAnalytics_ObserverHelpers_OsMajorVersion)
   this.addTest("ObserverHelpers uses unscoped calls below OS 12", TestCase__MuxAnalytics_ObserverHelpers_UnscopedBelowOS12)
   this.addTest("ObserverHelpers uses scoped calls on OS 12+", TestCase__MuxAnalytics_ObserverHelpers_ScopedOnOS12)
-  this.addTest("ObserverHelpers falls back to unscoped when scoped observe fails", TestCase__MuxAnalytics_ObserverHelpers_FallsBackWhenScopedFails)
+  this.addTest("ObserverHelpers does not fall back to unscoped when scoped observe fails", TestCase__MuxAnalytics_ObserverHelpers_NoFallbackWhenScopedFails)
   this.addTest("ObserverHelpers observeField returns the recorded entry", TestCase__MuxAnalytics_ObserverHelpers_ObserveFieldReturnsEntry)
   this.addTest("ObserverHelpers observeField returns invalid and records nothing when observing fails", TestCase__MuxAnalytics_ObserverHelpers_ObserveFieldFailure)
   this.addTest("ObserverHelpers removeObservation only removes the given observation", TestCase__MuxAnalytics_ObserverHelpers_RemoveObservationRemovesOnlyThatEntry)
@@ -92,15 +92,18 @@ Function TestCase__MuxAnalytics_ObserverHelpers_ScopedOnOS12() as String
   return m.assertEqual("n.observeFieldScopedEx:state,n.unobserveFieldScoped:state,", m._joinedLog())
 End Function
 
-Function TestCase__MuxAnalytics_ObserverHelpers_FallsBackWhenScopedFails() as String
+Function TestCase__MuxAnalytics_ObserverHelpers_NoFallbackWhenScopedFails() as String
   m._reset()
   GetGlobalAA().scopedObservation = true
   node = FakeNode("n", m.log)
   node._scopedExResult = false
-  _observeField(node, "state", m.fakePort)
+  entry = _observeField(node, "state", m.fakePort)
   _unobserveAllFields()
 
-  return m.assertEqual("n.observeFieldScopedEx:state,n.observeField:state,n.unobserveField:state,", m._joinedLog())
+  result = m.assertInvalid(entry)
+  if result <> "" then return result
+  ' nothing was observed, so there is nothing to unobserve, and the unscoped call is never tried
+  return m.assertEqual("n.observeFieldScopedEx:state,", m._joinedLog())
 End Function
 
 Function TestCase__MuxAnalytics_ObserverHelpers_ObserveFieldReturnsEntry() as String
@@ -111,8 +114,6 @@ Function TestCase__MuxAnalytics_ObserverHelpers_ObserveFieldReturnsEntry() as St
   entry = _observeField(node, "state", m.fakePort)
 
   result = m.assertEqual("state", entry.fieldName)
-  if result <> "" then return result
-  result = m.assertTrue(entry.scoped)
   if result <> "" then return result
   result = m.assertTrue(entry.node.isSameNode(node))
   if result <> "" then return result

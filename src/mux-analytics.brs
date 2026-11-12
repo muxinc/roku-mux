@@ -318,27 +318,23 @@ end function
 function _observeField(node as Object, fieldName as String, port as Object) as Dynamic
   if m.observedFields = Invalid then m.observedFields = []
 
-  scoped = false
   if m.scopedObservation = true
-    scoped = node.observeFieldScopedEx(fieldName, port)
-  end if
-
-  observed = scoped
-  if NOT scoped
+    observed = node.observeFieldScopedEx(fieldName, port)
+  else
     observed = node.observeField(fieldName, port)
   end if
 
   if NOT observed then return Invalid
 
-  entry = { node: node, fieldName: fieldName, scoped: scoped }
+  entry = { node: node, fieldName: fieldName }
   m.observedFields.Push(entry)
   return entry
 end function
 
-' Remove an observation returned by _observeField, using the matching unobserve
-' call for however it was observed.
+' Remove an observation returned by _observeField, using the unobserve call that
+' matches m.scopedObservation (which doesn't change while the task runs).
 sub _removeObservation(entry as Object)
-  if entry.scoped
+  if m.scopedObservation = true
     entry.node.unobserveFieldScoped(entry.fieldName)
   else
     entry.node.unobserveField(entry.fieldName)
