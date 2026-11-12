@@ -19,6 +19,8 @@ Sub GetSessionProperties_SetUp()
 
   m.SUT = MuxAnalytics()
   m.SUT.beaconUrl = "http://871292839812303.litix.io"
+  ' normally set from the system config by init(); a random viewer id avoids needing deviceInfo.GetRIDA()
+  m.SUT._Flag_useRandomMuxViewerId = true
   m.SUT._getDeviceInfo = function ()
     return FakeDeviceInfo()
   end function
@@ -38,7 +40,7 @@ Function TestCase__MuxAnalytics_GetSessionProperties_version() as String
     return deviceInfo
   end function
   ' WHEN
-  sessionProps = m.SUT._getSessionProperites()
+  sessionProps = m.SUT._getSessionProperties()
   ' THEN
   return m.assertEqual(sessionProps.player_software_version, "7.61")
 End Function
@@ -46,7 +48,7 @@ End Function
 Function TestCase__MuxAnalytics_fullscreen_always_true() as String
   ' GIVEN
   ' WHEN
-  sessionProps = m.SUT._getSessionProperites()
+  sessionProps = m.SUT._getSessionProperties()
   ' THEN
   return m.assertEqual("true", sessionProps.player_is_fullscreen)
 End Function
@@ -60,7 +62,7 @@ Function TestCase__MuxAnalytics_sdk_name() as String
     return fappInfo
   end function 
   ' WHEN
-  sessionProps = m.SUT._getSessionProperites()
+  sessionProps = m.SUT._getSessionProperties()
   ' THEN
   return m.assertEqual("roku-mux", sessionProps.player_mux_plugin_name)
 End Function
@@ -73,7 +75,7 @@ Function TestCase__MuxAnalytics_player_version() as String
     return fappInfo
   end function 
   ' WHEN
-  sessionProps = m.SUT._getSessionProperites()
+  sessionProps = m.SUT._getSessionProperties()
   ' THEN
   return m.assertEqual("7.7.7", sessionProps.viewer_application_version)
 End Function
@@ -91,7 +93,7 @@ Function TestCase__MuxAnalytics_viewer_version() as String
     return deviceInfo
   end function
   ' WHEN
-  sessionProps = m.SUT._getSessionProperites()
+  sessionProps = m.SUT._getSessionProperties()
   ' THEN
   return m.assertEqual("8.10", sessionProps.viewer_os_version)
 End Function
