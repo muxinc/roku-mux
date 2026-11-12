@@ -330,31 +330,30 @@ function _observeExternalNodeField(node as Object, fieldName as String, port as 
 end function
 
 ' Utility function for _observeInternalNodeField/_observeExternalNodeField
-function _observeNodeField(node as Object, fieldName as String, port as Object, allowUnscopedTeardown as boolean) as Dynamic
+function _observeNodeField(node as Object, fieldName as String, port as Object, internal as boolean) as Dynamic
   if m.observedFields = Invalid then m.observedFields = []
 
   if m.scopedExObservation = true
     observed = node.observeFieldScopedEx(fieldName, port)
-    scopedTeardown = true
+    scoped = true
   else
     ' observeFieldScoped() is deprecated and could trigger Roku Static Analysis certification warnings
     observed = node.observeField(fieldName, port)
-    scopedTeardown = NOT allowUnscopedTeardown
+    scoped = false
   end if
 
   if NOT observed then return Invalid
 
-  entry = { node: node, fieldName: fieldName, scopedTeardown: scopedTeardown }
+  entry = { node: node, fieldName: fieldName, scoped: scoped, internal: internal }
   m.observedFields.Push(entry)
   return entry
 end function
 
-' Remove an observation returned by _observeNodeField, using the unobserve call that
-' was chosen when it was observed.
+' Remove an observation returned by _observeNodeField
 sub _removeObservation(entry as Object)
-  if entry.scopedTeardown = true
+  if entry.scoped = true
     entry.node.unobserveFieldScoped(entry.fieldName)
-  else
+  else if entry.internal = true
     entry.node.unobserveField(entry.fieldName)
   end if
 

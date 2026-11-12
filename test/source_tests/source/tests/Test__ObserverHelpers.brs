@@ -6,16 +6,21 @@ Function TestSuite__ObserverHelpers() as Object
   this.TearDown = ObserverHelpers_TearDown
 
   this.addTest("ObserverHelpers osMajorVersion reads the major version from device info", TestCase__MuxAnalytics_ObserverHelpers_OsMajorVersion)
-  this.addTest("ObserverHelpers uses unscoped calls below OS 12", TestCase__MuxAnalytics_ObserverHelpers_UnscopedBelowOS12)
-  this.addTest("ObserverHelpers uses scoped calls on OS 12+", TestCase__MuxAnalytics_ObserverHelpers_ScopedOnOS12)
-  this.addTest("ObserverHelpers does not fall back to unscoped when scoped observe fails", TestCase__MuxAnalytics_ObserverHelpers_NoFallbackWhenScopedFails)
-  this.addTest("ObserverHelpers observeField returns the recorded entry", TestCase__MuxAnalytics_ObserverHelpers_ObserveFieldReturnsEntry)
-  this.addTest("ObserverHelpers observeField returns invalid and records nothing when observing fails", TestCase__MuxAnalytics_ObserverHelpers_ObserveFieldFailure)
+  this.addTest("ObserverHelpers internal node uses observeField/unobserveField below OS 12", TestCase__MuxAnalytics_ObserverHelpers_InternalBelowOS12)
+  this.addTest("ObserverHelpers internal node uses scoped calls on OS 12+", TestCase__MuxAnalytics_ObserverHelpers_InternalOnOS12)
+  this.addTest("ObserverHelpers external node never uses unobserveField below OS 12", TestCase__MuxAnalytics_ObserverHelpers_ExternalBelowOS12)
+  this.addTest("ObserverHelpers external node uses scoped calls on OS 12+", TestCase__MuxAnalytics_ObserverHelpers_ExternalOnOS12)
+  this.addTest("ObserverHelpers does not try another observe call when observeFieldScopedEx fails", TestCase__MuxAnalytics_ObserverHelpers_NoFallbackWhenScopedExFails)
+  this.addTest("ObserverHelpers observe returns the recorded entry", TestCase__MuxAnalytics_ObserverHelpers_ObserveReturnsEntry)
+  this.addTest("ObserverHelpers observe returns invalid and records nothing when observing fails", TestCase__MuxAnalytics_ObserverHelpers_ObserveFailure)
   this.addTest("ObserverHelpers removeObservation only removes the given observation", TestCase__MuxAnalytics_ObserverHelpers_RemoveObservationRemovesOnlyThatEntry)
-  this.addTest("ObserverHelpers unobserveAllFields removes everything including replaced nodes", TestCase__MuxAnalytics_ObserverHelpers_UnobserveAllFields)
+  this.addTest("ObserverHelpers unobserveAllFields handles internal and external nodes below OS 12", TestCase__MuxAnalytics_ObserverHelpers_UnobserveAllMixed)
   this.addTest("ObserverHelpers observeVideoNode observes registry fields before videoAddedHandler", TestCase__MuxAnalytics_ObserverHelpers_ObserveVideoNode)
   this.addTest("ObserverHelpers observeVideoNode observes decoderStats when enabled", TestCase__MuxAnalytics_ObserverHelpers_ObserveVideoNodeDecoderStats)
   this.addTest("ObserverHelpers observeVideoNode skips decoderStats when disabled", TestCase__MuxAnalytics_ObserverHelpers_ObserveVideoNodeDecoderStatsDisabled)
+  this.addTest("ObserverHelpers real node: OS 12+ teardown removes only the SDK observer", TestCase__MuxAnalytics_ObserverHelpers_RealNodeScopedEx)
+  this.addTest("ObserverHelpers real node: below OS 12 internal teardown removes the SDK observer", TestCase__MuxAnalytics_ObserverHelpers_RealNodeInternalBelowOS12)
+  this.addTest("ObserverHelpers real node: below OS 12 external teardown leaves the app observer alone", TestCase__MuxAnalytics_ObserverHelpers_RealNodeExternalBelowOS12)
 
   return this
 End Function
@@ -27,7 +32,7 @@ Sub ObserverHelpers_SetUp()
     ' the helpers run against the global AA, as they do in the component scope
     g = GetGlobalAA()
     g.observedFields = []
-    g.scopedObservation = false
+    g.scopedExObservation = false
     m.log = []
   end sub
   m._reset()
@@ -54,7 +59,7 @@ End Sub
 Sub ObserverHelpers_TearDown()
   g = GetGlobalAA()
   g.observedFields = Invalid
-  g.scopedObservation = Invalid
+  g.scopedExObservation = Invalid
 End Sub
 
 Function TestCase__MuxAnalytics_ObserverHelpers_OsMajorVersion() as String
@@ -73,45 +78,66 @@ Function TestCase__MuxAnalytics_ObserverHelpers_OsMajorVersion() as String
   return m.assertEqual(0, _osMajorVersion(Invalid))
 End Function
 
-Function TestCase__MuxAnalytics_ObserverHelpers_UnscopedBelowOS12() as String
+Function TestCase__MuxAnalytics_ObserverHelpers_InternalBelowOS12() as String
   m._reset()
   node = FakeNode("n", m.log)
-  _observeField(node, "state", m.fakePort)
+  _observeInternalNodeField(node, "state", m.fakePort)
   _unobserveAllFields()
 
   return m.assertEqual("n.observeField:state,n.unobserveField:state,", m._joinedLog())
 End Function
 
-Function TestCase__MuxAnalytics_ObserverHelpers_ScopedOnOS12() as String
+Function TestCase__MuxAnalytics_ObserverHelpers_InternalOnOS12() as String
   m._reset()
-  GetGlobalAA().scopedObservation = true
+  GetGlobalAA().scopedExObservation = true
   node = FakeNode("n", m.log)
-  _observeField(node, "state", m.fakePort)
+  _observeInternalNodeField(node, "state", m.fakePort)
   _unobserveAllFields()
 
   return m.assertEqual("n.observeFieldScopedEx:state,n.unobserveFieldScoped:state,", m._joinedLog())
 End Function
 
-Function TestCase__MuxAnalytics_ObserverHelpers_NoFallbackWhenScopedFails() as String
+Function TestCase__MuxAnalytics_ObserverHelpers_ExternalBelowOS12() as String
   m._reset()
-  GetGlobalAA().scopedObservation = true
+  node = FakeNode("n", m.log)
+  _observeExternalNodeField(node, "state", m.fakePort)
+  _unobserveAllFields()
+
+  ' unobserveField would also remove the app's observers, and there is no scoped observation to
+  ' undo, so external nodes are left alone below OS 12 (the observation leaks, as it always has)
+  return m.assertEqual("n.observeField:state,", m._joinedLog())
+End Function
+
+Function TestCase__MuxAnalytics_ObserverHelpers_ExternalOnOS12() as String
+  m._reset()
+  GetGlobalAA().scopedExObservation = true
+  node = FakeNode("n", m.log)
+  _observeExternalNodeField(node, "state", m.fakePort)
+  _unobserveAllFields()
+
+  return m.assertEqual("n.observeFieldScopedEx:state,n.unobserveFieldScoped:state,", m._joinedLog())
+End Function
+
+Function TestCase__MuxAnalytics_ObserverHelpers_NoFallbackWhenScopedExFails() as String
+  m._reset()
+  GetGlobalAA().scopedExObservation = true
   node = FakeNode("n", m.log)
   node._scopedExResult = false
-  entry = _observeField(node, "state", m.fakePort)
+  entry = _observeInternalNodeField(node, "state", m.fakePort)
   _unobserveAllFields()
 
   result = m.assertInvalid(entry)
   if result <> "" then return result
-  ' nothing was observed, so there is nothing to unobserve, and the unscoped call is never tried
+  ' nothing was observed, so there is nothing to unobserve, and no other observe call is tried
   return m.assertEqual("n.observeFieldScopedEx:state,", m._joinedLog())
 End Function
 
-Function TestCase__MuxAnalytics_ObserverHelpers_ObserveFieldReturnsEntry() as String
+Function TestCase__MuxAnalytics_ObserverHelpers_ObserveReturnsEntry() as String
   m._reset()
-  GetGlobalAA().scopedObservation = true
+  GetGlobalAA().scopedExObservation = true
   node = FakeNode("n", m.log)
 
-  entry = _observeField(node, "state", m.fakePort)
+  entry = _observeInternalNodeField(node, "state", m.fakePort)
 
   result = m.assertEqual("state", entry.fieldName)
   if result <> "" then return result
@@ -120,12 +146,12 @@ Function TestCase__MuxAnalytics_ObserverHelpers_ObserveFieldReturnsEntry() as St
   return m.assertEqual(1, GetGlobalAA().observedFields.Count())
 End Function
 
-Function TestCase__MuxAnalytics_ObserverHelpers_ObserveFieldFailure() as String
+Function TestCase__MuxAnalytics_ObserverHelpers_ObserveFailure() as String
   m._reset()
   node = FakeNode("n", m.log)
   node._unscopedResult = false
 
-  entry = _observeField(node, "state", m.fakePort)
+  entry = _observeInternalNodeField(node, "state", m.fakePort)
 
   result = m.assertInvalid(entry)
   if result <> "" then return result
@@ -134,12 +160,12 @@ End Function
 
 Function TestCase__MuxAnalytics_ObserverHelpers_RemoveObservationRemovesOnlyThatEntry() as String
   m._reset()
-  GetGlobalAA().scopedObservation = true
+  GetGlobalAA().scopedExObservation = true
   nodeA = FakeNode("a", m.log)
   nodeB = FakeNode("b", m.log)
-  entryAVideo = _observeField(nodeA, "video", m.fakePort)
-  _observeField(nodeA, "state", m.fakePort)
-  _observeField(nodeB, "video", m.fakePort)
+  entryAVideo = _observeInternalNodeField(nodeA, "video", m.fakePort)
+  _observeInternalNodeField(nodeA, "state", m.fakePort)
+  _observeInternalNodeField(nodeB, "video", m.fakePort)
   m.log.Clear()
 
   _removeObservation(entryAVideo)
@@ -155,24 +181,25 @@ Function TestCase__MuxAnalytics_ObserverHelpers_RemoveObservationRemovesOnlyThat
   return m.assertEqual("a.unobserveFieldScoped:state,b.unobserveFieldScoped:video,", m._joinedLog())
 End Function
 
-Function TestCase__MuxAnalytics_ObserverHelpers_UnobserveAllFields() as String
+Function TestCase__MuxAnalytics_ObserverHelpers_UnobserveAllMixed() as String
   m._reset()
-  oldVideo = FakeNode("old", m.log)
-  newVideo = FakeNode("new", m.log)
-  _observeField(oldVideo, "position", m.fakePort)
-  _observeField(newVideo, "position", m.fakePort)
+  internalNode = FakeNode("int", m.log)
+  externalNode = FakeNode("ext", m.log)
+  _observeInternalNodeField(internalNode, "fire", m.fakePort)
+  _observeExternalNodeField(externalNode, "position", m.fakePort)
   m.log.Clear()
 
   _unobserveAllFields()
 
-  result = m.assertEqual("old.unobserveField:position,new.unobserveField:position,", m._joinedLog())
+  ' only the internal node is unobserved; the external one is left alone
+  result = m.assertEqual("int.unobserveField:fire,", m._joinedLog())
   if result <> "" then return result
   return m.assertEqual(0, GetGlobalAA().observedFields.Count())
 End Function
 
 Function TestCase__MuxAnalytics_ObserverHelpers_ObserveVideoNode() as String
   m._reset()
-  GetGlobalAA().scopedObservation = true
+  GetGlobalAA().scopedExObservation = true
   video = FakeNode("v", m.log)
   _observeVideoNode(video, m.fakePort, m._fakeMxa(), false)
 
@@ -201,4 +228,64 @@ Function TestCase__MuxAnalytics_ObserverHelpers_ObserveVideoNodeDecoderStatsDisa
   result = m.assertFalse(video.enableDecoderStats)
   if result <> "" then return result
   return m.assertArrayNotContains(m.log, "v.observeField:decoderStats")
+End Function
+
+' Real roSGNode scenario. The app observes "id" with plain observeField, the SDK observes it
+' through the helper, then the SDK tears down. Reports who still receives events afterwards.
+' (Both observers live in the same component here, so this can't show isolation between
+' components, only which kind of observation each teardown call removes.)
+Function _teardownScenario(scopedEx as Boolean, external as Boolean) as Object
+  GetGlobalAA().observedFields = []
+  GetGlobalAA().scopedExObservation = scopedEx
+  node = CreateObject("roSGNode", "Node")
+  appPort = CreateObject("roMessagePort")
+  sdkPort = CreateObject("roMessagePort")
+
+  node.observeField("id", appPort)
+  if external
+    _observeExternalNodeField(node, "id", sdkPort)
+  else
+    _observeInternalNodeField(node, "id", sdkPort)
+  end if
+
+  node.id = "before"
+  outcome = {}
+  outcome.sdkSawBefore = type(wait(300, sdkPort)) = "roSGNodeEvent"
+  outcome.appSawBefore = type(wait(300, appPort)) = "roSGNodeEvent"
+
+  _unobserveAllFields()
+  node.id = "after"
+  outcome.sdkSawAfter = type(wait(300, sdkPort)) = "roSGNodeEvent"
+  outcome.appSawAfter = type(wait(300, appPort)) = "roSGNodeEvent"
+  return outcome
+End Function
+
+Function _scenarioSummary(outcome as Object) as String
+  return "sdkBefore=" + outcome.sdkSawBefore.ToStr() + " appBefore=" + outcome.appSawBefore.ToStr() + " sdkAfter=" + outcome.sdkSawAfter.ToStr() + " appAfter=" + outcome.appSawAfter.ToStr()
+End Function
+
+Function TestCase__MuxAnalytics_ObserverHelpers_RealNodeScopedEx() as String
+  m._reset()
+  if _osMajorVersion(_createDeviceInfo()) < 12 then return ""
+
+  outcome = _teardownScenario(true, false)
+  ' the SDK's observer is gone, the app's plain observer is untouched
+  return m.assertEqual("sdkBefore=true appBefore=true sdkAfter=false appAfter=true", _scenarioSummary(outcome))
+End Function
+
+Function TestCase__MuxAnalytics_ObserverHelpers_RealNodeInternalBelowOS12() as String
+  m._reset()
+  outcome = _teardownScenario(false, false)
+  ' unobserveField removes every observer on the field, so the SDK's is gone (and so is the app's,
+  ' which is why this is only used on nodes the SDK owns)
+  result = m.assertTrue(outcome.sdkSawBefore AND outcome.appSawBefore)
+  if result <> "" then return result
+  return m.assertFalse(outcome.sdkSawAfter)
+End Function
+
+Function TestCase__MuxAnalytics_ObserverHelpers_RealNodeExternalBelowOS12() as String
+  m._reset()
+  outcome = _teardownScenario(false, true)
+  ' the SDK's observer is left in place on purpose, and the app's is untouched
+  return m.assertEqual("sdkBefore=true appBefore=true sdkAfter=true appAfter=true", _scenarioSummary(outcome))
 End Function
