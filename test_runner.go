@@ -202,6 +202,20 @@ func run(cmd string, args...string) (string, error) {
 	return out, err
 }
 
+// curl exits 0 on an HTTP error, so check the status printed by --write-out.
+// Without this a rejected install (e.g. 401 for bad credentials) would carry on
+// and run whatever package was already on the device.
+func checkInstallStatus(httpCode string, err error) error {
+	if err != nil {
+		return err
+	}
+	httpCode = strings.TrimSpace(httpCode)
+	if httpCode != "200" {
+		return errors.New("install failed: device returned HTTP " + httpCode)
+	}
+	return nil
+}
+
 func zipFiles(basedir string, outpath string, patterns... string) error {
 	log.Println("zipFiles")
 	log.Println("Creating zip file at", outpath)
@@ -424,7 +438,7 @@ func rokutasks(r *runner) {
 		main: func() error {
 			log.Printf("Deploying to device IP: %s (%s | %s)\n", env_roku_ip, env_roku_user, env_roku_pass)
 			
-			_, err := run("curl",
+			out, err := run("curl",
 				"--user", env_roku_user + ":" + env_roku_pass,
 				"--digest", "--show-error", 
 				"-H", "Expect: 100-continue",
@@ -432,7 +446,7 @@ func rokutasks(r *runner) {
 				"-F", "archive=@\"" + out_dir_name + "/" + app_name+ ".zip\"", 
 				"--output", "/tmp/dev_server_out",
 				"--write-out", "%{response_code}", "http://" + env_roku_ip + "/plugin_install")
-			return err
+			return checkInstallStatus(out, err)
 		},
 	})
 
@@ -465,15 +479,15 @@ func rokutasks(r *runner) {
 	r.AddTask("deploy_test", task{
 		depends: []string{"closeApp", "package_test"},
 		main: func() error {
-			_, err := run("curl", "--user", env_roku_user+":"+env_roku_pass, "--digest", "--show-error", 
+			out, err := run("curl", "--user", env_roku_user+":"+env_roku_pass, "--digest", "--show-error",
 				"-H", "Expect: 100-continue",
-				"-F", "mysubmit=Install", 
+				"-F", "mysubmit=Install",
 				"-F", "archive=@\"" + out_dir_name + "/" + app_name + "-tests.zip\"",
 				"--output", "/tmp/dev_server_out",
 				"--write-out", "%{http_code}",
 				"http://" +env_roku_ip + "/plugin_install")
 
-			return err
+			return checkInstallStatus(out, err)
 		},
 	})
 
