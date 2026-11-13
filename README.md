@@ -75,7 +75,7 @@ Other useful tasks are defined in the `test_runner.go` file.
 
 ### Who do I talk to? ###
 
-* help@mux.com
+* https://www.mux.com/support
 
 ### Instructions ###
 
