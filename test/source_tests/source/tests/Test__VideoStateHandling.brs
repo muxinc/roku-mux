@@ -23,7 +23,15 @@ Sub VideoStateHandling_SetUp()
   m.fakeTimer = FakeTimer()
   m.fakeAppInfo = FakeAppInfo()
   m.fakeAppConfig = {
-    SEEK_THRESHOLD: 1500
+    MAX_BEACON_SIZE: 10,
+    MAX_QUEUE_LENGTH: 100,
+    MAX_VIDEO_POSITION_JUMP: 1500,
+    HTTP_RETRIES: 1,
+    BASE_TIME_BETWEEN_BEACONS: 1000,
+    HEARTBEAT_INTERVAL: 10,
+    POSITION_TIMER_INTERVAL: 1,
+    SEEK_THRESHOLD: 1500,
+    USE_RANDOM_MUX_VIEWER_ID: false
   }
   m.fakeCustomerConfig = {
     property_key: "UNIT_TEST_PROPERTY_KEY"
@@ -41,7 +49,7 @@ Sub VideoStateHandling_SetUp()
     return out
   End Function
 
-  m.SUT.init(m.fakeAppInfo, m.fakeAppConfig, m.fakeCustomerConfig, m.fakeTimer, m.fakeTimer)
+  m.SUT.init(m.fakeAppInfo, m.fakeAppConfig, m.fakeCustomerConfig, m.fakeTimer, m.fakeTimer, FakePort())
 End Sub
 
 Sub VideoStateHandling_TearDown()

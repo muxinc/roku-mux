@@ -10,6 +10,7 @@ sub RunUserInterface(args)
         TestSuite__GetDynamicProperties
         TestSuite__GetSessionProperties
         TestSuite__Minification
+        TestSuite__ObserverHelpers
         TestSuite__RAFHandling
         TestSuite__URL_Utils
         TestSuite__VideoStateHandling
