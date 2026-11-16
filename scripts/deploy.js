@@ -41,7 +41,8 @@ async function deploy(scope, root, pkg) {
       const params = {
         DistributionId: process.env.CF_DISTRIBUTION_ID,
         InvalidationBatch: {
-          CallerReference: 'roku-mux-buildkite-pipeline',
+          // must be unique per-request
+          CallerReference: `roku-mux-deploy-${fullVersion}-${Date.now()}`,
           Paths: {
             Items: ['/roku/*'],
             Quantity: 1
